@@ -1,0 +1,202 @@
+/* Editor: Tiptap-Inhalt, Drag-Handle, Auswahl, Toolbar, Slash-Menü, rechte Leiste. Basis: Schule/editor.css. */
+
+.c-editor{position:relative}
+.c-editor-body{position:relative}
+.c-editor-body .tiptap{outline:none;font-size:17px;line-height:1.7}
+.c-editor-body .tiptap > * + *{margin-top:.6em}
+.c-editor-body .tiptap > *{animation:block-in .28s var(--ease) both}
+@keyframes block-in{from{opacity:0;transform:translateY(4px)}}
+.c-editor-body .tiptap p{margin:0}
+.c-editor-body .tiptap h1,.c-editor-body .tiptap h2,.c-editor-body .tiptap h3{margin:1.3em 0 0;line-height:1.3}
+.c-editor-body .tiptap > h1:first-child,.c-editor-body .tiptap > h2:first-child,.c-editor-body .tiptap > h3:first-child{margin-top:0}
+.c-editor-body .tiptap h1{font-size:1.75em;font-weight:700;letter-spacing:-.02em}
+.c-editor-body .tiptap h2{font-size:1.35em;font-weight:650;letter-spacing:-.015em}
+.c-editor-body .tiptap h3{font-size:1.1em;font-weight:600}
+.c-editor-body .tiptap .is-empty::before{
+  content:attr(data-placeholder);color:var(--ink-faint);float:left;height:0;pointer-events:none;
+}
+.c-editor-body .tiptap:not(:focus-within) .is-empty:not(.is-editor-empty)::before,
+.c-editor.is-learning .tiptap .is-empty::before{content:none}
+.c-editor-body .tiptap ul,.c-editor-body .tiptap ol{padding-left:1.4em;margin:0}
+.c-editor-body .tiptap li + li{margin-top:.2em}
+.c-editor-body .tiptap li p{margin:0}
+.c-editor-body .tiptap blockquote{
+  margin:0;border-left:3px solid var(--accent-soft);padding-left:16px;color:var(--ink-soft);
+}
+.c-editor-body .tiptap pre{
+  background:#1C1C21;color:#E9E9EE;border-radius:var(--radius-sm);padding:14px 16px;margin:0;
+  font-family:var(--mono);font-size:13.5px;line-height:1.6;overflow-x:auto;
+}
+.c-editor-body .tiptap code{font-family:var(--mono);font-size:.88em}
+.c-editor-body .tiptap :not(pre) > code{background:var(--paper-2);border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+.c-editor-body .tiptap hr{border:0;border-top:1px solid var(--line);margin:1.2em 0}
+.c-editor-body .tiptap img{display:block;max-width:100%;border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+.c-editor-body .tiptap img.ProseMirror-selectednode{outline:2px solid var(--accent);outline-offset:3px}
+.c-editor-body .tiptap a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-soft);text-underline-offset:3px}
+
+/* Callouts (aus Schule: .merke / .hint / .warn) */
+.c-editor-body .tiptap .merke,.c-editor-body .tiptap .hint,.c-editor-body .tiptap .warn{
+  --tone:var(--amber);--tone-bg:var(--amber-bg);
+  position:relative;margin:.9em 0 0;padding:12px 16px 12px 44px;border-radius:var(--radius-sm);background:var(--tone-bg);
+}
+.c-editor-body .tiptap .hint{--tone:var(--blue);--tone-bg:var(--blue-bg)}
+.c-editor-body .tiptap .warn{--tone:var(--red);--tone-bg:var(--red-bg)}
+.c-editor-body .tiptap .merke::before,.c-editor-body .tiptap .hint::before,.c-editor-body .tiptap .warn::before{
+  position:absolute;left:15px;top:12px;font-size:16px;line-height:1.7;
+}
+.c-editor-body .tiptap .merke::before{content:"💡"}
+.c-editor-body .tiptap .hint::before{content:"ℹ️"}
+.c-editor-body .tiptap .warn::before{content:"⚠️"}
+
+/* ---------- Drag-Handle ---------- */
+.c-editor-draghandle{
+  position:absolute;left:-62px;display:flex;align-items:center;gap:1px;z-index:6;
+  opacity:0;transition:opacity .15s,top .12s var(--ease);pointer-events:none;
+}
+.c-editor-draghandle.is-visible{opacity:1;pointer-events:auto}
+@media (max-width:860px){.c-editor-draghandle{display:none}}
+.c-editor-draghandle-add,.c-editor-draghandle-grip{
+  display:flex;align-items:center;justify-content:center;width:28px;height:28px;
+  color:var(--ink-faint);border-radius:var(--radius-xs);cursor:pointer;background:none;border:0;
+  transition:background .12s,color .12s;
+}
+.c-editor-draghandle-add:hover,.c-editor-draghandle-grip:hover{background:var(--hover);color:var(--ink)}
+.c-editor-draghandle svg{width:18px;height:18px}
+.c-editor-draghandle-grip{cursor:grab}
+.c-editor-drop-indicator{
+  position:absolute;height:3px;margin-top:-1.5px;background:var(--accent);border-radius:2px;z-index:7;pointer-events:none;
+  box-shadow:0 0 0 3px var(--accent-bg);
+}
+.c-editor-body .tiptap > .is-drag-source{opacity:.35}
+
+/* ---------- Rubber-Band-Auswahl ---------- */
+.c-block-selection-layer{position:absolute;inset:0;pointer-events:none;z-index:5}
+.c-block-selection-box{
+  position:absolute;background:color-mix(in srgb,var(--accent) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);border-radius:4px;
+}
+.c-block-selection-drop{position:fixed;height:3px;background:var(--accent);border-radius:2px;z-index:20;pointer-events:none}
+.c-editor-body .tiptap > .is-block-selected{
+  border-radius:6px;background:color-mix(in srgb,var(--accent) 12%,transparent);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent);cursor:grab;
+}
+body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
+
+/* ---------- Bubble-Toolbar ---------- */
+.c-editor-toolbar{
+  display:flex;gap:1px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:4px;box-shadow:var(--shadow-lg);animation:pop-in .16s var(--ease);
+}
+@keyframes pop-in{from{opacity:0;transform:scale(.94) translateY(4px)}}
+.c-editor-toolbar button{
+  display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+  background:none;border:0;color:var(--ink);border-radius:var(--radius-xs);cursor:pointer;
+}
+.c-editor-toolbar button:hover{background:var(--hover)}
+.c-editor-toolbar button.active{background:var(--accent-bg);color:var(--accent)}
+.c-editor-toolbar svg{width:17px;height:17px}
+.c-editor-toolbar-link{display:flex;align-items:center;gap:6px;padding-left:8px;color:var(--ink-soft)}
+.c-editor-toolbar-link svg{width:15px;height:15px}
+.c-editor-toolbar-link input{border:0;background:none;outline:none;width:220px;font-size:14px;color:var(--ink)}
+
+/* ---------- Einfügen-Menü (Slash + Plus) ---------- */
+.c-insert-menu{
+  display:flex;flex-direction:column;gap:2px;width:250px;max-height:340px;overflow-y:auto;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:6px;box-shadow:var(--shadow-lg);animation:pop-in .16s var(--ease);transform-origin:inherit;
+}
+.c-insert-menu-inline{position:absolute;left:0;z-index:15}
+.c-insert-menu-group{display:flex;flex-direction:column;gap:1px}
+.c-insert-menu-group + .c-insert-menu-group{margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+.c-insert-menu-label{font-size:11.5px;font-weight:600;color:var(--ink-faint);padding:6px 10px 4px}
+.c-insert-menu button{
+  display:flex;align-items:center;gap:10px;text-align:left;font-size:14px;color:var(--ink);
+  background:none;border:0;padding:7px 10px;border-radius:var(--radius-xs);cursor:pointer;width:100%;
+}
+.c-insert-menu button.active{background:var(--hover)}
+.c-insert-menu button svg{width:17px;height:17px;color:var(--ink-soft)}
+.c-insert-menu-empty{font-size:13.5px;color:var(--ink-soft);padding:8px 10px;margin:0}
+
+/* ---------- Rechte Leiste ---------- */
+.c-editor-sidebar{
+  height:100%;padding:14px 16px 24px;border-left:1px solid var(--line);background:var(--paper-2);overflow-y:auto;
+  display:flex;flex-direction:column;gap:18px;font-size:15px;
+}
+.c-editor-sidebar-tabs{display:flex;gap:2px;padding:3px;border-radius:var(--radius-sm);background:var(--hover)}
+.c-editor-sidebar-tabs button{
+  position:relative;flex:1;height:28px;background:none;border:0;color:var(--ink-soft);font-size:13px;font-weight:500;
+  cursor:pointer;border-radius:var(--radius-xs);transition:color .2s;
+}
+.c-editor-sidebar-tabs button span:last-child{position:relative;z-index:1}
+.c-editor-sidebar-tabs button.active{color:var(--ink)}
+.c-tab-pill{position:absolute;inset:0;border-radius:var(--radius-xs);background:var(--card);box-shadow:var(--shadow-sm)}
+.c-editor-sidebar-body{flex:1}
+
+.c-blocks-aside-group{margin-bottom:20px}
+.c-blocks-aside-group:last-child{margin-bottom:0}
+.c-blocks-aside h2,.c-format-tab h2{font-size:11.5px;font-weight:600;margin:0 0 8px;color:var(--ink-faint)}
+.c-blocks-aside-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 8px}
+.c-blocks-aside-grid button{
+  display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
+  background:none;border:0;padding:0;cursor:pointer;color:var(--ink);
+}
+.c-blocks-aside-icon{
+  display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:1.25;
+  border-radius:var(--radius-sm);background:var(--card);box-shadow:var(--shadow-sm),inset 0 0 0 1px var(--line);
+  transition:box-shadow .15s,transform .15s var(--ease);
+}
+.c-blocks-aside-grid button:hover .c-blocks-aside-icon{box-shadow:var(--shadow),inset 0 0 0 1px var(--line);transform:translateY(-1px)}
+.c-blocks-aside-grid button:active .c-blocks-aside-icon{transform:scale(.96)}
+.c-blocks-aside-grid button.active .c-blocks-aside-icon{box-shadow:inset 0 0 0 2px var(--accent);color:var(--accent)}
+.c-blocks-aside-grid button.active span:last-child{color:var(--accent)}
+.c-blocks-aside-icon > svg{width:64%;height:80%;color:var(--ink-soft)}
+.c-format-tab .c-blocks-aside-icon > svg{width:22px;height:22px}
+.c-blocks-aside-grid button span:last-child{font-size:12px;line-height:1.3}
+
+.c-blocks-aside-icon .t-fill{fill:var(--line)}
+.c-blocks-aside-icon .t-fill.t-strong{fill:var(--ink-soft)}
+.c-blocks-aside-icon .t-stroke{fill:none;stroke:var(--ink-soft);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.c-blocks-aside-icon .t-num{font-size:8.5px;font-weight:600;fill:var(--ink-soft);font-family:var(--sans);dominant-baseline:middle}
+.c-blocks-aside-icon .t-word{font-family:var(--sans);fill:var(--ink);dominant-baseline:middle}
+.c-blocks-aside-icon .t-word-p{font-size:9px;font-weight:400}
+.c-blocks-aside-icon .t-word-h1{font-size:11px;font-weight:700;letter-spacing:-.01em}
+.c-blocks-aside-icon .t-word-h2{font-size:7.5px;font-weight:700}
+.c-blocks-aside-icon .t-word-h3{font-size:6.4px;font-weight:600}
+.c-blocks-aside-icon .t-code-bg{fill:#1c1c20}
+.c-blocks-aside-icon .t-code-cap{fill:#48484f}
+.c-blocks-aside-icon .t-code-line{fill:#4d4d55}
+.c-blocks-aside-icon .t-code-green{fill:#5fd0a3}
+.c-blocks-aside-icon .t-code-pink{fill:#e39fd6}
+.c-blocks-aside-icon .t-photo-bg{fill:var(--paper-2)}
+.c-blocks-aside-icon .t-photo-sun{fill:#e8b23d}
+.c-blocks-aside-icon .t-photo-hill-back{fill:var(--ink-soft);opacity:.35}
+.c-blocks-aside-icon .t-photo-hill-front{fill:var(--ink-soft);opacity:.6}
+.c-blocks-aside-icon .t-callout-bg{fill:currentColor;opacity:.14}
+.c-blocks-aside-icon .t-callout .t-fill{fill:currentColor;opacity:.55}
+.c-blocks-aside-icon .t-callout-bar{fill:currentColor}
+.c-blocks-aside-icon .t-callout.t-amber{color:var(--amber)}
+.c-blocks-aside-icon .t-callout.t-blue{color:var(--blue)}
+.c-blocks-aside-icon .t-callout.t-red{color:var(--red)}
+.c-blocks-aside-icon .t-accent{fill:var(--accent)}
+.c-blocks-aside-icon .t-accent-soft{fill:var(--accent-bg)}
+.c-blocks-aside-icon .t-card-back{fill:var(--accent-soft)}
+.c-blocks-aside-icon .t-card-front{fill:var(--card);stroke:var(--line)}
+.c-blocks-aside-icon .t-option{fill:none;stroke:var(--line)}
+.c-blocks-aside-icon .t-option-ok{fill:var(--green-bg);stroke:var(--green)}
+.c-blocks-aside-icon .t-stroke-ok{fill:none;stroke:var(--green);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+
+.c-info-tab{display:flex;flex-direction:column;gap:20px}
+.c-info-tab-meta{display:flex;flex-direction:column;gap:10px;margin:0}
+.c-info-tab-meta div{display:flex;justify-content:space-between;gap:12px;font-size:13.5px}
+.c-info-tab-meta dt{color:var(--ink-soft);margin:0}
+.c-info-tab-meta dd{margin:0;color:var(--ink);text-align:right}
+.c-info-tab-actions{display:flex;flex-direction:column;gap:2px}
+.c-info-tab-actions button{
+  display:flex;align-items:center;gap:10px;text-align:left;font-size:14px;color:var(--ink);
+  background:none;border:0;padding:9px 8px;border-radius:var(--radius-xs);cursor:pointer;width:100%;
+}
+.c-info-tab-actions button:hover{background:var(--hover)}
+.c-info-tab-actions button svg{width:17px;height:17px;color:var(--ink-soft)}
+.c-info-tab-actions button.active svg{color:var(--amber);fill:var(--amber)}
+.c-info-tab-actions button.danger:hover{background:var(--red-bg);color:var(--red)}
+.c-info-tab-actions button.danger:hover svg{color:var(--red)}
