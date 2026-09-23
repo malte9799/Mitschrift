@@ -4,13 +4,15 @@ export interface Note {
   title: string;
   content: string;
   folder: string | null;
+  /** Übergeordnete Notiz (Verschachtelung); `null`/fehlend = oberste Ebene. */
+  parentId?: string | null;
   tags: string[];
   starred: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
-export type NotePatch = Partial<Pick<Note, 'title' | 'content' | 'folder' | 'tags' | 'starred'>>;
+export type NotePatch = Partial<Pick<Note, 'title' | 'content' | 'folder' | 'parentId' | 'tags' | 'starred'>>;
 
 /** Farbton eines Tags; die konkreten Werte (hell/dunkel) stehen in tokens.css. */
 export type TagColor = 'teal' | 'blue' | 'green' | 'orange' | 'purple' | 'graphite' | 'red' | 'pink' | 'amber';
@@ -33,6 +35,23 @@ export interface Snippet {
   createdAt: number;
 }
 
+/** Glossar-Eintrag, z. B. eine Abkürzung („DNS“ → „Domain Name System“). Wird in allen Notizen erkannt. */
+export interface Term {
+  id: string;
+  /** Wie er im Text steht: „DNS“, „TCP/IP“, „Firewall“. */
+  term: string;
+  /** Ausgeschrieben bzw. Kurzbedeutung. */
+  expansion: string;
+  /** Längere Erklärung (optional). */
+  definition: string;
+  /** Fächer (Tag-IDs). */
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type TermPatch = Partial<Pick<Term, 'term' | 'expansion' | 'definition' | 'tags'>>;
+
 /**
  * Speicher-Grenze der App. V1 nutzt IndexedDB, später kann ein Tauri-Adapter
  * (Markdown-Dateien auf Disk) dieselbe Schnittstelle implementieren.
@@ -42,6 +61,7 @@ export interface StorageAdapter {
   getNote(id: string): Promise<Note | undefined>;
   createNote(init?: NotePatch): Promise<Note>;
   updateNote(id: string, patch: NotePatch): Promise<Note | undefined>;
+  /** Löscht die Notiz; ihre Unterseiten rücken eine Ebene nach oben. */
   deleteNote(id: string): Promise<void>;
 
   listTags(): Promise<Tag[]>;
@@ -54,6 +74,32 @@ export interface StorageAdapter {
   createSnippet(name: string, content: string): Promise<Snippet>;
   deleteSnippet(id: string): Promise<void>;
 
+  listTerms(): Promise<Term[]>;
+  createTerm(init: TermPatch & { term: string }): Promise<Term>;
+  updateTerm(id: string, patch: TermPatch): Promise<Term | undefined>;
+  deleteTerm(id: string): Promise<void>;
+
   putFile(blob: Blob): Promise<string>;
   getFile(id: string): Promise<Blob | undefined>;
+
+  /** Kompletter Inhalt des Speichers, z. B. für ein Backup. */
+  dumpAll(): Promise<StorageDump>;
+  /**
+   * Führt einen Dump mit dem Bestand zusammen: Notizen gewinnen bei gleicher ID die
+   * jüngere Fassung, alles andere wird nur ergänzt. Es wird nie etwas gelöscht.
+   */
+  mergeAll(dump: StorageDump): Promise<MergeResult>;
+}
+
+export interface StorageDump {
+  notes: Note[];
+  tags: Tag[];
+  snippets: Snippet[];
+  files: { id: string; blob: Blob }[];
+}
+
+export interface MergeResult {
+  added: number;
+  updated: number;
+  skipped: number;
 }
