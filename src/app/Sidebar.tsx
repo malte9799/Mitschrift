@@ -3,9 +3,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Icon } from '@/ui/Icon';
 import { useNotes } from '@/hooks/useNotes';
+import { useTags } from '@/hooks/useTags';
 import type { Note } from '@/storage';
+import { TagChip } from '@/ui/TagChip';
 import { createNote, deleteNote } from './actions';
 import { useTheme } from './theme';
+import { FOCUS_SEARCH_EVENT } from './activeNote';
+import { confirmDialog } from '@/ui/Dialog';
 
 interface SidebarProps {
   open: boolean;
@@ -28,6 +32,8 @@ function plainText(content: string): string {
   return out.join(' ');
 }
 
+const TAG_FILTER_KEY = 'mitschrift-tag-filter';
+
 function relativeDate(ts: number): string {
   const d = new Date(ts);
   const today = new Date();
@@ -38,7 +44,29 @@ function relativeDate(ts: number): string {
 /** Linke Leiste: Suche (⌘K), neue Notiz, Favoriten und alle Notizen. */
 export function Sidebar({ open, onClose }: SidebarProps) {
   const notes = useNotes();
+  const tags = useTags();
   const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(TAG_FILTER_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const tagById = useMemo(() => new Map((tags ?? []).map((t) => [t.id, t])), [tags]);
+  // Gelöschtes Tag als Filter ignorieren.
+  const activeFilter = tagFilter && tagById.has(tagFilter) ? tagFilter : null;
+
+  function toggleFilter(id: string) {
+    const next = activeFilter === id ? null : id;
+    setTagFilter(next);
+    try {
+      if (next) localStorage.setItem(TAG_FILTER_KEY, next);
+      else localStorage.removeItem(TAG_FILTER_KEY);
+    } catch {
+      /* ignorieren */
+    }
+  }
   const searchRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { theme, next } = useTheme();
@@ -51,28 +79,46 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         searchRef.current?.select();
       }
     }
+    // Aus der Menüleiste: Leiste ist dann schon offen, nach dem Einblenden fokussieren.
+    function onFocusSearch() {
+      requestAnimationFrame(() => {
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      });
+    }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener(FOCUS_SEARCH_EVENT, onFocusSearch);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener(FOCUS_SEARCH_EVENT, onFocusSearch);
+    };
   }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!notes) return [];
-    if (!q) return notes;
-    return notes.filter((n) => n.title.toLowerCase().includes(q) || plainText(n.content).toLowerCase().includes(q));
-  }, [notes, query]);
+    const byTag = activeFilter ? notes.filter((n) => n.tags.includes(activeFilter)) : notes;
+    if (!q) return byTag;
+    return byTag.filter(
+      (n) =>
+        n.title.toLowerCase().includes(q) ||
+        plainText(n.content).toLowerCase().includes(q) ||
+        n.tags.some((id) => tagById.get(id)?.name.toLowerCase().includes(q)),
+    );
+  }, [notes, query, activeFilter, tagById]);
 
   const starred = filtered.filter((n) => n.starred);
   const rest = filtered.filter((n) => !n.starred);
 
   async function onCreate() {
-    const note = await createNote();
+    // Neue Notiz bekommt direkt das gefilterte Fach.
+    const note = await createNote(activeFilter ? { tags: [activeFilter] } : undefined);
     navigate(`/n/${note.id}`);
     if (window.innerWidth <= 860) onClose();
   }
 
   async function onDelete(n: Note) {
-    if (!window.confirm(`„${n.title || 'Ohne Titel'}“ löschen?`)) return;
+    if (!(await confirmDialog(`„${n.title || 'Ohne Titel'}“ löschen?`, { confirmLabel: 'Löschen', danger: true }))) return;
     await deleteNote(n.id);
     if (location.pathname === `/n/${n.id}`) navigate('/');
   }
@@ -85,6 +131,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           {n.title || 'Ohne Titel'}
         </span>
         <span className="side-note-sub">
+          {n.tags.some((id) => tagById.has(id)) && (
+            <span className="side-note-tags">
+              {n.tags.map((id) => {
+                const t = tagById.get(id);
+                return t && <span key={id} className="tag-dot" data-color={t.color} title={t.name} />;
+              })}
+            </span>
+          )}
           <span>{relativeDate(n.updatedAt)}</span>
           <span className="side-note-preview">{plainText(n.content)}</span>
         </span>
@@ -128,6 +182,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           Neue Notiz
         </button>
 
+        {tags && tags.length > 0 && (
+          <div className="side-tags" role="group" aria-label="Nach Fach filtern">
+            {tags.map((t) => (
+              <TagChip key={t.id} tag={t} active={activeFilter === t.id} onClick={() => toggleFilter(t.id)} />
+            ))}
+          </div>
+        )}
+
         <nav className="side-list">
           {starred.length > 0 && (
             <>
@@ -137,11 +199,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               </ul>
             </>
           )}
-          <h3>{query ? 'Treffer' : 'Alle Notizen'}</h3>
+          <h3>{query ? 'Treffer' : activeFilter ? tagById.get(activeFilter)?.name : 'Alle Notizen'}</h3>
           <ul>
             <AnimatePresence initial={false}>{rest.map(renderItem)}</AnimatePresence>
           </ul>
-          {notes && filtered.length === 0 && <p className="side-empty">{query ? 'Nichts gefunden.' : 'Noch keine Notizen.'}</p>}
+          {notes && filtered.length === 0 && <p className="side-empty">{query ? 'Nichts gefunden.' : activeFilter ? 'Keine Notizen in diesem Fach.' : 'Noch keine Notizen.'}</p>}
         </nav>
       </aside>
     </>

@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react';
 import { BlockThumbnail } from './BlockThumbnails';
+import { prepareBlockInsert } from './BlockSelection';
 import { blockTypes, blockCategoryOrder, categoryLabels } from './blockTypes';
 
 interface BlocksAsideProps {
@@ -21,7 +22,10 @@ export function BlocksAside({ editor }: BlocksAsideProps) {
                 <button
                   key={b.id}
                   type="button"
-                  onClick={() => b.run(editor)}
+                  onClick={() => {
+                    prepareBlockInsert(editor);
+                    b.run(editor);
+                  }}
                   title={b.label}
                 >
                   <span className="c-blocks-aside-icon">

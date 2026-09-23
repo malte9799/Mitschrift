@@ -1,0 +1,595 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import type { Editor } from '@tiptap/react';
+import { blockTypes, type BlockCategory, type BlockTypeId } from '@/editor/blockTypes';
+import { OPEN_LINK_EVENT } from '@/editor/Toolbar';
+import { exportFormats, exportNote, type ExportFormat } from '@/export';
+import { createNote } from './actions';
+import { FOCUS_SEARCH_EVENT, useActiveNote } from './activeNote';
+import { useTheme } from './theme';
+import { welcomeNote } from './welcome';
+import { alertDialog } from '@/ui/Dialog';
+
+export type MenuEntry =
+  | {
+      type?: 'item';
+      label: string;
+      /** Anzeige im macOS-Stil, z. B. „⇧⌘S“. */
+      shortcut?: string;
+      /** Tastenkürzel global abfangen; sonst nur Anzeige (Editor/Browser erledigen es selbst). */
+      bind?: boolean;
+      action?: () => void;
+      disabled?: boolean;
+      checked?: boolean;
+      submenu?: MenuEntry[];
+    }
+  | { type: 'separator' };
+
+type Item = Exclude<MenuEntry, { type: 'separator' }>;
+
+interface MenuDef {
+  label: string;
+  items: MenuEntry[];
+  /** Fett gesetzter App-Name ganz links. */
+  app?: boolean;
+}
+
+interface MenuBarProps {
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+}
+
+const SEP: MenuEntry = { type: 'separator' };
+const isItem = (e: MenuEntry | undefined): e is Item => !!e && e.type !== 'separator';
+const selectable = (e: MenuEntry | undefined) => isItem(e) && !e.disabled;
+
+/** Vom Editor selbst behandelte Kürzel, hier nur zur Anzeige. */
+const blockShortcuts: Partial<Record<BlockTypeId, string>> = {
+  heading1: '⌥⌘1',
+  heading2: '⌥⌘2',
+  heading3: '⌥⌘3',
+  paragraph: '⌥⌘0',
+  quote: '⇧⌘B',
+  bulletList: '⇧⌘8',
+  numberedList: '⇧⌘7',
+  taskList: '⇧⌘9',
+};
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/** Prüft ein Kürzel wie „⌃⌘S“ gegen ein Tastatur-Event (per `code`, da ⌥ die Taste verändert). */
+function matches(e: KeyboardEvent, shortcut: string): boolean {
+  const key = shortcut.replace(/[⌃⌥⇧⌘]/g, '');
+  const want = {
+    ctrl: shortcut.includes('⌃') || (!isMac && shortcut.includes('⌘')),
+    alt: shortcut.includes('⌥'),
+    shift: shortcut.includes('⇧'),
+    meta: isMac && shortcut.includes('⌘'),
+  };
+  if (e.ctrlKey !== want.ctrl || e.altKey !== want.alt || e.shiftKey !== want.shift || e.metaKey !== want.meta) return false;
+  const code = /^\d$/.test(key) ? `Digit${key}` : /^[A-Z]$/.test(key) ? `Key${key}` : '';
+  return code ? e.code === code : e.key === key;
+}
+
+function allItems(entries: MenuEntry[]): Item[] {
+  return entries.flatMap((e) => (isItem(e) ? [e, ...(e.submenu ? allItems(e.submenu) : [])] : []));
+}
+
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let t: number;
+    const tick = () => {
+      setNow(new Date());
+      t = window.setTimeout(tick, 60_000 - (Date.now() % 60_000) + 50);
+    };
+    t = window.setTimeout(tick, 60_000 - (Date.now() % 60_000) + 50);
+    return () => window.clearTimeout(t);
+  }, []);
+  return now;
+}
+
+async function pasteInto(editor: Editor | null) {
+  try {
+    if (editor?.view.hasFocus()) {
+      for (const item of await navigator.clipboard.read()) {
+        if (item.types.includes('text/html')) {
+          editor.view.pasteHTML(await (await item.getType('text/html')).text());
+          return;
+        }
+      }
+      editor.view.pasteText(await navigator.clipboard.readText());
+      return;
+    }
+    const el = document.activeElement;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      document.execCommand('insertText', false, await navigator.clipboard.readText());
+    }
+  } catch {
+    void alertDialog('Der Browser erlaubt das Einsetzen über das Menü nicht. Bitte ⌘V verwenden.');
+  }
+}
+
+/** Menüleiste im Stil der macOS-Leiste: App-Menü, Ablage, Bearbeiten, Format, Einfügen, Darstellung, Hilfe. */
+export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
+  const active = useActiveNote();
+  const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
+  const now = useClock();
+  const [open, setOpen] = useState<number | null>(null);
+  /** Hervorgehobener Eintrag je Ebene: [Index im Menü, Index im Untermenü …]. */
+  const [path, setPath] = useState<number[]>([]);
+  const [about, setAbout] = useState(false);
+  const [fullscreen, setFullscreen] = useState(() => !!document.fullscreenElement);
+  const barRef = useRef<HTMLElement>(null);
+  const titleRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const note = active?.note ?? null;
+  // Editor-Befehle nur im Bearbeiten-Modus.
+  const ed = active && !active.learning ? active.editor : null;
+  const hasSelection = !!ed && !ed.state.selection.empty;
+
+  async function newNote(init?: Parameters<typeof createNote>[0]) {
+    const n = await createNote(init);
+    navigate(`/n/${n.id}`);
+  }
+
+  function runExport(format: ExportFormat) {
+    if (!active) return;
+    exportNote(active.note, format, active.editor?.getJSON()).catch((err) => {
+      console.error(err);
+      void alertDialog('Export fehlgeschlagen.');
+    });
+  }
+
+  function focusSearch() {
+    if (!sidebarOpen) toggleSidebar();
+    window.dispatchEvent(new Event(FOCUS_SEARCH_EVENT));
+  }
+
+  const blockItem = (id: BlockTypeId, checked?: boolean): Item => {
+    const def = blockTypes.find((b) => b.id === id)!;
+    return { label: def.label, shortcut: blockShortcuts[id], checked, disabled: !ed, action: () => ed && def.run(ed) };
+  };
+  const byCategory = (cat: BlockCategory) => blockTypes.filter((b) => b.category === cat).map((b) => blockItem(b.id));
+  const mark = (label: string, name: string, shortcut: string, run: (e: Editor) => void): Item => ({
+    label,
+    shortcut,
+    checked: !!ed?.isActive(name),
+    disabled: !ed,
+    action: () => ed && run(ed),
+  });
+  const align = (label: string, value: string, shortcut?: string): Item => ({
+    label,
+    shortcut,
+    checked: !!ed?.isActive({ textAlign: value }),
+    disabled: !ed,
+    action: () => ed?.chain().focus().setTextAlign(value).run(),
+  });
+
+  const menus: MenuDef[] = [
+    {
+      label: 'Mitschrift',
+      app: true,
+      items: [
+        { label: 'Über Mitschrift', action: () => setAbout(true) },
+        SEP,
+        {
+          label: 'Erscheinungsbild',
+          submenu: [
+            { label: 'Hell', checked: theme === 'light', action: () => setTheme('light') },
+            { label: 'Dunkel', checked: theme === 'dark', action: () => setTheme('dark') },
+            { label: 'Automatisch', checked: theme === 'system', action: () => setTheme('system') },
+          ],
+        },
+      ],
+    },
+    {
+      label: 'Ablage',
+      items: [
+        { label: 'Neue Notiz', shortcut: '⌥⌘N', bind: true, action: () => void newNote() },
+        { label: 'Notizen durchsuchen …', shortcut: '⌘K', action: focusSearch },
+        SEP,
+        {
+          label: 'Exportieren',
+          disabled: !note,
+          submenu: exportFormats.map((f) => ({ label: f.label, action: () => runExport(f.format) })),
+        },
+        { label: 'Drucken …', shortcut: '⌘P', bind: true, disabled: !note, action: () => runExport('pdf') },
+        SEP,
+        {
+          label: note?.starred ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
+          disabled: !note,
+          action: () => active?.toggleStar(),
+        },
+        { label: 'Notiz löschen …', disabled: !note, action: () => active?.remove() },
+      ],
+    },
+    {
+      label: 'Bearbeiten',
+      items: [
+        { label: 'Widerrufen', shortcut: '⌘Z', disabled: !ed?.can().undo(), action: () => ed?.chain().focus().undo().run() },
+        { label: 'Wiederholen', shortcut: '⇧⌘Z', disabled: !ed?.can().redo(), action: () => ed?.chain().focus().redo().run() },
+        SEP,
+        { label: 'Ausschneiden', shortcut: '⌘X', action: () => document.execCommand('cut') },
+        { label: 'Kopieren', shortcut: '⌘C', action: () => document.execCommand('copy') },
+        { label: 'Einsetzen', shortcut: '⌘V', action: () => void pasteInto(ed) },
+        { label: 'Alles auswählen', shortcut: '⌘A', disabled: !ed, action: () => ed?.chain().focus().selectAll().run() },
+        SEP,
+        { label: 'Link hinzufügen …', disabled: !hasSelection, action: () => window.dispatchEvent(new Event(OPEN_LINK_EVENT)) },
+      ],
+    },
+    {
+      label: 'Format',
+      items: [
+        mark('Fett', 'bold', '⌘B', (e) => e.chain().focus().toggleBold().run()),
+        mark('Kursiv', 'italic', '⌘I', (e) => e.chain().focus().toggleItalic().run()),
+        mark('Unterstrichen', 'underline', '⌘U', (e) => e.chain().focus().toggleUnderline().run()),
+        mark('Durchgestrichen', 'strike', '⇧⌘S', (e) => e.chain().focus().toggleStrike().run()),
+        mark('Inline-Code', 'code', '⌘E', (e) => e.chain().focus().toggleCode().run()),
+        mark('Als Lücke markieren', 'cloze', '⇧⌘L', (e) => e.chain().focus().toggleCloze().run()),
+        SEP,
+        {
+          label: 'Textstil',
+          disabled: !ed,
+          submenu: [
+            blockItem('heading1', !!ed?.isActive('heading', { level: 1 })),
+            blockItem('heading2', !!ed?.isActive('heading', { level: 2 })),
+            blockItem('heading3', !!ed?.isActive('heading', { level: 3 })),
+            SEP,
+            blockItem('paragraph', !!ed?.isActive('paragraph', { variant: null })),
+            blockItem('strong', !!ed?.isActive('paragraph', { variant: 'strong' })),
+            blockItem('caption', !!ed?.isActive('paragraph', { variant: 'caption' })),
+            SEP,
+            blockItem('quote', !!ed?.isActive('blockquote')),
+          ],
+        },
+        {
+          label: 'Liste',
+          disabled: !ed,
+          submenu: [
+            blockItem('bulletList', !!ed?.isActive('bulletList')),
+            blockItem('numberedList', !!ed?.isActive('orderedList')),
+            blockItem('taskList', !!ed?.isActive('taskList')),
+          ],
+        },
+        {
+          label: 'Ausrichtung',
+          disabled: !ed,
+          submenu: [align('Linksbündig', 'left'), align('Zentriert', 'center', '⇧⌘E'), align('Rechtsbündig', 'right', '⇧⌘R'), align('Blocksatz', 'justify', '⇧⌘J')],
+        },
+        SEP,
+        { label: 'Formatierung entfernen', disabled: !ed, action: () => ed?.chain().focus().unsetAllMarks().clearNodes().run() },
+      ],
+    },
+    {
+      label: 'Einfügen',
+      items: [
+        ...byCategory('hervorheben'),
+        blockItem('toggle'),
+        SEP,
+        ...byCategory('lernen'),
+        SEP,
+        ...byCategory('daten'),
+        SEP,
+        ...byCategory('medien'),
+      ],
+    },
+    {
+      label: 'Darstellung',
+      items: [
+        { label: 'Bearbeiten', shortcut: '⌃⌘E', bind: true, checked: !!active && !active.learning, disabled: !active, action: () => active?.setLearning(false) },
+        { label: 'Lernen', shortcut: '⌃⌘L', bind: true, checked: !!active?.learning, disabled: !active, action: () => active?.setLearning(true) },
+        SEP,
+        { label: sidebarOpen ? 'Seitenleiste ausblenden' : 'Seitenleiste einblenden', shortcut: '⌃⌘S', bind: true, action: toggleSidebar },
+        {
+          label: active?.panelOpen ? 'Block-Leiste ausblenden' : 'Block-Leiste einblenden',
+          shortcut: '⌃⌘I',
+          bind: true,
+          disabled: !active || active.learning,
+          action: () => active?.togglePanel(),
+        },
+        SEP,
+        {
+          label: fullscreen ? 'Vollbildmodus beenden' : 'Vollbildmodus',
+          shortcut: '⌃⌘F',
+          disabled: !document.fullscreenEnabled,
+          action: () => void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()),
+        },
+      ],
+    },
+    {
+      label: 'Hilfe',
+      items: [
+        { label: 'Willkommens-Notiz öffnen', action: () => void newNote(welcomeNote()) },
+        { label: 'Über Mitschrift', action: () => setAbout(true) },
+      ],
+    },
+  ];
+
+  const menusRef = useRef(menus);
+  menusRef.current = menus;
+
+  function close() {
+    setOpen(null);
+    setPath([]);
+  }
+
+  function run(item: Item) {
+    if (item.disabled || item.submenu) return;
+    close();
+    item.action?.();
+  }
+
+  // Globale Tastenkürzel (nur Einträge mit `bind`).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const hit = menusRef.current.flatMap((m) => allItems(m.items)).find((i) => i.bind && i.shortcut && !i.disabled && matches(e, i.shortcut));
+      if (!hit) return;
+      e.preventDefault();
+      e.stopPropagation();
+      run(hit);
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- liest immer den aktuellen Stand aus menusRef
+  }, []);
+
+  // Offenes Menü: Klick daneben schließt, Pfeiltasten navigieren wie unter macOS.
+  useEffect(() => {
+    if (open === null) return;
+    const onDown = (e: MouseEvent) => {
+      if (!barRef.current?.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const menus = menusRef.current;
+      const levels: MenuEntry[][] = [menus[open].items];
+      for (const i of path.slice(0, -1)) {
+        const sub = levels[levels.length - 1][i];
+        if (isItem(sub) && sub.submenu) levels.push(sub.submenu);
+      }
+      const depth = Math.max(0, path.length - 1);
+      const list = levels[depth] ?? levels[0];
+      const current = path.length ? list[path[depth]] : undefined;
+
+      const step = (dir: 1 | -1) => {
+        const n = list.length;
+        let i = path.length ? path[depth] : dir === 1 ? -1 : n;
+        for (let k = 0; k < n; k++) {
+          i = (i + dir + n) % n;
+          if (selectable(list[i])) break;
+        }
+        setPath([...path.slice(0, depth), i]);
+      };
+      const switchMenu = (dir: 1 | -1) => {
+        setOpen((open + dir + menus.length) % menus.length);
+        setPath([]);
+      };
+
+      switch (e.key) {
+        case 'ArrowDown':
+          step(1);
+          break;
+        case 'ArrowUp':
+          step(-1);
+          break;
+        case 'ArrowRight':
+          if (isItem(current) && current.submenu && !current.disabled) setPath([...path, current.submenu.findIndex(selectable)]);
+          else switchMenu(1);
+          break;
+        case 'ArrowLeft':
+          if (path.length > 1) setPath(path.slice(0, -1));
+          else switchMenu(-1);
+          break;
+        case 'Enter':
+        case ' ':
+          if (isItem(current) && current.submenu && !current.disabled) setPath([...path, current.submenu.findIndex(selectable)]);
+          else if (isItem(current)) run(current);
+          break;
+        case 'Escape':
+          if (path.length > 1) setPath(path.slice(0, -1));
+          else close();
+          break;
+        case 'Tab':
+          close();
+          return;
+        default:
+          return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run/close sind stabil genug, Menüs kommen aus menusRef
+  }, [open, path]);
+
+  const clock = `${now.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })}  ${now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+
+  return (
+    <>
+      <nav
+        ref={barRef}
+        className="mb"
+        role="menubar"
+        aria-label="Menüleiste"
+        // Fokus und Textauswahl im Editor behalten, während das Menü benutzt wird.
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <span className="mb-logo" aria-hidden="true" />
+        {menus.map((m, i) => (
+          <div key={m.label} className="mb-root">
+            <button
+              ref={(el) => (titleRefs.current[i] = el)}
+              type="button"
+              role="menuitem"
+              aria-haspopup="menu"
+              aria-expanded={open === i}
+              className={`mb-title${open === i ? ' is-open' : ''}${m.app ? ' is-app' : ''}`}
+              onMouseDown={(e) => {
+                if (e.button !== 0) return;
+                if (open === i) close();
+                else {
+                  setOpen(i);
+                  setPath([]);
+                }
+              }}
+              onClick={(e) => {
+                // Nur Tastatur (Enter/Leertaste auf dem fokussierten Titel) – Maus läuft über mousedown.
+                if (e.detail !== 0) return;
+                setOpen(i);
+                setPath([m.items.findIndex(selectable)]);
+              }}
+              onMouseEnter={() => {
+                if (open !== null && open !== i) {
+                  setOpen(i);
+                  setPath([]);
+                }
+              }}
+            >
+              {m.label}
+            </button>
+            {open === i && (
+              <MenuList
+                items={m.items}
+                depth={0}
+                path={path}
+                setPath={setPath}
+                onRun={run}
+                anchor={titleRefs.current[i]}
+                label={m.label}
+              />
+            )}
+          </div>
+        ))}
+        <span className="mb-spacer" />
+        <time className="mb-clock" dateTime={now.toISOString()}>
+          {clock}
+        </time>
+      </nav>
+      <AboutDialog open={about} onClose={() => setAbout(false)} />
+    </>
+  );
+}
+
+interface MenuListProps {
+  items: MenuEntry[];
+  depth: number;
+  path: number[];
+  setPath: (p: number[]) => void;
+  onRun: (item: Item) => void;
+  /** Nur für die oberste Ebene: Titel-Knopf, unter dem das Menü erscheint. */
+  anchor?: HTMLElement | null;
+  label: string;
+}
+
+function MenuList({ items, depth, path, setPath, onRun, anchor, label }: MenuListProps) {
+  const ref = useRef<HTMLUListElement>(null);
+  const [pos, setPos] = useState<{ left?: number; flip?: boolean }>({});
+  const highlighted = path[depth];
+
+  // Im Fenster halten: oberste Ebene unter dem Titel, Untermenüs notfalls nach links klappen.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    if (depth === 0 && anchor) {
+      const r = anchor.getBoundingClientRect();
+      setPos({ left: Math.max(4, Math.min(r.left, window.innerWidth - w - 4)) });
+    } else {
+      const parent = el.parentElement!.getBoundingClientRect();
+      setPos({ flip: parent.right + w > window.innerWidth - 4 });
+    }
+  }, [depth, anchor]);
+
+  return (
+    <ul
+      ref={ref}
+      role="menu"
+      aria-label={label}
+      className={`mb-menu${depth > 0 ? ' is-sub' : ''}${pos.flip ? ' is-flipped' : ''}`}
+      style={depth === 0 ? { left: pos.left } : undefined}
+      onMouseLeave={() => {
+        // Maus verlässt das Menü: Hervorhebung weg – außer ein Untermenü ist offen.
+        const cur = items[highlighted];
+        if (path.length === depth + 1 && !(isItem(cur) && cur.submenu)) setPath(path.slice(0, depth));
+      }}
+    >
+      {items.map((item, i) => {
+        if (!isItem(item)) return <li key={`sep-${i}`} role="separator" className="mb-sep" />;
+        const isOn = highlighted === i && !item.disabled;
+        return (
+          <li
+            key={item.label}
+            role={item.checked !== undefined ? 'menuitemcheckbox' : 'menuitem'}
+            aria-checked={item.checked}
+            aria-disabled={item.disabled || undefined}
+            aria-haspopup={item.submenu ? 'menu' : undefined}
+            className={`mb-item${isOn ? ' is-on' : ''}${item.disabled ? ' is-disabled' : ''}`}
+            onMouseEnter={() => setPath([...path.slice(0, depth), i])}
+            onClick={() => onRun(item)}
+          >
+            <span className="mb-check" aria-hidden="true">
+              {item.checked ? '✓' : ''}
+            </span>
+            <span className="mb-label">{item.label}</span>
+            {item.shortcut && <span className="mb-shortcut">{item.shortcut}</span>}
+            {item.submenu && <span className="mb-arrow" aria-hidden="true" />}
+            {item.submenu && isOn && !item.disabled && (
+              <MenuList items={item.submenu} depth={depth + 1} path={path} setPath={setPath} onRun={onRun} label={item.label} />
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div className="mb-about-backdrop" onMouseDown={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            className="mb-about"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Über Mitschrift"
+            onMouseDown={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ type: 'spring', bounce: 0.25, duration: 0.35 }}
+          >
+            <span className="mb-about-logo" aria-hidden="true" />
+            <h2>Mitschrift</h2>
+            <p className="mb-about-version">Version 0.1.0</p>
+            <p>Notizen mit Lern-Blöcken – Karteikarten, Quiz und Lückentext direkt im Text.</p>
+            <button type="button" className="b-btn" onClick={onClose} autoFocus>
+              OK
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

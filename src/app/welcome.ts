@@ -25,7 +25,7 @@ export function welcomeNote(): NotePatch {
       ),
       {
         type: 'callout',
-        attrs: { variant: 'hint' },
+        attrs: { variant: 'tip' },
         content: [p(t('Text markieren und in der Toolbar auf das Lücken-Symbol klicken (oder ⌘⇧L), um eine Lücke zu machen.'))],
       },
       { type: 'heading', attrs: { level: 2 }, content: [t('Karteikarten')] },

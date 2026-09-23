@@ -7,7 +7,10 @@ import { EditorSidebar } from '@/editor/EditorSidebar';
 import { useNote } from '@/hooks/useNote';
 import { Icon } from '@/ui/Icon';
 import { deleteNote } from './actions';
+import { NoteTags } from './NoteTags';
 import type { LayoutContext } from './AppLayout';
+import { setActiveNote } from './activeNote';
+import { confirmDialog } from '@/ui/Dialog';
 
 const PANEL_KEY = 'mitschrift-panel-open';
 
@@ -36,13 +39,16 @@ function NoteScreen({ id }: { id: string }) {
     document.title = note ? `${note.title || 'Ohne Titel'} – Mitschrift` : 'Mitschrift';
   }, [note?.title]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(PANEL_KEY, panelOpen ? '1' : '0');
-    } catch {
-      /* ignorieren */
-    }
-  }, [panelOpen]);
+  // Nur bewusstes Umschalten merken – nicht das automatische Ausblenden auf schmalen Fenstern.
+  const togglePanel = () =>
+    setPanelOpen((o) => {
+      try {
+        localStorage.setItem(PANEL_KEY, o ? '0' : '1');
+      } catch {
+        /* ignorieren */
+      }
+      return !o;
+    });
 
   // Titel-Textarea wächst mit dem Inhalt.
   useLayoutEffect(() => {
@@ -58,16 +64,72 @@ function NoteScreen({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur nach dem Laden
   }, [loading]);
 
+  // Menüleiste über die geöffnete Notiz informieren.
+  useEffect(() => {
+    if (!note) return;
+    setActiveNote({
+      note,
+      editor,
+      saved,
+      learning,
+      setLearning,
+      panelOpen,
+      togglePanel,
+      toggleStar: () => save({ starred: !note.starred }),
+      remove: onDelete,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Funktionen ändern sich nur mit diesen Werten
+  }, [note, editor, saved, learning, panelOpen]);
+  useEffect(() => () => setActiveNote(null), []);
+
   if (loading) return null;
   if (!note) return <Navigate to="/" replace />;
 
   async function onDelete() {
-    if (!window.confirm('Diese Notiz wirklich löschen?')) return;
+    if (!(await confirmDialog('Diese Notiz wirklich löschen?', { confirmLabel: 'Löschen', danger: true }))) return;
     await deleteNote(id);
     navigate('/');
   }
 
   const showPanel = panelOpen && !learning && editor;
+
+  /**
+   * Klick in den Spalt zwischen Titel/Fächern und der ersten Zeile fügt ganz oben eine
+   * leere Zeile ein – außer die erste Zeile ist schon leer, dann wird sie nur fokussiert.
+   */
+  function insertLineAtTop(e: React.MouseEvent, dom: HTMLElement): boolean {
+    if (!editor) return false;
+    const target = e.target as HTMLElement;
+    if ((dom.contains(target) && target !== dom) || target.closest('.note-title, .note-tags, .learn-banner')) return false;
+    const first = dom.firstElementChild;
+    const header = (e.currentTarget as HTMLElement).querySelector('.note-tags') ?? titleRef.current;
+    if (!first || !header) return false;
+    if (e.clientY >= first.getBoundingClientRect().top || e.clientY <= header.getBoundingClientRect().bottom) return false;
+    e.preventDefault();
+    const top = editor.state.doc.firstChild;
+    if (!(top?.type.name === 'paragraph' && top.content.size === 0)) {
+      editor.chain().insertContentAt(0, { type: 'paragraph' }).run();
+    }
+    // Synchron fokussieren, damit schnelles Tippen nicht verloren geht.
+    dom.focus();
+    editor.commands.setTextSelection(1);
+    editor.commands.focus();
+    return true;
+  }
+
+  /** Klick in den leeren Bereich unter dem Text setzt den Cursor ans Ende der letzten Zeile. */
+  function focusEndBelowEditor(e: React.MouseEvent) {
+    if (!editor || learning || e.button !== 0) return;
+    const dom = editor.view.dom as HTMLElement;
+    if (insertLineAtTop(e, dom)) return;
+    if (dom.contains(e.target as Node) || e.clientY <= dom.getBoundingClientRect().bottom) return;
+    e.preventDefault();
+    const { doc } = editor.state;
+    // Endet die Notiz mit einem Nicht-Text-Block (Quiz, Diagramm …), eine leere Zeile anhängen.
+    if (!doc.lastChild?.isTextblock) editor.chain().insertContentAt(doc.content.size, { type: 'paragraph' }).run();
+    dom.focus();
+    editor.commands.focus('end');
+  }
 
   return (
     <div className={`note-screen${showPanel ? ' has-panel' : ''}`}>
@@ -107,7 +169,7 @@ function NoteScreen({ id }: { id: string }) {
             <button
               type="button"
               className={`icon-btn${panelOpen ? ' active' : ''}`}
-              onClick={() => setPanelOpen((o) => !o)}
+              onClick={togglePanel}
               aria-label={panelOpen ? 'Block-Leiste ausblenden' : 'Block-Leiste einblenden'}
               title="Blöcke & Format"
             >
@@ -117,7 +179,7 @@ function NoteScreen({ id }: { id: string }) {
         </div>
       </header>
 
-      <motion.main className="note-page" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+      <motion.main className="note-page" onMouseDown={focusEndBelowEditor} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
         <textarea
           ref={titleRef}
           className="note-title"
@@ -136,6 +198,7 @@ function NoteScreen({ id }: { id: string }) {
             }
           }}
         />
+        <NoteTags value={note.tags} readOnly={learning} onChange={(tags) => save({ tags })} />
         <AnimatePresence>
           {learning && (
             <motion.p className="learn-banner" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>

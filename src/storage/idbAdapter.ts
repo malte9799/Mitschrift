@@ -1,20 +1,26 @@
 import { openDB, type DBSchema } from 'idb';
-import type { Note, NotePatch, Snippet, StorageAdapter } from './types';
+import type { Note, NotePatch, Snippet, StorageAdapter, Tag } from './types';
 
 interface MitschriftDB extends DBSchema {
   notes: { key: string; value: Note; indexes: { updatedAt: number } };
   snippets: { key: string; value: Snippet };
   files: { key: string; value: { id: string; blob: Blob } };
+  tags: { key: string; value: Tag };
 }
 
-const dbPromise = openDB<MitschriftDB>('mitschrift', 1, {
-  upgrade(db) {
-    const notes = db.createObjectStore('notes', { keyPath: 'id' });
-    notes.createIndex('updatedAt', 'updatedAt');
-    db.createObjectStore('snippets', { keyPath: 'id' });
-    db.createObjectStore('files', { keyPath: 'id' });
+const dbPromise = openDB<MitschriftDB>('mitschrift', 2, {
+  upgrade(db, oldVersion) {
+    if (oldVersion < 1) {
+      const notes = db.createObjectStore('notes', { keyPath: 'id' });
+      notes.createIndex('updatedAt', 'updatedAt');
+      db.createObjectStore('snippets', { keyPath: 'id' });
+      db.createObjectStore('files', { keyPath: 'id' });
+    }
+    if (oldVersion < 2) db.createObjectStore('tags', { keyPath: 'id' });
   },
 });
+
+let lastTagCreated = 0;
 
 /** Local-first-Speicher im Browser. */
 export const idbAdapter: StorageAdapter = {
@@ -57,6 +63,40 @@ export const idbAdapter: StorageAdapter = {
 
   async deleteNote(id) {
     await (await dbPromise).delete('notes', id);
+  },
+
+  async listTags() {
+    const all = await (await dbPromise).getAll('tags');
+    return all.sort((a, b) => a.createdAt - b.createdAt);
+  },
+
+  async createTag(name, color) {
+    // Streng steigend, damit mehrere Tags in derselben Millisekunde ihre Reihenfolge behalten.
+    lastTagCreated = Math.max(Date.now(), lastTagCreated + 1);
+    const tag: Tag = { id: crypto.randomUUID(), name, color, createdAt: lastTagCreated };
+    await (await dbPromise).put('tags', tag);
+    return tag;
+  },
+
+  async updateTag(id, patch) {
+    const db = await dbPromise;
+    const prev = await db.get('tags', id);
+    if (!prev) return undefined;
+    const next = { ...prev, ...patch };
+    await db.put('tags', next);
+    return next;
+  },
+
+  async deleteTag(id) {
+    const db = await dbPromise;
+    const tx = db.transaction(['tags', 'notes'], 'readwrite');
+    await tx.objectStore('tags').delete(id);
+    const notes = tx.objectStore('notes');
+    // Ohne updatedAt zu ändern – das Entfernen eines Tags soll die Sortierung nicht verschieben.
+    for (const note of await notes.getAll()) {
+      if (note.tags.includes(id)) await notes.put({ ...note, tags: note.tags.filter((t) => t !== id) });
+    }
+    await tx.done;
   },
 
   async listSnippets() {

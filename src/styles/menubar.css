@@ -1,0 +1,74 @@
+/* Menüleiste im Stil der macOS-Leiste. */
+.mb{
+  position:fixed;inset:0 0 auto 0;z-index:60;height:var(--menubar-h);display:flex;align-items:center;gap:1px;
+  padding:0 10px;font-size:13.5px;line-height:1;color:var(--ink);user-select:none;-webkit-user-select:none;
+  overflow-x:auto;scrollbar-width:none;
+}
+.mb::-webkit-scrollbar{display:none}
+/* Unschärfe auf einer Ebene darunter: backdrop-filter auf .mb selbst würde die festen Menüs einfangen. */
+.mb::before{
+  content:"";position:fixed;inset:0 0 auto 0;height:var(--menubar-h);z-index:-1;pointer-events:none;
+  background:color-mix(in srgb,var(--paper-2) 78%,transparent);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+  backdrop-filter:saturate(1.8) blur(20px);-webkit-backdrop-filter:saturate(1.8) blur(20px);
+}
+.mb-logo{
+  flex:none;width:15px;height:15px;margin:0 8px 0 4px;border-radius:5px;
+  background:conic-gradient(from 200deg,var(--accent),#E267C8,#F5A524,var(--accent));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.mb-root{flex:none}
+.mb-title{
+  height:22px;padding:0 9px;border:0;border-radius:5px;background:none;color:inherit;cursor:default;
+  font-size:13.5px;font-weight:450;white-space:nowrap;
+}
+.mb-title.is-app{font-weight:700}
+.mb-title.is-open{background:color-mix(in srgb,var(--ink) 11%,transparent)}
+.mb-title:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mb-spacer{flex:1;min-width:12px}
+.mb-clock{flex:none;padding:0 6px;font-size:13px;font-weight:450;white-space:pre;font-variant-numeric:tabular-nums;color:var(--ink)}
+@media (max-width:760px){
+  .mb-clock{display:none}
+  .mb{padding:0 6px}
+  .mb-title{padding:0 7px}
+}
+
+/* ---------- Aufklappmenüs ---------- */
+.mb-menu{
+  position:fixed;top:calc(var(--menubar-h) - 1px);z-index:70;min-width:240px;margin:0;padding:5px;list-style:none;
+  border-radius:10px;background:color-mix(in srgb,var(--card) 90%,transparent);
+  backdrop-filter:saturate(1.8) blur(28px);-webkit-backdrop-filter:saturate(1.8) blur(28px);
+  border:1px solid color-mix(in srgb,var(--line) 85%,transparent);box-shadow:var(--shadow-lg);
+  font-size:13.5px;line-height:1;animation:mb-in .12s var(--ease);
+}
+.mb-menu.is-sub{position:absolute;top:-6px;left:calc(100% + 1px)}
+.mb-menu.is-sub.is-flipped{left:auto;right:calc(100% + 1px)}
+@keyframes mb-in{from{opacity:0}}
+
+.mb-item{
+  position:relative;display:flex;align-items:center;height:24px;padding:0 10px 0 4px;border-radius:5px;
+  color:var(--ink);cursor:default;white-space:nowrap;
+}
+.mb-item.is-on{background:var(--accent);color:var(--on-accent)}
+.mb-item.is-disabled{color:var(--ink-faint)}
+.mb-check{width:18px;flex:none;text-align:center;font-size:12px;font-weight:600}
+.mb-label{flex:1;padding-right:24px}
+.mb-shortcut{color:var(--ink-soft);font-size:13px;letter-spacing:.06em;font-family:var(--sans)}
+.mb-item.is-on .mb-shortcut{color:color-mix(in srgb,var(--on-accent) 80%,transparent)}
+.mb-arrow{width:6px;height:6px;margin-left:8px;border:solid currentColor;border-width:1.5px 1.5px 0 0;transform:rotate(45deg);opacity:.7}
+.mb-sep{height:1px;margin:5px 9px;background:var(--line)}
+
+/* ---------- Über Mitschrift ---------- */
+.mb-about-backdrop{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:rgba(0,0,0,.18)}
+.mb-about{
+  width:min(300px,calc(100vw - 32px));padding:26px 22px 20px;border-radius:16px;text-align:center;
+  background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-lg);
+}
+.mb-about-logo{
+  display:inline-block;width:64px;height:64px;border-radius:18px;
+  background:conic-gradient(from 200deg,var(--accent),#E267C8,#F5A524,var(--accent));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),var(--shadow);
+}
+.mb-about h2{margin:14px 0 2px;font-size:19px;letter-spacing:-.01em}
+.mb-about p{margin:0 0 12px;font-size:13.5px;color:var(--ink-soft);line-height:1.5}
+.mb-about .mb-about-version{font-size:12.5px;color:var(--ink-faint);margin-bottom:14px}
+.mb-about .b-btn{min-width:90px;justify-content:center}

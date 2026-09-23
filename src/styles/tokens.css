@@ -7,6 +7,7 @@
   --green:#1F8A4C; --green-bg:#E8F6EE;
   --amber:#B8650A; --amber-bg:#FFF6E6;
   --blue:#1F6FD1; --blue-bg:#EAF3FE;
+  --purple:#8250DF; --purple-bg:#F3EEFC;
 
   --shadow-sm:0 1px 2px rgba(20,20,30,.05),0 1px 1px rgba(20,20,30,.03);
   --shadow:0 1px 2px rgba(20,20,30,.04),0 6px 20px -6px rgba(20,20,30,.12);
@@ -15,6 +16,7 @@
   --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
 
+  --menubar-h:28px;
   --side-w:272px;
   --panel-w:272px;
   --page-w:720px;
@@ -22,6 +24,23 @@
   --radius-sm:10px;
   --radius-xs:7px;
   --ease:cubic-bezier(.22,1,.36,1);
+
+  /* Tag-Farben (Fächer) – Werte aus Schule/tokens.css, ergänzt um weitere Töne. */
+  --tag-teal:#0E7268; --tag-teal-bg:#E2F1EE;
+  --tag-blue:#175CD3; --tag-blue-bg:#EFF8FF;
+  --tag-green:#15803D; --tag-green-bg:#EAF7EE;
+  --tag-graphite:#3F3F46; --tag-graphite-bg:#EDEDF0;
+  --tag-orange:#9A3412; --tag-orange-bg:#FFF4ED;
+  --tag-purple:#6941C6; --tag-purple-bg:#F4F3FF;
+  --tag-red:#B42318; --tag-red-bg:#FEF3F2;
+  --tag-pink:#C11574; --tag-pink-bg:#FDF2FA;
+  --tag-amber:#B54708; --tag-amber-bg:#FFFAEB;
+
+  /* Codeblock: hell im hellen, dunkel im dunklen Theme. Syntax-Farben nach GitHub. */
+  --code-bg:#F6F6F4; --code-ink:#1F2328; --code-soft:#6E6E73; --code-gutter:#A8A8AE;
+  --code-hover:rgba(0,0,0,.05); --code-line:rgba(0,0,0,.07);
+  --hl-comment:#6E7781; --hl-keyword:#CF222E; --hl-string:#0A3069; --hl-number:#0550AE; --hl-title:#8250DF;
+  --hl-type:#953800; --hl-tag:#116329; --hl-meta:#57606A; --hl-del:#82071E; --hl-del-bg:#FFEBE9; --hl-add-bg:#DAFBE1;
 
   color-scheme:light;
 }
@@ -34,9 +53,23 @@
   --green:#4DD48A; --green-bg:#11291C;
   --amber:#FFB547; --amber-bg:#2E2210;
   --blue:#7AB8FF; --blue-bg:#122238;
+  --purple:#B392F8; --purple-bg:#241C38;
   --shadow-sm:0 1px 2px rgba(0,0,0,.4);
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -6px rgba(0,0,0,.5);
   --shadow-lg:0 2px 6px rgba(0,0,0,.4),0 20px 44px -12px rgba(0,0,0,.7);
+  --tag-teal:#4FC1B3; --tag-teal-bg:#15302D;
+  --tag-blue:#84CAFF; --tag-blue-bg:#101E33;
+  --tag-green:#4ADE80; --tag-green-bg:#132A1B;
+  --tag-graphite:#D4D4D8; --tag-graphite-bg:#2A2A2F;
+  --tag-orange:#FDA172; --tag-orange-bg:#2E1810;
+  --tag-purple:#B692F6; --tag-purple-bg:#241C38;
+  --tag-red:#FDA29B; --tag-red-bg:#3A1512;
+  --tag-pink:#F9A8D4; --tag-pink-bg:#361326;
+  --tag-amber:#FEC84B; --tag-amber-bg:#2E2310;
+  --code-bg:#1C1C21; --code-ink:#E9E9EE; --code-soft:#A0A0AB; --code-gutter:#5C5C66;
+  --code-hover:rgba(255,255,255,.07); --code-line:rgba(255,255,255,.07);
+  --hl-comment:#6E7681; --hl-keyword:#FF7B72; --hl-string:#A5D6FF; --hl-number:#79C0FF; --hl-title:#D2A8FF;
+  --hl-type:#FFA657; --hl-tag:#7EE787; --hl-meta:#8B949E; --hl-del:#FFA198; --hl-del-bg:rgba(248,81,73,.12); --hl-add-bg:rgba(63,185,80,.12);
   color-scheme:dark;
 }
 @media (prefers-color-scheme:dark){
@@ -48,9 +81,23 @@
     --green:#4DD48A; --green-bg:#11291C;
     --amber:#FFB547; --amber-bg:#2E2210;
     --blue:#7AB8FF; --blue-bg:#122238;
+    --purple:#B392F8; --purple-bg:#241C38;
     --shadow-sm:0 1px 2px rgba(0,0,0,.4);
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -6px rgba(0,0,0,.5);
     --shadow-lg:0 2px 6px rgba(0,0,0,.4),0 20px 44px -12px rgba(0,0,0,.7);
+    --tag-teal:#4FC1B3; --tag-teal-bg:#15302D;
+    --tag-blue:#84CAFF; --tag-blue-bg:#101E33;
+    --tag-green:#4ADE80; --tag-green-bg:#132A1B;
+    --tag-graphite:#D4D4D8; --tag-graphite-bg:#2A2A2F;
+    --tag-orange:#FDA172; --tag-orange-bg:#2E1810;
+    --tag-purple:#B692F6; --tag-purple-bg:#241C38;
+    --tag-red:#FDA29B; --tag-red-bg:#3A1512;
+    --tag-pink:#F9A8D4; --tag-pink-bg:#361326;
+    --tag-amber:#FEC84B; --tag-amber-bg:#2E2310;
+    --code-bg:#1C1C21; --code-ink:#E9E9EE; --code-soft:#A0A0AB; --code-gutter:#5C5C66;
+    --code-hover:rgba(255,255,255,.07); --code-line:rgba(255,255,255,.07);
+    --hl-comment:#6E7681; --hl-keyword:#FF7B72; --hl-string:#A5D6FF; --hl-number:#79C0FF; --hl-title:#D2A8FF;
+    --hl-type:#FFA657; --hl-tag:#7EE787; --hl-meta:#8B949E; --hl-del:#FFA198; --hl-del-bg:rgba(248,81,73,.12); --hl-add-bg:rgba(63,185,80,.12);
     color-scheme:dark;
   }
 }

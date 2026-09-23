@@ -220,6 +220,149 @@ const PATHS = {
       <path d="M14 2v6h6M8 13h8M8 17h5" />
     </>
   ),
+  steps: (
+    <>
+      <circle cx="5" cy="12" r="2.5" />
+      <circle cx="19" cy="12" r="2.5" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M7.5 12h2M14.5 12h2" />
+    </>
+  ),
+  timeline: (
+    <>
+      <path d="M6 3v18" />
+      <circle cx="6" cy="7" r="2" />
+      <circle cx="6" cy="17" r="2" />
+      <path d="M11 7h9M11 17h6" />
+    </>
+  ),
+  bars: <path d="M4 6h10M4 12h16M4 18h7" strokeLinecap="round" strokeWidth={3} />,
+  cycle: (
+    <>
+      <path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2" />
+      <path d="M18 2v4h-4M6 22v-4h4" />
+    </>
+  ),
+  pause: <path d="M8 5v14M16 5v14" strokeWidth={3} />,
+  table: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 10h18M3 15h18M9 4v16" />
+    </>
+  ),
+  rowAdd: (
+    <>
+      <rect x="3" y="4" width="18" height="7" rx="1.5" />
+      <path d="M12 15v6M9 18h6" />
+    </>
+  ),
+  colAdd: (
+    <>
+      <rect x="4" y="3" width="7" height="18" rx="1.5" />
+      <path d="M15 12h6M18 9v6" />
+    </>
+  ),
+  rowDel: (
+    <>
+      <rect x="3" y="4" width="18" height="7" rx="1.5" />
+      <path d="M9 18h6" />
+    </>
+  ),
+  colDel: (
+    <>
+      <rect x="4" y="3" width="7" height="18" rx="1.5" />
+      <path d="M15 12h6" />
+    </>
+  ),
+  headerRow: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M3 4h18v6H3z" fill="currentColor" stroke="none" opacity=".35" />
+    </>
+  ),
+  checkbox: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="4" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </>
+  ),
+  outdent: (
+    <>
+      <path d="M11 6h9M11 12h9M11 18h9" />
+      <path d="m7 9-3 3 3 3" />
+    </>
+  ),
+  indent: (
+    <>
+      <path d="M11 6h9M11 12h9M11 18h9" />
+      <path d="m4 9 3 3-3 3" />
+    </>
+  ),
+  alignLeft: <path d="M4 6h16M4 10h10M4 14h16M4 18h10" />,
+  alignCenter: <path d="M4 6h16M7 10h10M4 14h16M7 18h10" />,
+  alignRight: <path d="M4 6h16M10 10h10M4 14h16M10 18h10" />,
+  alignJustify: <path d="M4 6h16M4 10h16M4 14h16M4 18h16" />,
+  mermaid: (
+    <>
+      <rect x="3" y="3" width="7" height="6" rx="1.5" />
+      <rect x="14" y="15" width="7" height="6" rx="1.5" />
+      <path d="M6.5 9v3.5a2.5 2.5 0 0 0 2.5 2.5h5" />
+      <path d="m12 12.5 2.5 2.5-2.5 2.5" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </>
+  ),
+  collection: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 9h18M9 9v11" />
+      <path d="M13 13.5h5M13 16.5h3" />
+    </>
+  ),
+  fieldText: (
+    <>
+      <path d="M3 18 7.5 6 12 18M4.7 14h5.6" />
+      <path d="M17 6v12M15 6h4M15 18h4" />
+    </>
+  ),
+  fieldNumber: <path d="M9 4 7 20M17 4l-2 16M4 9h16M3 15h16" />,
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  phone: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />,
+  fieldSelect: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="3" />
+      <path d="M7 12h6" />
+      <path d="m15.5 11 1.5 1.5 1.5-1.5" />
+    </>
+  ),
+  fieldMulti: (
+    <>
+      <path d="M4 6.5 5.5 8 8 5.5M4 13.5l1.5 1.5L8 12.5" />
+      <circle cx="6" cy="19.5" r="1.6" />
+      <path d="M11 7h9M11 14h9M11 19.5h9" />
+    </>
+  ),
+  arrowDown: <path d="M12 5v14M6 13l6 6 6-6" />,
+  arrowUp: <path d="M12 19V5M6 11l6-6 6 6" />,
+  arrowLeft: <path d="M19 12H5M11 6l-6 6 6 6" />,
+  arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
+  hash: <path d="M9 4 7 20M17 4l-2 16M4 9h16M3 15h16" />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

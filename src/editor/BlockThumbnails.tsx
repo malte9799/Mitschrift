@@ -64,29 +64,23 @@ export function BlockThumbnail({ id }: { id: BlockTypeId }) {
     case 'bulletList':
       return (
         <svg viewBox="0 0 36 36" aria-hidden="true">
-          <circle cx="8.5" cy="11" r="1.6" className="t-fill t-strong" />
-          <rect x="13" y="9.7" width="16" height="2.6" rx="1.3" className="t-fill" />
-          <circle cx="8.5" cy="18" r="1.6" className="t-fill t-strong" />
-          <rect x="13" y="16.7" width="16" height="2.6" rx="1.3" className="t-fill" />
-          <circle cx="8.5" cy="25" r="1.6" className="t-fill t-strong" />
-          <rect x="13" y="23.7" width="10" height="2.6" rx="1.3" className="t-fill" />
+          <circle cx="8.5" cy="13" r="1.7" className="t-fill t-strong" />
+          <path d="M13 13c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
+          <circle cx="8.5" cy="23" r="1.7" className="t-fill t-strong" />
+          <path d="M13 23c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
         </svg>
       );
     case 'numberedList':
       return (
         <svg viewBox="0 0 36 36" aria-hidden="true">
-          <text x="7.5" y="12.6" textAnchor="middle" className="t-num">
-            1
+          <text x="8" y="13.4" textAnchor="middle" className="t-num">
+            1.
           </text>
-          <rect x="13" y="9.7" width="16" height="2.6" rx="1.3" className="t-fill" />
-          <text x="7.5" y="19.6" textAnchor="middle" className="t-num">
-            2
+          <path d="M13 13c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
+          <text x="8" y="23.4" textAnchor="middle" className="t-num">
+            2.
           </text>
-          <rect x="13" y="16.7" width="16" height="2.6" rx="1.3" className="t-fill" />
-          <text x="7.5" y="26.6" textAnchor="middle" className="t-num">
-            3
-          </text>
-          <rect x="13" y="23.7" width="10" height="2.6" rx="1.3" className="t-fill" />
+          <path d="M13 23c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
         </svg>
       );
     case 'image':
@@ -111,13 +105,14 @@ export function BlockThumbnail({ id }: { id: BlockTypeId }) {
           <rect x="6" y="17" width="24" height="2.2" rx="1.1" className="t-fill t-strong" />
         </svg>
       );
-    case 'calloutMerke':
-    case 'calloutHint':
-    case 'calloutWarn': {
-      const tone = id === 'calloutMerke' ? 'amber' : id === 'calloutHint' ? 'blue' : 'red';
+    case 'calloutNote':
+    case 'calloutTip':
+    case 'calloutImportant':
+    case 'calloutWarning':
+    case 'calloutCaution': {
+      const tone = { calloutNote: 'blue', calloutTip: 'green', calloutImportant: 'purple', calloutWarning: 'amber', calloutCaution: 'red' }[id];
       return (
         <svg viewBox="0 0 36 36" aria-hidden="true" className={`t-callout t-${tone}`}>
-          <rect x="4" y="7" width="28" height="22" rx="4" className="t-callout-bg" />
           <rect x="4" y="7" width="3.5" height="22" rx="1.75" className="t-callout-bar" />
           <rect x="12" y="12.5" width="16" height="2.4" rx="1.2" className="t-fill" />
           <rect x="12" y="17.8" width="16" height="2.4" rx="1.2" className="t-fill" />
@@ -128,10 +123,20 @@ export function BlockThumbnail({ id }: { id: BlockTypeId }) {
     case 'toggle':
       return (
         <svg viewBox="0 0 36 36" aria-hidden="true">
-          <path d="m7 9.5 3 2.5-3 2.5" className="t-stroke" />
-          <rect x="13" y="10.8" width="15" height="2.6" rx="1.3" className="t-fill t-strong" />
-          <rect x="13" y="18" width="16" height="2.4" rx="1.2" className="t-fill" />
-          <rect x="13" y="23.2" width="11" height="2.4" rx="1.2" className="t-fill" />
+          <path d="m6.8 10.8 3.6 2.2-3.6 2.2z" className="t-fill t-strong" />
+          <path d="M13 13c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
+          <path d="m6.8 20.8 3.6 2.2-3.6 2.2z" className="t-fill t-strong" />
+          <path d="M13 23c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
+        </svg>
+      );
+    case 'taskList':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="5.3" y="9.8" width="6.4" height="6.4" rx="1.6" className="t-accent" />
+          <path d="m6.9 13 1.3 1.3 2.3-2.5" className="t-check" />
+          <path d="M13 13c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
+          <rect x="5.6" y="20.1" width="5.8" height="5.8" rx="1.5" className="t-box" />
+          <path d="M13 23c1.4-1.6 2.8-1.6 4.2 0s2.8 1.6 4.2 0 2.8-1.6 4.2 0 2.8 1.6 4.2 0" className="t-wave" />
         </svg>
       );
     case 'flashcards':
@@ -160,6 +165,94 @@ export function BlockThumbnail({ id }: { id: BlockTypeId }) {
           <rect x="6" y="19" width="24" height="5" rx="2" className="t-option-ok" />
           <path d="m24.5 21.5 1.5 1.5 2.5-3" className="t-stroke-ok" />
           <rect x="6" y="26" width="24" height="5" rx="2" className="t-option" />
+        </svg>
+      );
+    case 'table':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="4" y="7" width="28" height="22" rx="3" className="t-card-front" />
+          <rect x="4.5" y="7.5" width="27" height="6" rx="2.5" className="t-accent-soft" />
+          <path d="M4 13.5h28M4 20.5h28M13.5 7v22M23 7v22" className="t-grid" />
+        </svg>
+      );
+    case 'steps':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="7" y="16.8" width="22" height="2.4" rx="1.2" className="t-fill" />
+          <rect x="7" y="16.8" width="11" height="2.4" rx="1.2" className="t-accent" />
+          <circle cx="7" cy="18" r="3.4" className="t-accent" />
+          <circle cx="18" cy="18" r="3.4" className="t-accent" />
+          <circle cx="29" cy="18" r="3.4" className="t-dot-off" />
+          <rect x="4" y="25" width="7" height="1.8" rx=".9" className="t-fill" />
+          <rect x="14.5" y="25" width="7" height="1.8" rx=".9" className="t-fill" />
+          <rect x="25.5" y="25" width="7" height="1.8" rx=".9" className="t-fill" />
+        </svg>
+      );
+    case 'timeline':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="9" y="5" width="2" height="26" rx="1" className="t-fill" />
+          <circle cx="10" cy="10" r="2.6" className="t-accent" />
+          <circle cx="10" cy="18" r="2.6" className="t-accent" />
+          <circle cx="10" cy="26" r="2.6" className="t-dot-off" />
+          <rect x="15" y="8.8" width="8" height="2.4" rx="1.2" className="t-fill t-strong" />
+          <rect x="15" y="16.8" width="14" height="2.4" rx="1.2" className="t-fill" />
+          <rect x="15" y="24.8" width="10" height="2.4" rx="1.2" className="t-fill" />
+        </svg>
+      );
+    case 'bars':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="5" y="8" width="24" height="5" rx="2.5" className="t-accent" />
+          <rect x="5" y="15.5" width="15" height="5" rx="2.5" className="t-accent" opacity=".7" />
+          <rect x="5" y="23" width="8" height="5" rx="2.5" className="t-accent" opacity=".45" />
+        </svg>
+      );
+    case 'cycle':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <circle cx="18" cy="18" r="10" className="t-ring" />
+          <circle cx="18" cy="8" r="3.4" className="t-accent" />
+          <circle cx="28" cy="18" r="3.4" className="t-dot-off" />
+          <circle cx="18" cy="28" r="3.4" className="t-dot-off" />
+          <circle cx="8" cy="18" r="3.4" className="t-dot-off" />
+        </svg>
+      );
+    case 'strong':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <text x="18" y="22" textAnchor="middle" className="t-word t-word-strong">
+            Fett
+          </text>
+        </svg>
+      );
+    case 'caption':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <text x="18" y="21.5" textAnchor="middle" className="t-word t-word-caption">
+            Beschriftung
+          </text>
+        </svg>
+      );
+    case 'collection':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="4" y="6" width="9" height="4" rx="2" className="t-accent-soft" />
+          <rect x="15" y="6" width="6" height="4" rx="2" className="t-fill" />
+          <rect x="4" y="12.5" width="28" height="18" rx="2.5" className="t-grid" />
+          <path d="M4 17.5h28M4 22.5h28M4 27h28M10 12.5v18M21 12.5v18" className="t-grid" />
+          <rect x="22.5" y="19.2" width="6" height="2.4" rx="1.2" className="t-accent" />
+          <rect x="11.5" y="14" width="7" height="2" rx="1" className="t-fill t-strong" />
+        </svg>
+      );
+    case 'mermaid':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="4" y="7" width="11" height="7" rx="2" className="t-accent" />
+          <rect x="21" y="7" width="11" height="7" rx="2" className="t-dot-off" />
+          <rect x="21" y="22" width="11" height="7" rx="2" className="t-dot-off" />
+          <path d="M15 10.5h6M26.5 14v8" className="t-stroke" />
+          <path d="M9.5 14v11.5H21" className="t-stroke" />
         </svg>
       );
     default:

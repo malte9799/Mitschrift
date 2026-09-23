@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import { Icon, type IconName } from '@/ui/Icon';
 
 interface ToolbarProps {
@@ -60,7 +61,18 @@ export function Toolbar({ editor }: ToolbarProps) {
   const preventFocusLoss = (e: React.MouseEvent) => e.preventDefault();
 
   return (
-    <BubbleMenu editor={editor} className="c-editor-toolbar" options={{ placement: 'top', offset: 8 }}>
+    <BubbleMenu
+      editor={editor}
+      className="c-editor-toolbar"
+      options={{ placement: 'top', offset: 8 }}
+      // Nur bei Textauswahl – nicht, wenn ein ganzer Block (Diagramm, Quiz, Bild …) markiert ist.
+      shouldShow={({ state, from, to, view }) =>
+        from !== to &&
+        !(state.selection instanceof NodeSelection) &&
+        editor.isEditable &&
+        (view.hasFocus() || !!document.activeElement?.closest('.c-editor-toolbar'))
+      }
+    >
       {linkMode ? (
         <form
           className="c-editor-toolbar-link"

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Editor } from '@tiptap/react';
 import { Icon } from '@/ui/Icon';
+import { moveUnits, unitAt, unitRect } from './blockUnits';
 
 interface DragHandleProps {
   editor: Editor;
@@ -9,20 +10,22 @@ interface DragHandleProps {
 
 const DRAG_TYPE = 'application/x-mitschrift-block';
 
-/** Findet den Top-Level-Block auf Höhe `clientY`. */
-function blockAt(editor: Editor, clientY: number): { pos: number; el: HTMLElement } | null {
+
+/** Findet die Block-Einheit (Block bzw. einzelner Listenpunkt) auf Höhe `clientY`. */
+function blockAt(editor: Editor, clientY: number): { pos: number; el: HTMLElement; rect: DOMRect } | null {
   const dom = editor.view.dom as HTMLElement;
   const rect = dom.getBoundingClientRect();
   const top = Math.min(Math.max(clientY, rect.top + 1), rect.bottom - 1);
-  const coords = editor.view.posAtCoords({ left: rect.left + 24, top });
+  // Etwas weiter rechts messen, damit auch eingerückte Listenpunkte getroffen werden.
+  const coords = editor.view.posAtCoords({ left: rect.left + 64, top }) ?? editor.view.posAtCoords({ left: rect.left + 24, top });
   if (!coords) return null;
   const p = coords.inside >= 0 ? coords.inside : coords.pos;
-  const $p = editor.state.doc.resolve(p);
-  const pos = $p.depth === 0 ? p : $p.before(1);
-  if (!editor.state.doc.nodeAt(pos)) return null;
-  const el = editor.view.nodeDOM(pos);
-  if (!(el instanceof HTMLElement)) return null;
-  return { pos, el };
+  const unit = unitAt(editor.state.doc, p);
+  if (!unit) return null;
+  const el = editor.view.nodeDOM(unit.pos);
+  const r = unitRect(editor.view, unit.pos);
+  if (!(el instanceof HTMLElement) || !r) return null;
+  return { pos: unit.pos, el, rect: r };
 }
 
 /**
@@ -45,23 +48,25 @@ export function DragHandle({ editor, onInsert }: DragHandleProps) {
       if (!handle || dragFrom.current !== null) return;
       const block = blockAt(editor, e.clientY);
       if (!block) return;
-      const blockRect = block.el.getBoundingClientRect();
+      const blockRect = block.rect;
       const lineHeight = parseFloat(getComputedStyle(block.el).lineHeight) || 28;
       const offset = Math.max(0, Math.min(lineHeight, blockRect.height) / 2 - 14);
-      handle.style.top = `${blockRect.top - container!.getBoundingClientRect().top + offset}px`;
+      const c = container!.getBoundingClientRect();
+      handle.style.top = `${blockRect.top - c.top + offset}px`;
       handle.classList.add('is-visible');
+
       hoverPos.current = block.pos;
     }
 
     function onMouseLeave() {
-      if (dragFrom.current === null) handleRef.current?.classList.remove('is-visible');
+      if (dragFrom.current !== null) return;
+      handleRef.current?.classList.remove('is-visible');
     }
 
     function dropTarget(e: DragEvent) {
       const block = blockAt(editor, e.clientY);
       if (!block) return null;
-      const r = block.el.getBoundingClientRect();
-      return { ...block, before: e.clientY < r.top + r.height / 2, rect: r };
+      return { ...block, before: e.clientY < block.rect.top + block.rect.height / 2 };
     }
 
     function onDragOver(e: DragEvent) {
@@ -88,16 +93,8 @@ export function DragHandle({ editor, onInsert }: DragHandleProps) {
       cleanup();
       if (!target) return;
 
-      const { state } = editor.view;
-      const node = state.doc.nodeAt(from);
-      const targetNode = state.doc.nodeAt(target.pos);
-      if (!node || !targetNode) return;
-      const insertAt = target.before ? target.pos : target.pos + targetNode.nodeSize;
-      if (insertAt >= from && insertAt <= from + node.nodeSize) return;
-
-      const tr = state.tr.delete(from, from + node.nodeSize);
-      tr.insert(tr.mapping.map(insertAt), node);
-      editor.view.dispatch(tr.scrollIntoView());
+      const tr = editor.state.tr;
+      if (moveUnits(tr, [from], target.pos, target.before)) editor.view.dispatch(tr.scrollIntoView());
     }
 
     function cleanup() {

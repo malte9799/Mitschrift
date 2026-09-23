@@ -8,6 +8,7 @@ import { DragHandle } from './DragHandle';
 import { BlockSelection } from './BlockSelection';
 import { InsertMenu, type InsertMenuHandle } from './InsertMenu';
 import { useSnippets } from '@/hooks/useSnippets';
+import { TableMenu } from '@/blocks/table/TableMenu';
 
 interface NoteEditorProps {
   content: string;
@@ -102,6 +103,7 @@ export function NoteEditor({ content, onChange, learning, onEditorReady }: NoteE
           />}
         <EditorContent editor={editor} />
         {!learning && <BlockSelection editor={editor} />}
+        {!learning && <TableMenu editor={editor} />}
         {insertHandle && (
           <div className="c-insert-menu-inline" style={{ top: insertTop }}>
             <InsertMenu handle={insertHandle} snippets={snippets} onClose={() => setInsertAt(null)} />

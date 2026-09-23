@@ -21,7 +21,8 @@ export function ToggleView({ node, editor, updateAttributes }: NodeViewProps) {
   const summary = node.attrs.summary as string;
 
   return (
-    <NodeViewWrapper className={`b-toggle${open ? ' is-open' : ''}`} data-interactive="">
+    // Kein data-interactive: Titel und Inhalt folgen der normalen Block-Auswahl (erster Klick markiert).
+    <NodeViewWrapper className={`b-toggle${open ? ' is-open' : ''}`}>
       <div className="b-toggle-head" contentEditable={false}>
         <button type="button" className="b-toggle-chevron" onClick={toggle} aria-expanded={open} aria-label={open ? 'Zuklappen' : 'Aufklappen'}>
           <Icon name="chevron" />

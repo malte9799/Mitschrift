@@ -9,6 +9,7 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/editor.css';
 import './styles/blocks.css';
+import './styles/menubar.css';
 
 const router = createBrowserRouter([
   {
