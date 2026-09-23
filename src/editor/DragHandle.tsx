@@ -5,8 +5,13 @@ import { moveUnits, unitAt, unitRect } from './blockUnits';
 
 interface DragHandleProps {
   editor: Editor;
-  onInsert: (afterPos: number) => void;
 }
+
+/** So weit links neben dem Text bleibt der Griff sichtbar (px). */
+const GUTTER = 72;
+
+/** Bei diesen Blöcken sitzt der Griff vertikal mittig statt auf Höhe der ersten Zeile. */
+const CENTERED = new Set(['blockquote', 'horizontalRule']);
 
 const DRAG_TYPE = 'application/x-mitschrift-block';
 
@@ -29,10 +34,10 @@ function blockAt(editor: Editor, clientY: number): { pos: number; el: HTMLElemen
 }
 
 /**
- * Griff + Plus links neben dem Block unter dem Mauszeiger. Der Griff verschiebt
+ * Griff links neben dem Block unter dem Mauszeiger. Der Griff verschiebt
  * Top-Level-Blöcke per HTML5-Drag&Drop; eine Linie zeigt das Ziel an.
  */
-export function DragHandle({ editor, onInsert }: DragHandleProps) {
+export function DragHandle({ editor }: DragHandleProps) {
   const handleRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
   const hoverPos = useRef<number | null>(null);
@@ -43,24 +48,29 @@ export function DragHandle({ editor, onInsert }: DragHandleProps) {
     const container = (editor.view.dom as HTMLElement).closest<HTMLElement>('.c-editor-body');
     if (!container) return;
 
+    function hide() {
+      handleRef.current?.classList.remove('is-visible');
+    }
+
+    // Auf dem ganzen Fenster lauschen: Der Griff liegt links außerhalb des
+    // Editor-Körpers, der Weg vom Text dorthin darf ihn nicht ausblenden.
     function onMouseMove(e: MouseEvent) {
       const handle = handleRef.current;
       if (!handle || dragFrom.current !== null) return;
+      // Über dem Griff selbst nicht neu positionieren, sonst springt er weg.
+      if (e.target instanceof Node && handle.contains(e.target)) return;
+      const c = container!.getBoundingClientRect();
+      if (e.clientX < c.left - GUTTER || e.clientX > c.right || e.clientY < c.top || e.clientY > c.bottom) return hide();
       const block = blockAt(editor, e.clientY);
       if (!block) return;
       const blockRect = block.rect;
       const lineHeight = parseFloat(getComputedStyle(block.el).lineHeight) || 28;
-      const offset = Math.max(0, Math.min(lineHeight, blockRect.height) / 2 - 14);
-      const c = container!.getBoundingClientRect();
+      const centered = CENTERED.has(editor.state.doc.nodeAt(block.pos)?.type.name ?? '');
+      const offset = Math.max(0, (centered ? blockRect.height : Math.min(lineHeight, blockRect.height)) / 2 - 14);
       handle.style.top = `${blockRect.top - c.top + offset}px`;
       handle.classList.add('is-visible');
 
       hoverPos.current = block.pos;
-    }
-
-    function onMouseLeave() {
-      if (dragFrom.current !== null) return;
-      handleRef.current?.classList.remove('is-visible');
     }
 
     function dropTarget(e: DragEvent) {
@@ -104,14 +114,14 @@ export function DragHandle({ editor, onInsert }: DragHandleProps) {
       container!.querySelectorAll('.is-drag-source').forEach((el) => el.classList.remove('is-drag-source'));
     }
 
-    container.addEventListener('mousemove', onMouseMove);
-    container.addEventListener('mouseleave', onMouseLeave);
+    window.addEventListener('mousemove', onMouseMove);
+    document.documentElement.addEventListener('mouseleave', hide);
     container.addEventListener('dragover', onDragOver, true);
     container.addEventListener('drop', onDrop, true);
     window.addEventListener('dragend', cleanup);
     return () => {
-      container.removeEventListener('mousemove', onMouseMove);
-      container.removeEventListener('mouseleave', onMouseLeave);
+      window.removeEventListener('mousemove', onMouseMove);
+      document.documentElement.removeEventListener('mouseleave', hide);
       container.removeEventListener('dragover', onDragOver, true);
       container.removeEventListener('drop', onDrop, true);
       window.removeEventListener('dragend', cleanup);
@@ -135,14 +145,6 @@ export function DragHandle({ editor, onInsert }: DragHandleProps) {
   return (
     <>
       <div ref={handleRef} className="c-editor-draghandle">
-        <button
-          type="button"
-          className="c-editor-draghandle-add"
-          aria-label="Block einfügen"
-          onClick={() => hoverPos.current !== null && onInsert(hoverPos.current)}
-        >
-          <Icon name="plus" />
-        </button>
         <span className="c-editor-draghandle-grip" draggable onDragStart={onDragStart} aria-label="Block verschieben">
           <Icon name="grip" />
         </span>

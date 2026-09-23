@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Editor } from '@tiptap/react';
+import { ownsKeys } from '@/ui/ownKeys';
 import { blockUnits, caretAtUnitEnd, deleteUnits, isListItem, moveUnits, outermostCount, unitAt, unitRect, withDescendants } from './blockUnits';
+import { barSticky, setBarSticky } from './BlockBar';
 
 const selectionKey = new PluginKey<number[]>('blockSelection');
 
@@ -12,14 +14,17 @@ export function getBlockSelection(state: EditorState): number[] {
   return selectionKey.getState(state) ?? [];
 }
 
-/** Markiert die Blöcke an `positions` und legt die Textauswahl darüber, damit Format-Befehle greifen. */
-export function setBlockSelection(editor: Editor, positions: number[]) {
+/**
+ * Markiert die Blöcke an `positions` und legt die Textauswahl darüber, damit Format-Befehle greifen.
+ * `force` setzt die Textauswahl auch bei unveränderter Markierung neu (z. B. nach einem Befehl in der Tabelle).
+ */
+export function setBlockSelection(editor: Editor, positions: number[], force = false) {
   if (editor.isDestroyed) return;
   const { state } = editor;
   // Unterpunkte gehören zu ihrem Listenpunkt und werden mit markiert.
   const sorted = withDescendants(state.doc, positions);
   const cur = getBlockSelection(state);
-  if (cur.length === sorted.length && cur.every((p, i) => p === sorted[i])) return;
+  if (!force && cur.length === sorted.length && cur.every((p, i) => p === sorted[i])) return;
   const tr = state.tr.setMeta(selectionKey, sorted);
   const lastNode = sorted.length ? state.doc.nodeAt(sorted[sorted.length - 1]) : null;
   if (lastNode) {
@@ -73,6 +78,11 @@ function blockSelectionPlugin() {
         const meta = tr.getMeta(selectionKey) as number[] | undefined;
         if (meta) return meta;
         if (!tr.docChanged || value.length === 0) return value;
+        // Blöcke blieben erhalten (z. B. Stil geändert): jeden einzeln nachführen – sonst käme bei
+        // lückenhafter Auswahl (⌘-Klick) alles dazwischen mit hinein.
+        const starts = new Set(blockUnits(tr.doc).map((u) => u.pos));
+        const mapped = value.map((p) => tr.mapping.map(p, -1));
+        if (mapped.every((p) => starts.has(p)) && new Set(mapped).size === mapped.length) return mapped;
         const lastNode = tr.before.nodeAt(value[value.length - 1]);
         const from = tr.mapping.map(value[0], -1);
         const to = tr.mapping.map(value[value.length - 1] + (lastNode?.nodeSize ?? 0), 1);
@@ -93,18 +103,34 @@ function blockSelectionPlugin() {
   });
 }
 
+/** Tippt der Nutzer gerade in ein Feld (Eingabe im Block, Menü, Leiste)? Dann gelten Tasten dem Feld. */
+function isTyping(): boolean {
+  const a = document.activeElement as HTMLElement | null;
+  return !!a && (a.isContentEditable || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
+}
+
+/** Klicks hier lassen Markierung und aktiven Block stehen: Optionsleiste, ihre Menüs, rechte Leiste. */
+const KEEP_SELECTION = '.c-block-bar,.b-pop,.note-panel,.dialog-backdrop';
+
 /** Markierungsfläche: knapp um den Inhalt (inkl. Aufzählungszeichen), oben/unten leicht eingerückt. */
 const HL_PAD_X = 10;
 const HL_INSET_Y = 2;
 /** Blöcke mit Fließtext bekommen eine Fläche, Grafiken und Kästen (Tabelle, Diagramm, Code, Hinweis …) nur einen Rahmen. */
 const FILLED_BLOCKS = new Set(['listItem', 'taskItem', 'blockquote', 'toggleBlock', 'horizontalRule']);
 
-type Highlight = { pos: number; top: number; left: number; height: number; width: number; outline: boolean };
+type Highlight = { pos: number; top: number; left: number; height: number; width: number; outline: boolean; page?: boolean };
 
 function measureHighlight(editor: Editor, pos: number, c: DOMRect): Highlight | null {
   const r = unitRect(editor.view, pos);
   const node = editor.state.doc.nodeAt(pos);
   if (!r || !node || r.height <= 1) return null;
+  // Seitenumbruch: nur die Lücke zwischen den Seiten-Karten markieren, so breit wie die Karten.
+  if (node.type.name === 'horizontalRule' && node.attrs.variant === 'page') {
+    const cs = getComputedStyle(editor.view.dom);
+    const padY = parseFloat(cs.paddingTop) || 0;
+    const padX = parseFloat(cs.getPropertyValue('--page-pad-x')) || 0;
+    return { pos, top: r.top - c.top + padY, left: r.left - c.left - padX, height: r.height - 2 * padY, width: r.width + 2 * padX, outline: false, page: true };
+  }
   const filled = (node.isTextblock && node.type.name !== 'codeBlock') || FILLED_BLOCKS.has(node.type.name);
   if (!filled) return { pos, top: r.top - c.top, left: r.left - c.left, height: r.height, width: r.width, outline: true };
   // Normale Listenpunkte: das Aufzählungszeichen steht außerhalb des <li> im Einzug der Liste.
@@ -131,7 +157,8 @@ interface Rect {
 /**
  * Rubber-Band-Auswahl über mehrere Top-Level-Blöcke hinweg, analog zum Desktop-Editor:
  * Ziehen in einem leeren Bereich der Seite (auch Ränder, unter dem Text) zieht eine Box auf, die alle überstrichenen Blöcke
- * markiert. Ein erster Klick auf einen Block markiert ihn ebenfalls. ⌘C kopiert, Entf löscht,
+ * markiert. Ein erster Klick in einen Block markiert ihn ebenfalls (⌘-Klick nimmt Blöcke dazu,
+ * ⇧-Klick markiert bis dorthin), erst der zweite geht hinein. ⌘C kopiert, Entf löscht,
  * Format-Aktionen der Seitenleiste wirken auf alle markierten Blöcke, mehrere lassen sich
  * gemeinsam verschieben.
  */
@@ -167,27 +194,86 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
     let raf = 0;
 
     /**
-     * Was passiert beim Klick hier? `box` = leere Fläche, Box aufziehen; `block` = erster Klick
-     * auf einen Block markiert ihn als Ganzes; `null` = normales Verhalten (Cursor, Buttons …).
+     * Arbeitet der Nutzer gerade in diesem Block? Cursor oder Eingabefeld darin, oder zuletzt
+     * hineingeklickt – dann verhalten sich Klicks darin normal (Text, Knöpfe, Felder).
+     */
+    function isContext(block: { pos: number; el: HTMLElement }): boolean {
+      const ae = document.activeElement;
+      if (ae && ae !== dom && block.el.contains(ae)) return true;
+      const sticky = barSticky(editor);
+      if (sticky !== null && sticky === block.pos) return true;
+      if (!editor.view.hasFocus()) return false;
+      return unitAt(editor.state.doc, editor.state.selection.from)?.pos === block.pos;
+    }
+
+    /**
+     * Was passiert beim Klick hier? `box` = leere Fläche, Box aufziehen; `block` = Klick in einen
+     * Block, in dem gerade nicht gearbeitet wird, markiert ihn als Ganzes – egal ob Text, Knopf oder
+     * Eingabefeld; `null` = normales Verhalten (Cursor, Buttons …).
      */
     function modeAt(e: MouseEvent): { kind: 'box' } | { kind: 'block'; pos: number } | null {
       const t = e.target;
       // Erst beim Klick nachschlagen – beim Mounten hängt der Editor evtl. noch nicht im DOM.
       if (!(t instanceof Element) || !dom.closest('.note-screen')?.contains(t)) return null;
-      const control = t.closest('input,textarea,button,select,[data-interactive],.note-bar,.c-editor-draghandle,.c-insert-menu,.c-editor-toolbar,.c-table-menu');
-      // Ausnahme Toggle-Titel: verhält sich wie Text – erst markieren, beim zweiten Klick bearbeiten.
-      const isToggleTitle = control?.matches('input.b-toggle-summary') && control !== document.activeElement;
-      // Blöcke mit data-select-bg (z. B. Sammlung): Klick auf den Hintergrund markiert den Block,
-      // Bereiche mit data-no-select-bg (Tabelle) behandeln Klicks selbst.
-      const isBlockBg = !!control?.matches('[data-select-bg]') && !t.closest('[data-no-select-bg]');
-      if (control && !isToggleTitle && !isBlockBg) return null;
-      if (!dom.contains(t) || t === dom) return { kind: 'box' };
+      if (t.closest('.note-bar,.c-editor-draghandle,.c-insert-menu,.c-editor-toolbar')) return null;
+      if (!dom.contains(t) || t === dom) {
+        // Neben dem Text: Titel, Randnotizen & Co. behalten ihre Bedienung.
+        return t.closest('input,textarea,button,select,[data-interactive]') ? null : { kind: 'box' };
+      }
       const block = blockAtTarget(t);
       if (!block) return { kind: 'box' };
-      // Im Block mit dem Cursor verhält sich der Klick normal – erst dort wird Text bearbeitet.
-      const caretBlock = unitAt(editor.state.doc, editor.state.selection.from)?.pos;
-      if (editor.view.hasFocus() && caretBlock === block.pos) return null;
+      // Toggle-Pfeil klappt direkt auf/zu – wie das Aufzählungszeichen einer Liste.
+      if (t.closest('.b-toggle-chevron')) return null;
+      // Fußnoten, Formeln & Co. im Fließtext öffnen direkt ihren Editor.
+      if (t.closest('[data-interactive]') && editor.state.doc.nodeAt(block.pos)?.isTextblock) return null;
+      if (isContext(block)) return null;
       return { kind: 'block', pos: block.pos };
+    }
+
+    /** Der Klick nach dem Markieren darf nichts mehr auslösen (Knopf, Link, Umdrehen …). */
+    function swallowClick() {
+      const stop = (ev: Event) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+      };
+      window.addEventListener('click', stop, { capture: true, once: true });
+      const release = () => {
+        window.removeEventListener('mouseup', release, true);
+        setTimeout(() => window.removeEventListener('click', stop, { capture: true }));
+      };
+      window.addEventListener('mouseup', release, true);
+    }
+
+    /** Markierungs-Anker für ⇧-Klick. */
+    let anchor: number | null = null;
+
+    /** ⌘-Klick nimmt einen Block dazu bzw. heraus, ⇧-Klick markiert alles bis dorthin. */
+    function modifierSelect(e: MouseEvent, pos: number): boolean {
+      const selected = selectedRef.current;
+      const { doc } = editor.state;
+      if (e.shiftKey && !(e.metaKey || e.ctrlKey)) {
+        // Ohne Block-Markierung erweitert ⇧-Klick wie gewohnt die Textauswahl.
+        if (!selected.length) return false;
+        const units = blockUnits(doc).map((u) => u.pos);
+        const from = units.indexOf(anchor !== null && selected.includes(anchor) ? anchor : selected[0]);
+        const to = units.indexOf(pos);
+        if (from < 0 || to < 0) return false;
+        setBlockSelection(editor, units.slice(Math.min(from, to), Math.max(from, to) + 1));
+        return true;
+      }
+      if (!(e.metaKey || e.ctrlKey)) return false;
+      // Arbeitet man gerade in einem Block, zählt der als erster markierter.
+      let base = selected;
+      if (!base.length) {
+        const sticky = barSticky(editor);
+        const caret = editor.view.hasFocus() ? unitAt(doc, editor.state.selection.from)?.pos : undefined;
+        const ctx = sticky !== null ? unitAt(doc, sticky)?.pos : caret;
+        base = ctx !== undefined && ctx !== pos ? [ctx] : [];
+      }
+      const next = base.includes(pos) ? base.filter((p) => !withDescendants(doc, [pos]).includes(p)) : [...base, pos];
+      anchor = pos;
+      setBlockSelection(editor, next);
+      return true;
     }
 
     function scrollParent(): HTMLElement {
@@ -234,21 +320,39 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
 
     function onMouseDown(e: MouseEvent) {
       if (e.button !== 0) return;
-      // Klicks in der rechten Leiste (Format, Einfügen …) lassen die Auswahl stehen.
-      if (e.target instanceof Element && e.target.closest('.note-panel')) return;
+      // Klicks in der Optionsleiste, ihren Menüs und der rechten Leiste lassen die Auswahl stehen.
+      if (e.target instanceof Element && e.target.closest(KEEP_SELECTION)) return;
       const selected = selectedRef.current;
-      const clicked = e.target instanceof Node && dom.contains(e.target) ? blockAtTarget(e.target) : null;
+      const clicked = e.target instanceof Node && dom.contains(e.target) && e.target !== dom ? blockAtTarget(e.target) : null;
+      if (clicked && (e.metaKey || e.ctrlKey || e.shiftKey) && modifierSelect(e, clicked.pos)) {
+        dom.blur();
+        window.getSelection()?.removeAllRanges();
+        setBarSticky(editor, null);
+        swallowClick();
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
       if (clicked && selected.includes(clicked.pos)) {
         // Mehrere markiert: die Gruppe lässt sich verschieben (eigener Handler).
         if (outermostCount(editor.state.doc, selected) > 1) return;
-        // Zweiter Klick auf den markierten Block: normal in den Text – Cursor setzen oder Text markieren.
+        // Zweiter Klick auf den markierten Block: normal hinein – Cursor setzen, Knopf drücken, Feld bearbeiten.
+        // Der Block bleibt dabei aktiv (Optionsleiste), auch wenn der Klick keinen Fokus setzt.
+        setBarSticky(editor, clicked.pos);
         setBlockSelection(editor, []);
         return;
       }
       const mode = modeAt(e);
       if (!mode) {
         if (selected.length) setBlockSelection(editor, []);
+        // Klick im Block, in dem gerade gearbeitet wird: der bleibt aktiv; sonst (außerhalb) keiner.
+        setBarSticky(editor, clicked ? clicked.pos : null);
         return;
+      }
+      setBarSticky(editor, null);
+      if (mode.kind === 'block') {
+        anchor = mode.pos;
+        swallowClick();
       }
       const d = dom.getBoundingClientRect();
       start = { x: e.clientX - d.left, y: e.clientY - d.top };
@@ -301,13 +405,26 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
       if (active) update();
     }
 
+    /** Pointer-Handler im Block (Ziehen, Skalieren, Verschieben …) sollen beim markierenden Klick nicht loslegen. */
+    function onPointerDown(e: PointerEvent) {
+      if (e.button !== 0 || !(e.target instanceof Element) || e.target.closest(KEEP_SELECTION)) return;
+      const clicked = dom.contains(e.target) && e.target !== dom ? blockAtTarget(e.target) : null;
+      if (!clicked) return;
+      const selected = selectedRef.current;
+      if (e.metaKey || e.ctrlKey || (e.shiftKey && selected.length)) return e.stopPropagation();
+      if (selected.includes(clicked.pos)) return;
+      if (modeAt(e)?.kind === 'block') e.stopPropagation();
+    }
+
     // Capture-Phase: vor ProseMirrors eigenem mousedown-Handler.
+    window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('mousedown', onMouseDown, true);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('scroll', onScroll, true);
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('mousedown', onMouseDown, true);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
@@ -364,7 +481,7 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
   // damit Listen, Quiz & Co. beim Einfügen wieder als Blöcke ankommen.
   useEffect(() => {
     function onCopy(e: ClipboardEvent) {
-      if (selectedPositions.length === 0) return;
+      if (selectedPositions.length === 0 || ownsKeys(e.target) || isTyping()) return;
       const sel = window.getSelection();
       if (sel && sel.toString().length > 0) return;
       const { doc } = editor.state;
@@ -393,7 +510,7 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     function onKeyDown(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || ownsKeys(e.target)) return;
       const key = e.key.toLowerCase();
       if (key !== 'z' && key !== 'a') return;
       const t = e.target instanceof HTMLElement ? e.target : null;
@@ -436,11 +553,13 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
   useEffect(() => {
     if (selectedPositions.length === 0) return;
     function onKeyDown(e: KeyboardEvent) {
+      // Tippen in Feldern (auch in Menüs der Optionsleiste) löscht keine markierten Blöcke.
+      if (ownsKeys(e.target) || isTyping()) return;
       if (e.key === 'Escape') {
         setBlockSelection(editor, []);
         return;
       }
-      if (e.key === 'Tab' && !(document.activeElement as HTMLElement | null)?.isContentEditable) {
+      if (e.key === 'Tab') {
         // Markierte Listenpunkte ein-/ausrücken; die Auswahl wandert mit.
         const first = editor.state.doc.nodeAt(Math.min(...selectedPositions));
         if (!first || !isListItem(first)) return;
@@ -450,7 +569,7 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
         else editor.chain().sinkListItem(type).run();
         return;
       }
-      if (e.key === 'Enter' && !(document.activeElement as HTMLElement | null)?.isContentEditable) {
+      if (e.key === 'Enter') {
         // Enter springt in den (ersten) markierten Block, ans Ende seines Texts.
         const caret = caretAtUnitEnd(editor.state.doc, Math.min(...selectedPositions));
         setBlockSelection(editor, []);
@@ -460,8 +579,6 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
         return;
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const active = document.activeElement;
-        if (active && (active as HTMLElement).isContentEditable) return;
         editor.view.dispatch(deleteUnits(editor.state.tr, selectedPositions));
         setBlockSelection(editor, []);
         e.preventDefault();
@@ -570,7 +687,7 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
           highlights.map((h) => (
             <div
               key={h.pos}
-              className={`c-block-highlight${h.outline ? ' is-outline' : ''}`}
+              className={`c-block-highlight${h.outline ? ' is-outline' : ''}${h.page ? ' is-page' : ''}`}
               style={{ left: h.left, top: h.top, height: h.height, width: h.width }}
             />
           )),

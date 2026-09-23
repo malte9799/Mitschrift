@@ -68,7 +68,7 @@ export function withDescendants(doc: PMNode, positions: number[]): number[] {
 }
 
 /** Nur die äußersten Einheiten – Unterpunkte markierter Eltern wandern ohnehin mit. */
-function outermost(doc: PMNode, positions: number[]): BlockUnit[] {
+export function outermost(doc: PMNode, positions: number[]): BlockUnit[] {
   const units = blockUnits(doc).filter((u) => positions.includes(u.pos));
   return units.filter((u) => !units.some((p) => p !== u && p.pos < u.pos && u.pos < p.pos + p.node.nodeSize));
 }

@@ -13,6 +13,8 @@ export interface Field {
   id: string;
   name: string;
   type: FieldType;
+  /** Eigenes Symbol im Spaltenkopf; sonst das des Feldtyps. */
+  icon?: IconName;
   /** Nur für Einzel-/Mehrfachauswahl. */
   options?: SelectOption[];
 }
@@ -38,7 +40,8 @@ export interface CollectionData {
   sheets: Sheet[];
 }
 
-export const fieldTypes: { type: FieldType; label: string; icon: IconName }[] = [
+/** `group`: Trennlinie davor im Typ-Menü. */
+export const fieldTypes: { type: FieldType; label: string; icon: IconName; group?: boolean }[] = [
   { type: 'text', label: 'Text', icon: 'fieldText' },
   { type: 'number', label: 'Nummer', icon: 'fieldNumber' },
   { type: 'checkbox', label: 'Checkbox', icon: 'checkbox' },
@@ -46,11 +49,13 @@ export const fieldTypes: { type: FieldType; label: string; icon: IconName }[] = 
   { type: 'url', label: 'URL', icon: 'link' },
   { type: 'email', label: 'E-Mail', icon: 'mail' },
   { type: 'phone', label: 'Telefon', icon: 'phone' },
-  { type: 'select', label: 'Einzelauswahl', icon: 'fieldSelect' },
+  { type: 'select', label: 'Einzelauswahl', icon: 'fieldSelect', group: true },
   { type: 'multiselect', label: 'Mehrfachauswahl', icon: 'fieldMulti' },
 ];
 
 export const fieldIcon = (type: FieldType): IconName => fieldTypes.find((f) => f.type === type)?.icon ?? 'fieldText';
+export const fieldIconOf = (field: Pick<Field, 'type' | 'icon'>): IconName => field.icon ?? fieldIcon(field.type);
+export const isChoiceType = (t: FieldType) => t === 'select' || t === 'multiselect';
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 

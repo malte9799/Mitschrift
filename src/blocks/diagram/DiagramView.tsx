@@ -1,8 +1,10 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { useEditable } from '@/editor/useEditable';
+import { BarButton, BarSep, useBlockBar } from '@/editor/BlockBar';
+import { CONFIRMED } from '@/editor/ConfirmDelete';
 import { kindLabels, type DiagramItem, type DiagramKind } from './DiagramNode';
 import { StepsDiagram, TimelineDiagram, BarsDiagram, CycleDiagram } from './renderers';
 
@@ -13,39 +15,52 @@ const kindIcons: Record<DiagramKind, IconName> = {
   cycle: 'cycle',
 };
 
-export function DiagramView({ node, editor, updateAttributes }: NodeViewProps) {
+export function DiagramView({ node, editor, updateAttributes, getPos }: NodeViewProps) {
   const editable = useEditable(editor);
   const [editing, setEditing] = useState(false);
-  const uid = useId();
+  const bar = useBlockBar(editor, getPos);
   const kind = node.attrs.kind as DiagramKind;
   const items = node.attrs.items as DiagramItem[];
   const title = node.attrs.title as string;
   const visible = items.filter((i) => i.label.trim() || i.text.trim());
 
+  /** Alter Zeitstrahl → neuer Zeitstrahl-Block (Datum bleibt Datum, Beschreibung wird Titel). */
+  function toTimeline() {
+    const pos = getPos();
+    if (typeof pos !== 'number') return;
+    const entries = visible.map((it, i) => ({ date: it.label, title: it.text, text: '', color: i % 6 }));
+    // Umwandeln ist kein Löschen – ohne Rückfrage.
+    editor
+      .chain()
+      .focus()
+      .command(({ tr }) => {
+        tr.setMeta(CONFIRMED, true);
+        return true;
+      })
+      .insertContentAt({ from: pos, to: pos + node.nodeSize }, { type: 'timeline', attrs: { entries, title } })
+      .run();
+  }
+
   return (
     <NodeViewWrapper className={`b-block b-diagram b-diagram-${kind}`} data-interactive="">
+      {bar.render(
+        <>
+          {/* Der alte Zeitstrahl ist durch den eigenen Zeitstrahl-Block ersetzt – nur noch anzeigen, wenn er gewählt ist. */}
+          {(Object.keys(kindLabels) as DiagramKind[])
+            .filter((k) => k !== 'timeline' || k === kind)
+            .map((k) => (
+              <BarButton key={k} icon={kindIcons[k]} label={kindLabels[k]} active={k === kind} onClick={() => updateAttributes({ kind: k })} />
+            ))}
+          <BarSep />
+          {kind === 'timeline' && <BarButton icon="timelineAxis" label="In den neuen Zeitstrahl mit echter Zeitachse umwandeln" text="Umwandeln" onClick={toTimeline} />}
+          <BarButton icon={editing ? 'check' : 'pencil'} label={editing ? 'Fertig' : 'Daten bearbeiten'} text={editing ? 'Fertig' : 'Daten'} active={editing} onClick={() => setEditing((e) => !e)} />
+        </>,
+      )}
       <div contentEditable={false}>
         <div className="b-block-head">
-          {editable ? (
-            <div className="b-seg" role="tablist" aria-label="Darstellung">
-              {(Object.keys(kindLabels) as DiagramKind[]).map((k) => (
-                <button key={k} type="button" role="tab" aria-selected={k === kind} className={k === kind ? 'active' : ''} onClick={() => updateAttributes({ kind: k })}>
-                  {k === kind && <motion.span layoutId={`seg-${uid}`} className="b-seg-pill" transition={{ type: 'spring', bounce: 0.2, duration: 0.35 }} />}
-                  <Icon name={kindIcons[k]} />
-                  <span>{kindLabels[k]}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <span className="b-block-badge">
-              <Icon name={kindIcons[kind]} /> {kindLabels[kind]}
-            </span>
-          )}
-          {editable && (
-            <button type="button" className={`b-chip-btn${editing ? ' active' : ''}`} onClick={() => setEditing((e) => !e)}>
-              <Icon name={editing ? 'check' : 'pencil'} /> {editing ? 'Fertig' : 'Daten'}
-            </button>
-          )}
+          <span className="b-block-badge">
+            <Icon name={kindIcons[kind]} /> {kindLabels[kind]}
+          </span>
         </div>
 
         {editable ? (

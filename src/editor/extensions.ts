@@ -5,10 +5,18 @@ import { Color, TextStyle } from '@tiptap/extension-text-style';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TextVariantExtension } from './TextVariant';
 import { CalloutNode } from './CalloutNode';
+import { Divider } from './Divider';
 import { StoredImage } from './StoredImage';
 import { learnExtensions } from '@/blocks';
 import { CodeBlock } from '@/blocks/code/CodeBlock';
 import { MarkdownClipboard } from './MarkdownClipboard';
+import { ConfirmDelete } from './ConfirmDelete';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
+import { MathBlock, MathInline } from './math/MathNodes';
+import { Footnote, Kbd } from './Footnote';
+import { NoteBlockNode } from './noteBlock/NoteBlockNode';
+import { GlossaryHighlight } from '@/glossary/GlossaryHighlight';
 
 export const noteExtensions = [
   StarterKit.configure({
@@ -16,7 +24,10 @@ export const noteExtensions = [
     link: { openOnClick: false },
     // Ersetzt durch den Codeblock mit Highlighting, Zeilennummern und Kopier-Knopf.
     codeBlock: false,
+    // Ersetzt durch die Trennlinie mit Stilen.
+    horizontalRule: false,
   }),
+  Divider,
   CodeBlock,
   TaskList,
   TaskItem.configure({ nested: true }),
@@ -26,7 +37,16 @@ export const noteExtensions = [
   TextVariantExtension,
   StoredImage,
   CalloutNode,
+  Subscript,
+  Superscript,
+  Kbd,
+  MathInline,
+  MathBlock,
+  Footnote,
+  NoteBlockNode,
   MarkdownClipboard,
+  GlossaryHighlight,
+  ConfirmDelete,
   ...learnExtensions,
   Placeholder.configure({
     placeholder: ({ node }) =>

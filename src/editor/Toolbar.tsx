@@ -3,6 +3,8 @@ import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { Icon, type IconName } from '@/ui/Icon';
+import { openTermDialog } from '@/glossary/store';
+import { guessTerm } from '@/glossary/match';
 
 interface ToolbarProps {
   editor: Editor;
@@ -22,12 +24,22 @@ export function applyLink(editor: Editor, url: string) {
   editor.chain().focus().extendMarkRange('link').setLink({ href: safe }).run();
 }
 
+/** Markierten Text als Glossar-Begriff anlegen – „Domain Name System (DNS)“ wird gleich aufgeteilt. */
+export function termFromSelection(editor: Editor) {
+  const { from, to } = editor.state.selection;
+  const text = editor.state.doc.textBetween(from, to, ' ').trim();
+  openTermDialog(text ? guessTerm(text) : {});
+}
+
 const marks: { name: string; icon: IconName; label: string; toggle: (e: Editor) => void }[] = [
   { name: 'bold', icon: 'bold', label: 'Fett', toggle: (e) => e.chain().focus().toggleBold().run() },
   { name: 'italic', icon: 'italic', label: 'Kursiv', toggle: (e) => e.chain().focus().toggleItalic().run() },
   { name: 'strike', icon: 'strike', label: 'Durchgestrichen', toggle: (e) => e.chain().focus().toggleStrike().run() },
   { name: 'code', icon: 'code', label: 'Inline-Code', toggle: (e) => e.chain().focus().toggleCode().run() },
   { name: 'cloze', icon: 'cloze', label: 'Als Lücke markieren', toggle: (e) => e.chain().focus().toggleCloze().run() },
+  { name: 'kbd', icon: 'kbd', label: 'Taste', toggle: (e) => e.chain().focus().toggleKbd().run() },
+  { name: 'subscript', icon: 'subscript', label: 'Tiefgestellt', toggle: (e) => e.chain().focus().toggleSubscript().run() },
+  { name: 'superscript', icon: 'superscript', label: 'Hochgestellt', toggle: (e) => e.chain().focus().toggleSuperscript().run() },
 ];
 
 /** Format-Popover bei Textauswahl, inkl. Inline-Link-Eingabe statt window.prompt. */
@@ -123,6 +135,10 @@ export function Toolbar({ editor }: ToolbarProps) {
             title="Link"
           >
             <Icon name="link" />
+          </button>
+          <span className="c-editor-toolbar-sep" />
+          <button type="button" onMouseDown={preventFocusLoss} onClick={() => termFromSelection(editor)} aria-label="Als Begriff ins Glossar" title="Als Begriff ins Glossar (⇧⌘G)">
+            <Icon name="book" />
           </button>
         </>
       )}

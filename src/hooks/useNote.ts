@@ -42,14 +42,22 @@ export function useNote(id: string, delay = 400) {
     [flush, delay],
   );
 
-  // Beim Wechsel der Notiz/Unmount ausstehende Änderungen sofort schreiben.
-  useEffect(
-    () => () => {
+  // Beim Wechsel der Notiz/Unmount ausstehende Änderungen sofort schreiben – ebenso, wenn der
+  // Tab verborgen, neu geladen oder geschlossen wird (sonst ginge das Debounce-Fenster verloren).
+  useEffect(() => {
+    const flushNow = () => {
       clearTimeout(timer.current);
       void flush();
-    },
-    [flush],
-  );
+    };
+    const onVisibility = () => document.visibilityState === 'hidden' && flushNow();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flushNow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flushNow);
+      flushNow();
+    };
+  }, [flush]);
 
   return { note, loading, saved, save };
 }

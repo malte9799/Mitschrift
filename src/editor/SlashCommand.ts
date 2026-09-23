@@ -94,7 +94,7 @@ export const SlashCommand = Extension.create<{ suggestion: Partial<SuggestionOpt
   },
 });
 
-function positionPopup(popup: HTMLDivElement, rect?: DOMRect | null) {
+export function positionPopup(popup: HTMLDivElement, rect?: DOMRect | null) {
   if (!rect) return;
   popup.style.position = 'fixed';
   popup.style.zIndex = '50';

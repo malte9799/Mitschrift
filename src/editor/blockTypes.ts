@@ -1,7 +1,10 @@
 import type { Editor } from '@tiptap/react';
 import type { IconName } from '@/ui/Icon';
-import { pickImage } from './StoredImage';
 import { calloutLabels } from './CalloutNode';
+import { dividerLabels } from './Divider';
+import { startNoteBlockPicker } from './NoteLink';
+import { insertInlineMath } from './math/MathNodes';
+import { insertFootnote } from './Footnote';
 
 export type BlockTypeId =
   | 'heading1'
@@ -29,12 +32,25 @@ export type BlockTypeId =
   | 'timeline'
   | 'bars'
   | 'cycle'
+  | 'plot'
+  | 'glossaryList'
   | 'mermaid'
+  | 'whiteboard'
   | 'image'
+  | 'gallery'
+  | 'svg'
   | 'code'
-  | 'divider';
+  | 'dividerDots'
+  | 'dividerDotted'
+  | 'divider'
+  | 'dividerBold'
+  | 'pageBreak'
+  | 'noteRow'
+  | 'noteCard'
+  | 'formula'
+  | 'footnote';
 
-export type BlockCategory = 'textstile' | 'listen' | 'hervorheben' | 'lernen' | 'daten' | 'medien';
+export type BlockCategory = 'rich' | 'interaktiv' | 'trennlinien' | 'medien' | 'listen' | 'hervorheben' | 'textstile';
 
 export interface BlockTypeDef {
   id: BlockTypeId;
@@ -46,15 +62,17 @@ export interface BlockTypeDef {
 }
 
 export const categoryLabels: Record<BlockCategory, string> = {
-  textstile: 'Textstile',
+  rich: 'Rich Blocks',
+  interaktiv: 'Interaktiv',
+  trennlinien: 'Trennlinien',
+  medien: 'Medien',
   listen: 'Listen',
   hervorheben: 'Hervorheben',
-  lernen: 'Lernen',
-  daten: 'Tabellen & Diagramme',
-  medien: 'Medien & Code',
+  textstile: 'Textstile',
 };
 
-export const blockCategoryOrder: BlockCategory[] = ['textstile', 'listen', 'hervorheben', 'lernen', 'daten', 'medien'];
+// Textstile zuletzt – die sind auch über den Format-Tab erreichbar.
+export const blockCategoryOrder: BlockCategory[] = ['rich', 'interaktiv', 'trennlinien', 'medien', 'listen', 'hervorheben', 'textstile'];
 
 /** Neuer Block hinter der aktuellen Zeile – außer die Zeile ist leer, dann wird sie ersetzt. */
 function insertBlockAfterLine(editor: Editor, content: Record<string, unknown>) {
@@ -69,62 +87,201 @@ function insertBlockAfterLine(editor: Editor, content: Record<string, unknown>) 
 }
 
 export const blockTypes: BlockTypeDef[] = [
-  // ---------- Textstile (wie im Format-Tab) ----------
+  // ---------- Rich Blocks ----------
   {
-    id: 'heading1',
-    label: 'Titel',
-    icon: 'heading',
-    category: 'textstile',
-    keywords: ['h1', 'titel', 'ueberschrift', 'überschrift'],
-    run: (editor) => editor.chain().focus().setHeading({ level: 1 }).run(),
+    id: 'noteRow',
+    label: 'Notiz als Zeile',
+    icon: 'noteRow',
+    category: 'rich',
+    keywords: ['notiz', 'seite', 'verweis', 'link', 'dokument', 'unterseite', 'zeile'],
+    run: (editor) => startNoteBlockPicker(editor, 'row'),
   },
   {
-    id: 'heading2',
-    label: 'Untertitel',
-    icon: 'heading2',
-    category: 'textstile',
-    keywords: ['h2', 'untertitel', 'ueberschrift', 'überschrift'],
-    run: (editor) => editor.chain().focus().setHeading({ level: 2 }).run(),
+    id: 'noteCard',
+    label: 'Notiz als Karte',
+    icon: 'noteCard',
+    category: 'rich',
+    keywords: ['notiz', 'seite', 'verweis', 'karte', 'vorschau', 'dokument', 'kachel', 'raster', 'grid'],
+    run: (editor) => startNoteBlockPicker(editor, 'card'),
   },
   {
-    id: 'heading3',
-    label: 'Überschrift',
-    icon: 'heading3',
-    category: 'textstile',
-    keywords: ['h3', 'ueberschrift', 'überschrift'],
-    run: (editor) => editor.chain().focus().setHeading({ level: 3 }).run(),
+    id: 'table',
+    label: 'Tabelle',
+    icon: 'table',
+    category: 'rich',
+    keywords: ['tabelle', 'table', 'raster', 'spalten'],
+    run: (editor) => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
-    id: 'strong',
-    label: 'Fett',
-    icon: 'bold',
-    category: 'textstile',
-    keywords: ['fett', 'strong', 'hervorgehoben'],
-    run: (editor) => editor.chain().focus().setTextVariant('strong').run(),
+    id: 'collection',
+    label: 'Sammlung',
+    icon: 'collection',
+    category: 'rich',
+    keywords: ['sammlung', 'datenbank', 'collection', 'tabellenblatt', 'felder', 'erweiterte tabelle'],
+    run: (editor) => editor.chain().focus().insertCollection().run(),
   },
   {
-    id: 'paragraph',
-    label: 'Text',
-    icon: 'paragraph',
-    category: 'textstile',
-    keywords: ['text', 'absatz', 'paragraph'],
-    run: (editor) => editor.chain().focus().setTextVariant(null).run(),
+    id: 'code',
+    label: 'Codeblock',
+    icon: 'code',
+    category: 'rich',
+    keywords: ['code', 'quelltext', 'programmieren', 'snippet', 'syntax'],
+    // Startet mit drei leeren Zeilen.
+    run: (editor) => insertBlockAfterLine(editor, { type: 'codeBlock', content: [{ type: 'text', text: '\n\n' }] }),
   },
   {
-    id: 'caption',
-    label: 'Beschriftung',
-    icon: 'paragraph',
-    category: 'textstile',
-    keywords: ['beschriftung', 'caption', 'klein', 'notiz'],
-    run: (editor) => editor.chain().focus().setTextVariant('caption').run(),
+    id: 'mermaid',
+    label: 'Mermaid',
+    icon: 'mermaid',
+    category: 'rich',
+    keywords: ['mermaid', 'flussdiagramm', 'flowchart', 'diagramm', 'mindmap', 'sequenz', 'graph'],
+    run: (editor) => editor.chain().focus().insertMermaid().run(),
   },
   {
-    id: 'quote',
-    label: 'Zitat',
-    icon: 'quote',
-    category: 'textstile',
-    keywords: ['zitat', 'quote'],
-    run: (editor) => editor.chain().focus().toggleBlockquote().run(),
+    id: 'whiteboard',
+    label: 'Whiteboard',
+    icon: 'whiteboard',
+    category: 'rich',
+    keywords: ['whiteboard', 'zeichnen', 'skizze', 'excalidraw', 'tafel', 'malen', 'handschrift'],
+    run: (editor) => editor.chain().focus().insertWhiteboard().run(),
+  },
+  {
+    id: 'plot',
+    label: 'Funktionsplotter',
+    icon: 'plot',
+    category: 'rich',
+    keywords: ['plot', 'plotter', 'funktion', 'graph', 'mathe', 'parabel', 'kurve', 'koordinatensystem', 'geogebra'],
+    run: (editor) => insertBlockAfterLine(editor, { type: 'plot' }),
+  },
+  {
+    id: 'glossaryList',
+    label: 'Abkürzungsverzeichnis',
+    icon: 'book',
+    category: 'rich',
+    keywords: ['glossar', 'abkürzung', 'abkuerzung', 'verzeichnis', 'begriffe', 'akronym', 'fachbegriffe'],
+    run: (editor) => insertBlockAfterLine(editor, { type: 'glossaryList' }),
+  },
+  {
+    id: 'formula',
+    label: 'Formel',
+    icon: 'formula',
+    category: 'rich',
+    keywords: ['formel', 'math', 'mathe', 'latex', 'gleichung', 'katex'],
+    run: (editor) => insertInlineMath(editor),
+  },
+  {
+    id: 'footnote',
+    label: 'Fußnote',
+    icon: 'footnote',
+    category: 'rich',
+    keywords: ['fußnote', 'fussnote', 'footnote', 'quelle', 'anmerkung', 'referenz'],
+    run: (editor) => insertFootnote(editor),
+  },
+
+  // ---------- Interaktiv ----------
+  {
+    id: 'flashcards',
+    label: 'Karteikarten',
+    icon: 'cards',
+    category: 'interaktiv',
+    keywords: ['karteikarte', 'flashcard', 'karten', 'vokabeln'],
+    run: (editor) => editor.chain().focus().insertFlashcards().run(),
+  },
+  {
+    id: 'quiz',
+    label: 'Quiz',
+    icon: 'quiz',
+    category: 'interaktiv',
+    keywords: ['quiz', 'test', 'frage', 'multiple choice'],
+    run: (editor) => editor.chain().focus().insertQuiz().run(),
+  },
+  {
+    id: 'cloze',
+    label: 'Lücke',
+    icon: 'cloze',
+    category: 'interaktiv',
+    keywords: ['lücke', 'lueckentext', 'cloze', 'luecke'],
+    run: (editor) => editor.chain().focus().insertCloze().run(),
+  },
+  {
+    id: 'steps',
+    label: 'Ablauf',
+    icon: 'steps',
+    category: 'interaktiv',
+    keywords: ['ablauf', 'schritte', 'prozess', 'diagramm', 'steps'],
+    run: (editor) => editor.chain().focus().insertDiagram('steps').run(),
+  },
+  {
+    id: 'timeline',
+    label: 'Zeitstrahl',
+    icon: 'timeline',
+    category: 'interaktiv',
+    keywords: ['zeitstrahl', 'timeline', 'chronologie', 'geschichte', 'diagramm', 'zeitraum', 'epoche', 'projekt', 'phasen'],
+    run: (editor) => editor.chain().focus().insertTimeline().run(),
+  },
+  {
+    id: 'bars',
+    label: 'Balken',
+    icon: 'bars',
+    category: 'interaktiv',
+    keywords: ['balken', 'diagramm', 'chart', 'vergleich', 'bars'],
+    run: (editor) => editor.chain().focus().insertDiagram('bars').run(),
+  },
+  {
+    id: 'cycle',
+    label: 'Kreislauf',
+    icon: 'cycle',
+    category: 'interaktiv',
+    keywords: ['kreislauf', 'zyklus', 'cycle', 'diagramm'],
+    run: (editor) => editor.chain().focus().insertDiagram('cycle').run(),
+  },
+
+  // ---------- Trennlinien ----------
+  ...(
+    [
+      ['dividerDots', 'dots', ['punkte', 'sternchen', 'extra dünn']],
+      ['dividerDotted', 'dotted', ['gepunktet', 'dünn']],
+      ['divider', 'regular', ['regulär', 'normal']],
+      ['dividerBold', 'bold', ['fett', 'dick']],
+      ['pageBreak', 'page', ['seitenumbruch', 'seite', 'umbruch', 'page break']],
+    ] as const
+  ).map(
+    ([id, variant, keywords]): BlockTypeDef => ({
+      id,
+      label: dividerLabels[variant],
+      icon: 'divider',
+      category: 'trennlinien',
+      keywords: ['trennlinie', 'divider', 'linie', ...keywords],
+      run: (editor) => editor.chain().focus().setDivider(variant).run(),
+    }),
+  ),
+
+  // ---------- Medien ----------
+  {
+    id: 'image',
+    label: 'Bild',
+    icon: 'image',
+    category: 'medien',
+    keywords: ['bild', 'image', 'foto', 'link', 'url', 'hochladen'],
+    // Leerer Bild-Block: Datei hochladen, hineinziehen oder Link einfügen.
+    run: (editor) => insertBlockAfterLine(editor, { type: 'image', attrs: { src: '' } }),
+  },
+  {
+    id: 'gallery',
+    label: 'Bildergalerie',
+    icon: 'gallery',
+    category: 'medien',
+    keywords: ['galerie', 'bilder', 'fotos', 'sammlung', 'album', 'karussell', 'slideshow', 'gallery', 'mosaik', 'vergleich'],
+    run: (editor) => insertBlockAfterLine(editor, { type: 'gallery' }),
+  },
+  {
+    id: 'svg',
+    label: 'SVG-Grafik',
+    icon: 'bezier',
+    category: 'medien',
+    keywords: ['svg', 'vektor', 'grafik', 'icon', 'illustration', 'zeichnung', 'vector'],
+    // Leerer Block zum Einfügen – SVG-Code direkt in die Notiz einfügen geht auch.
+    run: (editor) => insertBlockAfterLine(editor, { type: 'svg' }),
   },
 
   // ---------- Listen ----------
@@ -162,6 +319,14 @@ export const blockTypes: BlockTypeDef[] = [
   },
 
   // ---------- Hervorheben ----------
+  {
+    id: 'quote',
+    label: 'Zitat',
+    icon: 'quote',
+    category: 'hervorheben',
+    keywords: ['zitat', 'quote'],
+    run: (editor) => editor.chain().focus().toggleBlockquote().run(),
+  },
   ...(
     [
       ['calloutNote', 'note', ['hinweis', 'note', 'info', 'callout']],
@@ -181,117 +346,53 @@ export const blockTypes: BlockTypeDef[] = [
     }),
   ),
 
-  // ---------- Lernen ----------
+  // ---------- Textstile (wie im Format-Tab) ----------
   {
-    id: 'flashcards',
-    label: 'Karteikarten',
-    icon: 'cards',
-    category: 'lernen',
-    keywords: ['karteikarte', 'flashcard', 'karten', 'vokabeln'],
-    run: (editor) => editor.chain().focus().insertFlashcards().run(),
+    id: 'heading1',
+    label: 'H1',
+    icon: 'heading',
+    category: 'textstile',
+    keywords: ['h1', 'titel', 'ueberschrift', 'überschrift'],
+    run: (editor) => editor.chain().focus().setHeading({ level: 1 }).run(),
   },
   {
-    id: 'quiz',
-    label: 'Quiz',
-    icon: 'quiz',
-    category: 'lernen',
-    keywords: ['quiz', 'test', 'frage', 'multiple choice'],
-    run: (editor) => editor.chain().focus().insertQuiz().run(),
+    id: 'heading2',
+    label: 'H2',
+    icon: 'heading2',
+    category: 'textstile',
+    keywords: ['h2', 'untertitel', 'ueberschrift', 'überschrift'],
+    run: (editor) => editor.chain().focus().setHeading({ level: 2 }).run(),
   },
   {
-    id: 'cloze',
-    label: 'Lücke',
-    icon: 'cloze',
-    category: 'lernen',
-    keywords: ['lücke', 'lueckentext', 'cloze', 'luecke'],
-    run: (editor) => editor.chain().focus().insertCloze().run(),
-  },
-
-  // ---------- Tabellen & Diagramme ----------
-  {
-    id: 'table',
-    label: 'Tabelle',
-    icon: 'table',
-    category: 'daten',
-    keywords: ['tabelle', 'table', 'raster', 'spalten'],
-    run: (editor) => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    id: 'heading3',
+    label: 'H3',
+    icon: 'heading3',
+    category: 'textstile',
+    keywords: ['h3', 'ueberschrift', 'überschrift'],
+    run: (editor) => editor.chain().focus().setHeading({ level: 3 }).run(),
   },
   {
-    id: 'collection',
-    label: 'Sammlung',
-    icon: 'collection',
-    category: 'daten',
-    keywords: ['sammlung', 'datenbank', 'collection', 'tabellenblatt', 'felder', 'erweiterte tabelle'],
-    run: (editor) => editor.chain().focus().insertCollection().run(),
+    id: 'strong',
+    label: 'Fett',
+    icon: 'bold',
+    category: 'textstile',
+    keywords: ['fett', 'strong', 'hervorgehoben'],
+    run: (editor) => editor.chain().focus().setTextVariant('strong').run(),
   },
   {
-    id: 'steps',
-    label: 'Ablauf',
-    icon: 'steps',
-    category: 'daten',
-    keywords: ['ablauf', 'schritte', 'prozess', 'diagramm', 'steps'],
-    run: (editor) => editor.chain().focus().insertDiagram('steps').run(),
+    id: 'paragraph',
+    label: 'Text',
+    icon: 'paragraph',
+    category: 'textstile',
+    keywords: ['text', 'absatz', 'paragraph'],
+    run: (editor) => editor.chain().focus().setTextVariant(null).run(),
   },
   {
-    id: 'timeline',
-    label: 'Zeitstrahl',
-    icon: 'timeline',
-    category: 'daten',
-    keywords: ['zeitstrahl', 'timeline', 'chronologie', 'geschichte', 'diagramm'],
-    run: (editor) => editor.chain().focus().insertDiagram('timeline').run(),
-  },
-  {
-    id: 'bars',
-    label: 'Balken',
-    icon: 'bars',
-    category: 'daten',
-    keywords: ['balken', 'diagramm', 'chart', 'vergleich', 'bars'],
-    run: (editor) => editor.chain().focus().insertDiagram('bars').run(),
-  },
-  {
-    id: 'cycle',
-    label: 'Kreislauf',
-    icon: 'cycle',
-    category: 'daten',
-    keywords: ['kreislauf', 'zyklus', 'cycle', 'diagramm'],
-    run: (editor) => editor.chain().focus().insertDiagram('cycle').run(),
-  },
-  {
-    id: 'mermaid',
-    label: 'Mermaid',
-    icon: 'mermaid',
-    category: 'daten',
-    keywords: ['mermaid', 'flussdiagramm', 'flowchart', 'diagramm', 'mindmap', 'sequenz', 'graph'],
-    run: (editor) => editor.chain().focus().insertMermaid().run(),
-  },
-
-  // ---------- Medien & Code ----------
-  {
-    id: 'image',
-    label: 'Bild',
-    icon: 'image',
-    category: 'medien',
-    keywords: ['bild', 'image', 'foto'],
-    run: (editor) => {
-      const at = editor.state.selection.from;
-      pickImage((src) => editor.chain().focus().setTextSelection(at).setImage({ src }).run());
-    },
-  },
-  {
-    id: 'code',
-    label: 'Codeblock',
-    icon: 'code',
-    category: 'medien',
-    keywords: ['code', 'quelltext', 'programmieren', 'snippet', 'syntax'],
-    // Startet mit drei leeren Zeilen.
-    run: (editor) => insertBlockAfterLine(editor, { type: 'codeBlock', content: [{ type: 'text', text: '\n\n' }] }),
-  },
-  {
-    id: 'divider',
-    label: 'Trennlinie',
-    icon: 'divider',
-    category: 'medien',
-    keywords: ['trennlinie', 'divider', 'linie'],
-    run: (editor) => editor.chain().focus().setHorizontalRule().run(),
+    id: 'caption',
+    label: 'Beschriftung',
+    icon: 'paragraph',
+    category: 'textstile',
+    keywords: ['beschriftung', 'caption', 'klein', 'notiz'],
+    run: (editor) => editor.chain().focus().setTextVariant('caption').run(),
   },
 ];

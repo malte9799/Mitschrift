@@ -1,6 +1,8 @@
 import type { Editor } from '@tiptap/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { prepareBlockInsert, formatChain } from './BlockSelection';
+import { insertInlineMath } from './math/MathNodes';
+import { insertFootnote } from './Footnote';
 
 interface FormatTabProps {
   editor: Editor;
@@ -24,7 +26,7 @@ interface IconItem extends FormatItem {
 const textStyles: TextItem[][] = [
   [
     ...[1, 2, 3].map((level) => ({
-      label: ['Titel', 'Untertitel', 'Überschrift'][level - 1],
+      label: `H${level}`,
       className: `is-h${level}`,
       active: (e: Editor) => e.isActive('heading', { level }),
       run: (e: Editor) => formatChain(e).setHeading({ level: level as 1 | 2 | 3 }).run(),
@@ -59,6 +61,14 @@ const marks: IconItem[] = [
   { label: 'Kursiv', icon: 'italic', active: (e) => e.isActive('italic'), run: (e) => formatChain(e).toggleItalic().run() },
   { label: 'Durchgestrichen', icon: 'strike', active: (e) => e.isActive('strike'), run: (e) => formatChain(e).toggleStrike().run() },
   { label: 'Code', icon: 'code', active: (e) => e.isActive('code'), run: (e) => formatChain(e).toggleCode().run() },
+  { label: 'Taste', icon: 'kbd', active: (e) => e.isActive('kbd'), run: (e) => formatChain(e).toggleKbd().run() },
+  { label: 'Tiefgestellt', icon: 'subscript', active: (e) => e.isActive('subscript'), run: (e) => formatChain(e).toggleSubscript().run() },
+  { label: 'Hochgestellt', icon: 'superscript', active: (e) => e.isActive('superscript'), run: (e) => formatChain(e).toggleSuperscript().run() },
+];
+
+const inserts: IconItem[] = [
+  { label: 'Formel', icon: 'formula', active: (e) => e.isActive('mathInline') || e.isActive('mathBlock'), run: (e) => insertInlineMath(e) },
+  { label: 'Fußnote', icon: 'footnote', active: (e) => e.isActive('footnote'), run: (e) => insertFootnote(e) },
 ];
 
 const blocks: IconItem[] = [
@@ -166,6 +176,7 @@ export function FormatTab({ editor }: FormatTabProps) {
         ))}
         <Segment items={marks} editor={editor} />
         <Segment items={blocks} editor={editor} />
+        <Segment items={inserts} editor={editor} />
         <div className="c-format-split">
           <Segment items={indent} editor={editor} />
           <Segment items={aligns} editor={editor} />

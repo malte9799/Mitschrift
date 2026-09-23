@@ -3,13 +3,16 @@ import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Icon } from '@/ui/Icon';
 import { useEditable } from '@/editor/useEditable';
+import { BarButton, useBlockBar } from '@/editor/BlockBar';
 import { emptyQuestion, type QuizQuestion } from './QuizNode';
 
-export function QuizView({ node, editor, updateAttributes }: NodeViewProps) {
+export function QuizView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const editable = useEditable(editor);
+  const bar = useBlockBar(editor, getPos);
   const questions = node.attrs.questions as QuizQuestion[];
   return (
     <NodeViewWrapper className="b-block b-quiz" data-interactive="">
+      {bar.render(<BarButton icon="plus" label="Frage hinzufügen" text="Frage" onClick={() => updateAttributes({ questions: [...questions, emptyQuestion()] })} />)}
       <div contentEditable={false}>
         <div className="b-block-head">
           <span className="b-block-badge">

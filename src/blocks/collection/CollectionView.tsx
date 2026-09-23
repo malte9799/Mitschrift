@@ -4,9 +4,10 @@ import { Icon } from '@/ui/Icon';
 import { useEditable } from '@/editor/useEditable';
 import { setBlockSelection } from '@/editor/BlockSelection';
 import { CollectionCell } from './CollectionCell';
-import { FieldMenu } from './FieldMenu';
+import { FieldForm, FieldMenu } from './FieldMenu';
+import { BarButton, BarSep, useBlockBar } from '@/editor/BlockBar';
 import { Popover } from './Popover';
-import { cellText, changeFieldType, fieldIcon, newSheet, nextOptionColor, parseCell, sortedRows, uid, type CellValue, type CollectionData, type Field, type Sheet } from './model';
+import { cellText, changeFieldType, fieldIconOf, isChoiceType, newSheet, nextOptionColor, parseCell, sortedRows, uid, type CellValue, type CollectionData, type Field, type Sheet } from './model';
 import { confirmDialog } from '@/ui/Dialog';
 
 /** Zelle als Zeilen-/Spaltenindex in der angezeigten (sortierten) Reihenfolge. */
@@ -32,10 +33,13 @@ const arrows: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: 
 
 export function CollectionView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const editable = useEditable(editor);
+  const bar = useBlockBar(editor, getPos);
   const data = node.attrs.data as CollectionData;
   const [activeId, setActiveId] = useState(data.sheets[0]?.id);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ fieldId: string; anchor: HTMLElement; edit: boolean } | null>(null);
+  /** Offener „Feld hinzufügen“-Dialog (Anker: die Plus-Spalte). Die Spalte entsteht erst beim Bestätigen. */
+  const [adding, setAdding] = useState<HTMLElement | null>(null);
   // Abgehakte Zeilen (nur Ansicht, wird nicht gespeichert).
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   // Markierte Zellen (Klick bzw. Ziehen im Rechteck), wie in einer Tabellenkalkulation.
@@ -112,13 +116,26 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
     selectSheet(rest[0].id);
   }
 
-  function addField(anchor: HTMLElement) {
-    const field: Field = { id: uid(), name: `Feld ${sheet.fields.length + 1}`, type: 'text' };
+  function addField(field: Field) {
     updateSheet((s) => ({ ...s, fields: [...s.fields, field] }));
-    // Menü öffnet sich, sobald der neue Spaltenkopf gerendert ist.
-    requestAnimationFrame(() => {
-      const th = anchor.closest('table')?.querySelector<HTMLElement>(`[data-field="${field.id}"]`);
-      if (th) setMenu({ fieldId: field.id, anchor: th, edit: true });
+    setAdding(null);
+  }
+
+  /** Bearbeitetes Feld übernehmen – Typwechsel wandelt die Werte um, alles in einem Rückgängig-Schritt. */
+  function saveField(next: Field) {
+    updateSheet((s) => {
+      const prev = s.fields.find((f) => f.id === next.id);
+      if (!prev) return s;
+      const converted = changeFieldType(s, next.id, next.type);
+      const generated = converted.fields.find((f) => f.id === next.id)?.options ?? [];
+      const draft = next.options ?? [];
+      // Aus Text wird Auswahl: aus den Werten erzeugte Optionen behalten, im Dialog angelegte ergänzen.
+      const options = !isChoiceType(next.type)
+        ? undefined
+        : isChoiceType(prev.type)
+          ? draft
+          : [...generated, ...draft.filter((d) => !generated.some((g) => g.label === d.label))];
+      return { ...converted, fields: converted.fields.map((f) => (f.id === next.id ? { ...f, name: next.name, icon: next.icon, options } : f)) };
     });
   }
 
@@ -320,7 +337,43 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
   const menuIndex = menuField ? sheet.fields.indexOf(menuField) : -1;
 
   return (
-    <NodeViewWrapper className={`b-block b-coll${checkedRows.length ? ' has-checked' : ''}`} data-interactive="" data-select-bg="">
+    <NodeViewWrapper className={`b-block b-coll${checkedRows.length ? ' has-checked' : ''}`} data-interactive="">
+      {bar.render(
+        checkedRows.length > 0 ? (
+          <>
+            <span className="c-bar-label">
+              {checkedRows.length} {checkedRows.length === 1 ? 'Zeile' : 'Zeilen'}
+            </span>
+            <BarButton
+              icon="trash"
+              label="Ausgewählte Zeilen löschen"
+              text="Löschen"
+              danger
+              onClick={() => {
+                updateSheet((s) => ({ ...s, rows: s.rows.filter((r) => !checked.has(r.id)) }));
+                setChecked(new Set());
+              }}
+            />
+            <BarButton icon="x" label="Auswahl aufheben" text="Aufheben" onClick={() => setChecked(new Set())} />
+          </>
+        ) : (
+          <>
+            <BarButton icon="rowAdd" label="Neue Zeile" text="Zeile" onClick={() => updateSheet((s) => ({ ...s, rows: [...s.rows, { id: uid(), cells: {} }] }))} />
+            <BarButton
+              icon="colAdd"
+              label="Feld hinzufügen"
+              text="Feld"
+              active={!!adding}
+              onClick={(e) => {
+                setMenu(null);
+                setAdding(adding ? null : e.currentTarget);
+              }}
+            />
+            <BarSep />
+            <BarButton icon="plus" label="Tabellenblatt hinzufügen" text="Blatt" onClick={addSheet} />
+          </>
+        ),
+      )}
       <div contentEditable={false}>
         {editable ? (
           <input className="b-coll-title" value={data.title} placeholder="Sammlung" onChange={(e) => save({ ...data, title: e.target.value })} />
@@ -377,7 +430,6 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
         <div
           ref={gridRef}
           className="b-coll-scroll"
-          data-no-select-bg=""
           tabIndex={-1}
           onKeyDown={onGridKeyDown}
           onCopy={onGridCopy}
@@ -411,17 +463,18 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
                         className={`b-coll-head${menu?.fieldId === f.id ? ' is-open' : ''}`}
                         onClick={(e) => {
                           const th = e.currentTarget.closest('th') as HTMLElement;
+                          setAdding(null);
                           setMenu((m) => (m?.fieldId === f.id ? null : { fieldId: f.id, anchor: th, edit: false }));
                         }}
                       >
-                        <Icon name={fieldIcon(f.type)} className="b-coll-head-icon" />
+                        <Icon name={fieldIconOf(f)} className="b-coll-head-icon" />
                         <span>{f.name}</span>
                         {sheet.sort?.fieldId === f.id && <Icon name={sheet.sort.dir === 'asc' ? 'arrowDown' : 'arrowUp'} className="b-coll-head-sort" />}
                         <Icon name="chevron" className="b-coll-head-chevron" />
                       </button>
                     ) : (
                       <span className="b-coll-head">
-                        <Icon name={fieldIcon(f.type)} className="b-coll-head-icon" />
+                        <Icon name={fieldIconOf(f)} className="b-coll-head-icon" />
                         <span>{f.name}</span>
                       </span>
                     )}
@@ -429,7 +482,17 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
                 ))}
                 {editable && (
                   <th className="b-coll-addcol">
-                    <button type="button" aria-label="Feld hinzufügen" title="Feld hinzufügen" onClick={(e) => addField(e.currentTarget)}>
+                    <button
+                      type="button"
+                      className={adding ? 'is-open' : undefined}
+                      aria-label="Feld hinzufügen"
+                      title="Feld hinzufügen"
+                      onClick={(e) => {
+                        const th = e.currentTarget.closest('th') as HTMLElement;
+                        setMenu(null);
+                        setAdding((a) => (a ? null : th));
+                      }}
+                    >
                       <Icon name="plus" />
                     </button>
                   </th>
@@ -483,29 +546,15 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
             <button type="button" className="b-coll-addrow" onClick={() => updateSheet((s) => ({ ...s, rows: [...s.rows, { id: uid(), cells: {} }] }))}>
               <Icon name="plus" /> Neue Zeile
             </button>
-            {checkedRows.length > 0 && (
-              <div className="b-coll-bulk">
-                <span>
-                  {checkedRows.length} {checkedRows.length === 1 ? 'Zeile' : 'Zeilen'} ausgewählt
-                </span>
-                <button
-                  type="button"
-                  className="is-danger"
-                  onClick={() => {
-                    updateSheet((s) => ({ ...s, rows: s.rows.filter((r) => !checked.has(r.id)) }));
-                    setChecked(new Set());
-                  }}
-                >
-                  <Icon name="trash" /> Löschen
-                </button>
-                <button type="button" onClick={() => setChecked(new Set())}>
-                  Aufheben
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
+
+      {adding && (
+        <Popover anchor={adding} onClose={() => setAdding(null)} className="b-fieldmenu" align="end">
+          <FieldForm field={{ id: uid(), name: '', type: 'text' }} mode="add" onSubmit={addField} onCancel={() => setAdding(null)} />
+        </Popover>
+      )}
 
       {menu && menuField && (
         <Popover anchor={menu.anchor} onClose={() => setMenu(null)} className="b-fieldmenu">
@@ -518,8 +567,7 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
             canMoveLeft={menuIndex > 0}
             canMoveRight={menuIndex < sheet.fields.length - 1}
             onSort={(dir) => updateSheet((s) => ({ ...s, sort: dir ? { fieldId: menuField.id, dir } : null }))}
-            onUpdate={updateField}
-            onChangeType={(type) => updateSheet((s) => changeFieldType(s, menuField.id, type))}
+            onSave={saveField}
             onMove={(dir) =>
               updateSheet((s) => {
                 const fields = [...s.fields];

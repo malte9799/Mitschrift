@@ -1,13 +1,15 @@
 import { Extension } from '@tiptap/core';
+import { DOMSerializer, type Node as ProseNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { marked } from 'marked';
+import { blockHtml } from '@/export/html';
 import { blocksToMarkdown } from '@/export/text';
 import type { PMNode } from '@/export/model';
 
 /** Zeilen, die fast nur in Markdown vorkommen (Überschrift, Liste, Zitat, Code-Zaun, Tabelle, Toggle …). */
-const MD_LINE = /^(<details>|#{1,6}\s|\s*[-*+]\s+\[[ xX]\]\s|\s*[-*+]\s|\s*\d+[.)]\s|>\s?|```|~~~|\|.*\|\s*$|(-{3,}|\*{3,}|_{3,})\s*$)/m;
-/** Inline-Markdown: **fett**, `code`, [Link](url), ![Bild](url). */
-const MD_INLINE = /(\*\*[^*\n]+\*\*|__[^_\n]+__|`[^`\n]+`|!?\[[^\]\n]*\]\([^)\s]+\))/;
+const MD_LINE = /^(<details>|#{1,6}\s|\s*[-*+]\s+\[[ xX]\]\s|\s*[-*+]\s|\s*\d+[.)]\s|>\s?|```|~~~|\|.*\|\s*$|(-{3,}|\*{3,}|_{3,})\s*$|\[\^[^\]]+\]:)/m;
+/** Inline-Markdown: **fett**, `code`, [Link](url), ![Bild](url), $Formel$, [^Fußnote]. */
+const MD_INLINE = /(\*\*[^*\n]+\*\*|__[^_\n]+__|`[^`\n]+`|!?\[[^\]\n]*\]\([^)\s]+\)|\$[^\s$](?:[^$\n]*?[^\s$\\])?\$|\[\^[^\]\n]+\])/;
 
 function looksLikeMarkdown(text: string) {
   return MD_LINE.test(text) || MD_INLINE.test(text);
@@ -18,10 +20,78 @@ function htmlHasStructure(html: string) {
   return /<(h[1-6]|ul|ol|li|table|pre|blockquote|strong|b|em|i|a|img)[\s>]/i.test(html);
 }
 
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** Markdown → HTML, das die eigenen Knoten (Checklisten, Hinweise, Mermaid) beim Einlesen wiedererkennen. */
+/**
+ * Formeln (`$…$`, `$$…$$`) und Fußnoten (`[^1]` … `[^1]: …`) kennt `marked` nicht – vor dem eigentlichen
+ * Markdown-Parsen durch eigene Platzhalter-Tags ersetzen, die die Knoten beim Einlesen wiedererkennen
+ * (siehe `parseHTML` in `MathNodes.ts`/`Footnote.ts`). Codezäune bleiben unangetastet.
+ */
+function extractMathAndFootnotes(md: string): string {
+  const lines = md.split('\n');
+  const footnotes = new Map<string, string>();
+  const kept: string[] = [];
+  let inFence = false;
+
+  // 1. Durchlauf: Fußnoten-Definitionen sammeln und aus dem Text entfernen (mit hängenden Folgezeilen).
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^(```|~~~)/.test(line)) inFence = !inFence;
+    if (!inFence) {
+      const def = /^\[\^([^\]]+)\]:\s?(.*)$/.exec(line);
+      if (def) {
+        const body = [def[2]];
+        while (i + 1 < lines.length && /^(\s{2,}|\t)\S/.test(lines[i + 1])) body.push(lines[++i].trim());
+        footnotes.set(def[1], body.join(' ').trim());
+        continue;
+      }
+    }
+    kept.push(line);
+  }
+
+  // 2. Durchlauf: `$$ … $$`-Blöcke (eigene Zeilen, ggf. mehrzeilig) zu Formel-Blöcken zusammenfassen.
+  inFence = false;
+  const merged: string[] = [];
+  for (let i = 0; i < kept.length; i++) {
+    const line = kept[i];
+    if (/^(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      merged.push(line);
+      continue;
+    }
+    if (!inFence && /^\$\$\s*$/.test(line.trim())) {
+      const body: string[] = [];
+      let j = i + 1;
+      while (j < kept.length && !/^\$\$\s*$/.test(kept[j].trim())) body.push(kept[j++]);
+      if (j < kept.length) {
+        merged.push(`<div data-math-block data-latex="${esc(body.join('\n').trim())}"></div>`);
+        i = j;
+        continue;
+      }
+    }
+    merged.push(line);
+  }
+
+  // 3. Durchlauf: `$$…$$` auf einer Zeile sowie inline `$…$` und Fußnoten-Verweise umwandeln.
+  inFence = false;
+  const out = merged.map((line) => {
+    if (/^(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      return line;
+    }
+    if (inFence) return line;
+    const block = /^\$\$(.+)\$\$$/.exec(line.trim());
+    if (block) return `<div data-math-block data-latex="${esc(block[1].trim())}"></div>`;
+    return line
+      .replace(/(?<![$\\\w])\$([^\s$](?:[^$\n]*?[^\s$\\])?)\$(?!\$)/g, (_m, latex: string) => `<span data-math-inline data-latex="${esc(latex)}"></span>`)
+      .replace(/\[\^([^\]\n]+)\]/g, (m, id: string) => (footnotes.has(id) ? `<sup data-footnote data-footnote="${esc(footnotes.get(id)!)}"></sup>` : m));
+  });
+  return out.join('\n');
+}
+
+/** Markdown → HTML, das die eigenen Knoten (Checklisten, Hinweise, Mermaid, Formeln, Fußnoten) beim Einlesen wiedererkennen. */
 export function markdownToHtml(md: string) {
-  const doc = new DOMParser().parseFromString(marked.parse(md, { async: false, gfm: true }), 'text/html');
+  const doc = new DOMParser().parseFromString(marked.parse(extractMathAndFootnotes(md), { async: false, gfm: true }), 'text/html');
 
   // Checklisten: <li><input type=checkbox> … → Tiptap-TaskList.
   doc.querySelectorAll('li > input[type="checkbox"]:first-child').forEach((box) => {
@@ -72,6 +142,28 @@ export function markdownToHtml(md: string) {
   return doc.body.innerHTML;
 }
 
+/** Blöcke, die ihre Daten nur in Attributen tragen – ihr HTML wäre in anderen Apps leer. */
+const DATA_BLOCKS = ['mermaid', 'whiteboard', 'svg', 'quiz', 'flashcards', 'collection', 'diagram', 'plot', 'timeline'];
+
+/**
+ * Wie der normale Serializer, legt aber in Daten-Blöcke lesbares HTML (Code, Tabellen, Fragen).
+ * Beim Einfügen in Mitschrift zählen weiter nur die data-Attribute – die Blöcke sind Atome, der Inhalt wird ignoriert.
+ */
+function readableSerializer(base: DOMSerializer) {
+  const nodes = { ...base.nodes };
+  for (const name of DATA_BLOCKS) {
+    const render = nodes[name];
+    if (!render) continue;
+    nodes[name] = (node: ProseNode) => {
+      const spec = render(node);
+      const dom = DOMSerializer.renderSpec(document, spec).dom as HTMLElement;
+      dom.innerHTML = blockHtml(node.toJSON() as PMNode);
+      return dom;
+    };
+  }
+  return new DOMSerializer(nodes, base.marks);
+}
+
 /**
  * Zwischenablage als Markdown: Eingefügtes Markdown (reiner Text aus Editoren, Chats, .md-Dateien) wird zu Blöcken,
  * kopierte Blöcke landen als Markdown im Text-Teil der Zwischenablage (HTML bleibt für Rich-Text-Ziele).
@@ -84,6 +176,7 @@ export const MarkdownClipboard = Extension.create({
       new Plugin({
         key: new PluginKey('markdownClipboard'),
         props: {
+          clipboardSerializer: readableSerializer(DOMSerializer.fromSchema(this.editor.schema)),
           clipboardTextSerializer(slice) {
             const { content } = slice;
             // Nur ein Stück Text innerhalb eines Absatzes: schlicht als Text, ohne Markdown-Zeichen.

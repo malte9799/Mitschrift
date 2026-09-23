@@ -4,14 +4,17 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Icon } from '@/ui/Icon';
 import { AutoTextarea } from '@/ui/AutoTextarea';
 import { useEditable } from '@/editor/useEditable';
+import { BarButton, useBlockBar } from '@/editor/BlockBar';
 import { shuffle } from '../jsonAttr';
 import type { Flashcard } from './FlashcardsNode';
 
-export function FlashcardsView({ node, editor, updateAttributes }: NodeViewProps) {
+export function FlashcardsView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const editable = useEditable(editor);
+  const bar = useBlockBar(editor, getPos);
   const cards = node.attrs.cards as Flashcard[];
   return (
     <NodeViewWrapper className="b-block b-cards" data-interactive="">
+      {bar.render(<BarButton icon="plus" label="Karte hinzufügen" text="Karte" onClick={() => updateAttributes({ cards: [...cards, { front: '', back: '' }] })} />)}
       <div contentEditable={false}>
         <div className="b-block-head">
           <span className="b-block-badge">
