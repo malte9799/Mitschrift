@@ -14,6 +14,8 @@
       try {
         const t = localStorage.getItem('mitschrift-theme');
         if (t) document.documentElement.dataset.theme = t;
+        const ct = localStorage.getItem('mitschrift-code-theme');
+        if (ct) document.documentElement.dataset.codeTheme = ct;
       } catch {}
     </script>
   </head>
