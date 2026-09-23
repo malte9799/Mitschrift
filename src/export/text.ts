@@ -1,8 +1,9 @@
 import { kindLabels, type DiagramItem, type DiagramKind } from '@/blocks/diagram/DiagramNode';
 import type { Flashcard } from '@/blocks/flashcard/FlashcardsNode';
 import type { QuizQuestion } from '@/blocks/quiz/QuizNode';
-import { calloutVariant } from '@/editor/CalloutNode';
-import { calloutLabels, collectionTables, tableRows, textOf, untitled, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import { resolveCallout } from '@/editor/CalloutNode';
+import { glossaryRows, plotSummary, timelineRows } from './extraBlocks';
+import { collectionTables, imageAsset, noteBlockAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
 
 /** Markdown und reiner Text teilen sich den Aufbau, nur die Auszeichnung unterscheidet sich. */
 type Mode = 'md' | 'txt';
@@ -18,7 +19,7 @@ interface Ctx {
 
 // ---------- Inline ----------
 
-const MARK_ORDER = ['link', 'bold', 'italic', 'underline', 'strike', 'cloze', 'code'];
+const MARK_ORDER = ['link', 'bold', 'italic', 'underline', 'strike', 'cloze', 'kbd', 'subscript', 'superscript', 'code'];
 
 function delims(m: PMMark): [string, string] {
   switch (m.type) {
@@ -34,6 +35,12 @@ function delims(m: PMMark): [string, string] {
       return ['==', '=='];
     case 'code':
       return ['`', '`'];
+    case 'kbd':
+      return ['<kbd>', '</kbd>'];
+    case 'subscript':
+      return ['<sub>', '</sub>'];
+    case 'superscript':
+      return ['<sup>', '</sup>'];
     case 'link':
       return ['[', `](${String(m.attrs?.href ?? '').replace(/[()\s]/g, encodeURIComponent)})`];
     default:
@@ -43,6 +50,9 @@ function delims(m: PMMark): [string, string] {
 
 const sameMark = (a: PMMark, b: PMMark) => a.type === b.type && (a.type !== 'link' || a.attrs?.href === b.attrs?.href);
 const escMd = (s: string) => s.replace(/([\\`*_[\]<|])/g, '\\$1');
+
+/** Fußnoten in Dokument-Reihenfolge, gesammelt während `inline()` – ihr Index (+1) ist ihre Nummer (nur Markdown-Export). */
+let footnotes: string[] = [];
 
 /** Markdown-Inline mit Marken-Stapel, damit aufeinanderfolgende Textstücke nicht `****` erzeugen. */
 function inlineMd(nodes: PMNode[] = [], ctx: Ctx): string {
@@ -62,6 +72,17 @@ function inlineMd(nodes: PMNode[] = [], ctx: Ctx): string {
     if (n.type === 'hardBreak') {
       closeTo(0);
       out += ctx.inCell ? '<br>' : '\\\n';
+      continue;
+    }
+    if (n.type === 'mathInline') {
+      closeTo(0);
+      out += `$${String(n.attrs?.latex ?? '')}$`;
+      continue;
+    }
+    if (n.type === 'footnote') {
+      closeTo(0);
+      const num = footnotes.push(String(n.attrs?.text ?? ''));
+      out += `[^${num}]`;
       continue;
     }
     if (n.type !== 'text' || !n.text) continue;
@@ -91,7 +112,14 @@ function inlineMd(nodes: PMNode[] = [], ctx: Ctx): string {
 
 function inline(nodes: PMNode[] | undefined, ctx: Ctx): string {
   if (ctx.mode === 'md') return inlineMd(nodes, ctx);
-  const s = (nodes ?? []).map((n) => (n.type === 'hardBreak' ? '\n' : n.text ?? '')).join('');
+  const s = (nodes ?? [])
+    .map((n) => {
+      if (n.type === 'hardBreak') return '\n';
+      if (n.type === 'mathInline') return String(n.attrs?.latex ?? '');
+      if (n.type === 'footnote') return String(n.attrs?.text ?? '') ? `[${n.attrs!.text}]` : '';
+      return n.text ?? '';
+    })
+    .join('');
   return ctx.inCell ? s.replace(/\n/g, ' ') : s;
 }
 
@@ -184,18 +212,25 @@ function block(n: PMNode, ctx: Ctx): string {
     case 'blockquote':
       return prefixLines(blocks(n.content, ctx), '> ');
     case 'callout': {
-      const variant = calloutVariant(a.variant);
+      const c = resolveCallout(a);
       const body = blocks(n.content, ctx);
       if (md) {
         // GitHub-Hinweisblöcke; andere Renderer zeigen ein normales Zitat.
-        return prefixLines(`[!${variant.toUpperCase()}]\n${body}`, '> ');
+        return prefixLines(`[!${c.variant.toUpperCase()}]\n${body}`, '> ');
       }
-      return prefixLines(`${calloutLabels[variant]}:\n${body}`, '│ ');
+      return prefixLines(`${c.title}:\n${body}`, '│ ');
     }
     case 'toggleBlock': {
       const body = blocks(n.content, ctx);
       if (md) return `<details>\n<summary>${escMd(a.summary || 'Aufklappen')}</summary>\n\n${body}\n\n</details>`;
       return `▸ ${a.summary || 'Aufklappen'}\n${prefixLines(body, '  ')}`;
+    }
+    case 'noteBlock':
+      return block(noteBlockAsParagraph(n), ctx);
+    case 'mathBlock': {
+      const latex = String(a.latex ?? '').trim();
+      if (!latex) return '';
+      return md ? `$$\n${latex}\n$$` : prefixLines(latex, '    ');
     }
     case 'horizontalRule':
       return md ? '---' : '─'.repeat(40);
@@ -210,10 +245,23 @@ function block(n: PMNode, ctx: Ctx): string {
     }
     case 'image': {
       // Ohne vorbereitete Assets (Zwischenablage): Web-Bilder direkt verlinken, lokale weglassen.
-      const url = ctx.assets.images.get(a.src)?.url ?? (a.src && !String(a.src).startsWith('file:') ? a.src : '');
+      const url = (a.src && imageAsset(ctx.assets, a.src, a.edit)?.url) || (a.src && !String(a.src).startsWith('file:') ? a.src : '');
       const alt = a.alt || a.title || 'Bild';
       if (!md) return `[Bild: ${alt}]`;
       return url ? `![${escMd(alt)}](${url})` : '';
+    }
+    case 'gallery': {
+      const items = (a.items ?? []) as { src: string; caption?: string; alt?: string; edit?: Parameters<typeof imageAsset>[2] }[];
+      const lines = items
+        .map((it) => {
+          const url = (it.src && imageAsset(ctx.assets, it.src, it.edit)?.url) || (it.src && !it.src.startsWith('file:') ? it.src : '');
+          const alt = it.caption || it.alt || 'Bild';
+          if (!md) return `[Bild: ${alt}]`;
+          return url ? `![${escMd(alt)}](${url})` : '';
+        })
+        .filter(Boolean);
+      if (!lines.length) return '';
+      return `${a.title ? `${label(a.title, ctx)}\n\n` : ''}${lines.join(md ? '\n\n' : '\n')}`;
     }
     case 'flashcards': {
       const cards = (a.cards ?? []) as Flashcard[];
@@ -253,6 +301,18 @@ function block(n: PMNode, ctx: Ctx): string {
       if (!code) return '';
       return md ? `\`\`\`mermaid\n${code}\n\`\`\`` : `[Mermaid-Diagramm]\n${prefixLines(code, '    ')}`;
     }
+    case 'svg': {
+      if (!a.svg) return '';
+      const label = String(a.caption || a.alt || '').trim();
+      return md ? `*[SVG-Grafik${label ? `: ${escMd(label)}` : ''}]*` : `[SVG-Grafik${label ? `: ${label}` : ''}]`;
+    }
+    case 'whiteboard': {
+      // Bild geht als Text nicht – wenigstens die Beschriftungen der Zeichnung mitnehmen.
+      const texts = whiteboardTexts(a.scene);
+      if (!texts.length && !a.svg) return '';
+      const head = md ? '*[Whiteboard]*' : '[Whiteboard]';
+      return texts.length ? `${head}\n${texts.map((t) => `${md ? '-' : '•'} ${md ? escMd(t) : t}`).join('\n')}` : head;
+    }
     case 'table': {
       const cellCtx = { ...ctx, inCell: true };
       const rows = tableRows(n).map((r) => r.map((c) => blocks(c.content, cellCtx, md ? '<br>' : ' ')));
@@ -262,6 +322,28 @@ function block(n: PMNode, ctx: Ctx): string {
       return collectionTables(a.data)
         .map((t) => `${label(t.name, ctx)}\n\n${table(t.rows.map((r) => r.map((c) => escCell(c, ctx))), ctx)}`)
         .join('\n\n');
+    case 'plot': {
+      const p = plotSummary(n);
+      if (!p.fns.length) return '';
+      const lines = p.fns.map((f) => (md ? `- ${f.name} = \`${f.expr}\`` : `• ${f.name} = ${f.expr}`));
+      if (p.params) lines.push(md ? `- *${escMd(p.params)}*` : `  (${p.params})`);
+      return `${label(p.title || 'Funktionsplotter', ctx)}\n\n${lines.join('\n')}`;
+    }
+    case 'timeline': {
+      const t = timelineRows(n);
+      if (!t.rows.length) return '';
+      const lines = t.rows.map((r) => {
+        const text = r.text ? ` – ${md ? escMd(r.text) : r.text}` : '';
+        return md ? `- **${escMd(r.date)}** ${escMd(r.title)}${text}` : `• ${r.date}: ${r.title}${text}`;
+      });
+      return `${label(t.title || 'Zeitstrahl', ctx)}\n\n${lines.join('\n')}`;
+    }
+    case 'glossaryList': {
+      const g = glossaryRows(n, ctx.assets);
+      if (!g || !g.rows.length) return '';
+      const rows = [['Begriff', 'Bedeutung'], ...g.rows.map((t) => [escCell(t.term, ctx), escCell(t.definition ? `${t.expansion} – ${t.definition}` : t.expansion, ctx)])];
+      return `${label(g.title, ctx)}\n\n${table(rows, ctx)}`;
+    }
     default:
       return n.content ? blocks(n.content, ctx) : '';
   }
@@ -269,13 +351,17 @@ function block(n: PMNode, ctx: Ctx): string {
 
 export function toMarkdown({ title, tags, doc, assets }: ExportDoc): string {
   const ctx: Ctx = { mode: 'md', assets, shiftHeadings: true };
+  footnotes = [];
+  const body = blocks(doc.content, ctx);
   const head = [`# ${escMd(untitled(title))}`, tags.length ? tags.map((t) => `\`${t}\``).join(' ') : ''].filter(Boolean).join('\n\n');
-  return `${[head, blocks(doc.content, ctx)].filter(Boolean).join('\n\n')}\n`;
+  const notes = footnotes.length ? footnotes.map((text, i) => `[^${i + 1}]: ${escMd(text)}`).join('\n') : '';
+  return `${[head, body, notes].filter(Boolean).join('\n\n')}\n`;
 }
 
 /** Blöcke ohne Titel als Markdown – für die Zwischenablage. */
 export function blocksToMarkdown(nodes: PMNode[]): string {
-  return blocks(nodes, { mode: 'md', assets: { images: new Map(), mermaid: new Map() } });
+  footnotes = [];
+  return blocks(nodes, { mode: 'md', assets: { images: new Map(), mermaid: new Map(), math: new Map() } });
 }
 
 export function toPlainText({ title, tags, doc, assets }: ExportDoc): string {

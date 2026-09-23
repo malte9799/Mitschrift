@@ -1,6 +1,10 @@
-import { resolveSrc } from '@/editor/StoredImage';
+import { resolveSrc } from '@/editor/image/files';
+import { hasVisualEdit, imageKey, type ImageEdit } from '@/editor/image/model';
+import { renderEdited } from '@/editor/image/pixels';
 import { renderMermaid } from '@/blocks/mermaid/MermaidView';
+import { loadKatex, mathToMathml } from '@/editor/math/katex';
 import type { CellValue, CollectionData, Field } from '@/blocks/collection/model';
+import type { TermLike } from '@/glossary/match';
 
 /** Tiptap-JSON, so wie es in `Note.content` steht. */
 export interface PMMark {
@@ -33,14 +37,37 @@ export interface ImageAsset {
 }
 
 export interface Assets {
+  /** Schlüssel: `imageKey(src, edit)` – bearbeitete Bilder liegen fertig gerendert vor. */
   images: Map<string, ImageAsset>;
   /** Mermaid-Code → gerendertes SVG. */
   mermaid: Map<string, string>;
+  /** `${display}:${latex}` → gerendertes MathML (Formeln). */
+  math: Map<string, string>;
+  /** Glossar für das Abkürzungsverzeichnis: alle Begriffe und die in der Notiz vorkommenden. */
+  glossary?: { all: TermLike[]; used: TermLike[] };
 }
 
 export { calloutLabels } from '@/editor/CalloutNode';
 
+/** Bild-Asset zu Quelle + Bearbeitung; ohne gerenderte Fassung das unbearbeitete Original. */
+export function imageAsset(assets: Assets, src: string, edit?: ImageEdit | null): ImageAsset | undefined {
+  return assets.images.get(imageKey(src, edit)) ?? assets.images.get(src);
+}
+
+/** Alle Bilder eines Knotens (Bild-Block oder Galerie) mit ihrer Bearbeitung. */
+export function nodeImages(n: PMNode): { src: string; edit: ImageEdit | null }[] {
+  if (n.type === 'image' && n.attrs?.src) return [{ src: n.attrs.src, edit: n.attrs.edit ?? null }];
+  if (n.type === 'gallery') return ((n.attrs?.items ?? []) as { src: string; edit?: ImageEdit | null }[]).filter((i) => i.src).map((i) => ({ src: i.src, edit: i.edit ?? null }));
+  return [];
+}
+
 export const untitled = (title: string) => title.trim() || 'Ohne Titel';
+
+/** Notiz-Block (Zeile/Karte) für Exporte: ein Absatz mit Markdown-Link `[Titel](/n/<id>)`. */
+export function noteBlockAsParagraph(n: PMNode): PMNode {
+  const a = n.attrs ?? {};
+  return { type: 'paragraph', content: [{ type: 'text', text: untitled(String(a.title ?? '')), marks: [{ type: 'link', attrs: { href: `/n/${a.id}` } }] }] };
+}
 
 export function walk(node: PMNode, fn: (n: PMNode) => void) {
   fn(node);
@@ -86,18 +113,23 @@ async function toPng(img: HTMLImageElement): Promise<Uint8Array | undefined> {
   }
 }
 
-/** Lädt Bilder (lokal → Data-URL) und rendert Mermaid-Diagramme vorab, damit die Exporter synchron bleiben. */
-export async function collectAssets(doc: PMNode, opts: { png?: boolean; mermaid?: boolean } = {}): Promise<Assets> {
-  const images = new Set<string>();
+/** Lädt Bilder (lokal → Data-URL) und rendert Mermaid-Diagramme/Formeln vorab, damit die Exporter synchron bleiben. */
+export async function collectAssets(doc: PMNode, opts: { png?: boolean; mermaid?: boolean; math?: boolean } = {}): Promise<Assets> {
+  const images = new Map<string, { src: string; edit: ImageEdit | null }>();
   const mermaid = new Set<string>();
+  const math = new Map<string, { latex: string; display: boolean }>();
   walk(doc, (n) => {
-    if (n.type === 'image' && n.attrs?.src) images.add(n.attrs.src);
+    for (const img of nodeImages(n)) images.set(imageKey(img.src, img.edit), img);
     if (n.type === 'mermaid' && n.attrs?.code?.trim()) mermaid.add(n.attrs.code);
+    if ((n.type === 'mathInline' || n.type === 'mathBlock') && n.attrs?.latex?.trim()) {
+      const display = n.type === 'mathBlock';
+      math.set(`${display}:${n.attrs.latex}`, { latex: n.attrs.latex, display });
+    }
   });
 
-  const assets: Assets = { images: new Map(), mermaid: new Map() };
+  const assets: Assets = { images: new Map(), mermaid: new Map(), math: new Map() };
   await Promise.all([
-    ...[...images].map(async (src) => {
+    ...[...images].map(async ([key, { src, edit }]) => {
       try {
         let url = src;
         if (src.startsWith('file:')) {
@@ -106,20 +138,39 @@ export async function collectAssets(doc: PMNode, opts: { png?: boolean; mermaid?
           url = await blobToDataUrl(await (await fetch(blobUrl)).blob());
         }
         const img = await loadImage(url);
-        assets.images.set(src, {
+        if (hasVisualEdit(edit)) {
+          // Zuschnitt, Drehung und Farben fest ins Bild rechnen – Exporte kennen kein CSS dafür.
+          try {
+            const canvas = renderEdited(img, edit!);
+            const edited = await loadImage(canvas.toDataURL('image/png'));
+            assets.images.set(key, { url: edited.src, width: edited.naturalWidth, height: edited.naturalHeight, png: opts.png ? await toPng(edited) : undefined });
+            return;
+          } catch {
+            // Fremdes Bild ohne Pixelzugriff: unbearbeitet exportieren.
+          }
+        }
+        assets.images.set(key, {
           url,
           width: img.naturalWidth,
           height: img.naturalHeight,
           png: opts.png ? await toPng(img) : undefined,
         });
       } catch {
-        if (!src.startsWith('file:')) assets.images.set(src, { url: src, width: 0, height: 0 });
+        if (!src.startsWith('file:')) assets.images.set(key, { url: src, width: 0, height: 0 });
       }
     }),
     ...(opts.mermaid ? [...mermaid] : []).map(async (code) => {
       const res = await renderMermaid(code, false);
       if ('svg' in res) assets.mermaid.set(code, res.svg);
     }),
+    opts.math && math.size
+      ? loadKatex().then(() => {
+          for (const [key, { latex, display }] of math) {
+            const mathml = mathToMathml(latex, display);
+            if (mathml) assets.math.set(key, mathml);
+          }
+        })
+      : Promise.resolve(),
   ]);
   return assets;
 }
@@ -156,6 +207,14 @@ export function collectionTables(data: CollectionData | undefined): { name: stri
 }
 
 /** Tiptap-Tabelle als Zeilen von Zellen-Knoten. */
+/** Beschriftungen einer Whiteboard-Zeichnung, von oben nach unten gelesen. */
+export function whiteboardTexts(scene: { elements?: { type: string; text?: string; x: number; y: number; isDeleted?: boolean }[] } | undefined): string[] {
+  return (scene?.elements ?? [])
+    .filter((e) => e.type === 'text' && !e.isDeleted && e.text?.trim())
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((e) => e.text!.replace(/\s+/g, ' ').trim());
+}
+
 export function tableRows(table: PMNode): PMNode[][] {
   return (table.content ?? []).map((row) => row.content ?? []);
 }

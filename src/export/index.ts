@@ -1,6 +1,7 @@
 import { storage, type Note } from '@/storage';
 import { toHtml } from './html';
-import { collectAssets, safeFilename, untitled, type ExportDoc, type PMNode } from './model';
+import { collectAssets, safeFilename, textOf, untitled, type ExportDoc, type PMNode } from './model';
+import { termsInText } from '@/glossary/match';
 import { toRtf } from './rtf';
 import { toMarkdown, toPlainText } from './text';
 
@@ -66,10 +67,12 @@ function printHtml(html: string, title: string) {
 /** Exportiert eine Notiz; `doc` ist der aktuelle Editor-Inhalt, falls vorhanden. */
 export async function exportNote(note: Note, format: ExportFormat, doc?: PMNode) {
   const content: PMNode = doc ?? (note.content ? JSON.parse(note.content) : { type: 'doc', content: [] });
-  const [assets, allTags] = await Promise.all([
-    collectAssets(content, { png: format === 'rtf', mermaid: format === 'pdf' || format === 'html' }),
+  const [assets, allTags, terms] = await Promise.all([
+    collectAssets(content, { png: format === 'rtf', mermaid: format === 'pdf' || format === 'html', math: format === 'pdf' || format === 'html' }),
     storage.listTags(),
+    storage.listTerms(),
   ]);
+  assets.glossary = { all: terms, used: termsInText(terms, textOf(content)) };
   const tags = note.tags.map((id) => allTags.find((t) => t.id === id)?.name).filter((n): n is string => !!n);
   const data: ExportDoc = { title: note.title, tags, doc: content, assets };
 
