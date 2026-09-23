@@ -13,6 +13,8 @@ export interface ActiveNote {
   togglePanel: () => void;
   toggleStar: () => void;
   remove: () => void;
+  /** Präsentation starten – am Anfang oder auf der Folie mit der Schreibmarke. */
+  present: (fromCursor?: boolean) => void;
 }
 
 let current: ActiveNote | null = null;

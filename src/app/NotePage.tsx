@@ -8,9 +8,13 @@ import { useNote } from '@/hooks/useNote';
 import { Icon } from '@/ui/Icon';
 import { deleteNote } from './actions';
 import { NoteTags } from './NoteTags';
+import { NoteBreadcrumbs, NoteRelations } from './NoteRelations';
 import type { LayoutContext } from './AppLayout';
 import { setActiveNote } from './activeNote';
+import { markViewed } from './recentViews';
 import { confirmDialog } from '@/ui/Dialog';
+import type { PMNode } from '@/export/model';
+import { Presentation, buildSlides, slideAt } from './Presentation';
 
 const PANEL_KEY = 'mitschrift-panel-open';
 
@@ -24,6 +28,7 @@ function NoteScreen({ id }: { id: string }) {
   const { note, loading, saved, save } = useNote(id);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [learning, setLearning] = useState(false);
+  const [presenting, setPresenting] = useState<{ doc: PMNode; start: number } | null>(null);
   const [panelOpen, setPanelOpen] = useState(() => {
     try {
       return localStorage.getItem(PANEL_KEY) !== '0' && window.innerWidth > 1100;
@@ -77,13 +82,27 @@ function NoteScreen({ id }: { id: string }) {
       togglePanel,
       toggleStar: () => save({ starred: !note.starred }),
       remove: onDelete,
+      present,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Funktionen ändern sich nur mit diesen Werten
   }, [note, editor, saved, learning, panelOpen]);
   useEffect(() => () => setActiveNote(null), []);
 
+  // Für „Zuletzt angesehen“ auf der Startseite.
+  const found = !!note;
+  useEffect(() => {
+    if (found) markViewed(id);
+  }, [id, found]);
+
   if (loading) return null;
   if (!note) return <Navigate to="/" replace />;
+
+  function present(fromCursor = false) {
+    if (!note) return;
+    const doc: PMNode = editor ? (editor.getJSON() as PMNode) : note.content ? JSON.parse(note.content) : { type: 'doc', content: [] };
+    const start = fromCursor && editor ? slideAt(buildSlides(doc), editor.state.selection.$from.index(0)) : 0;
+    setPresenting({ doc, start });
+  }
 
   async function onDelete() {
     if (!(await confirmDialog('Diese Notiz wirklich löschen?', { confirmLabel: 'Löschen', danger: true }))) return;
@@ -111,15 +130,17 @@ function NoteScreen({ id }: { id: string }) {
       editor.chain().insertContentAt(0, { type: 'paragraph' }).run();
     }
     // Synchron fokussieren, damit schnelles Tippen nicht verloren geht.
-    dom.focus();
+    dom.focus({ preventScroll: true });
     editor.commands.setTextSelection(1);
-    editor.commands.focus();
+    editor.commands.focus(null, { scrollIntoView: false });
     return true;
   }
 
   /** Klick in den leeren Bereich unter dem Text setzt den Cursor ans Ende der letzten Zeile. */
   function focusEndBelowEditor(e: React.MouseEvent) {
     if (!editor || learning || e.button !== 0) return;
+    // Randnotizen und ihre Menüs (Portal, aber im React-Baum unter <main>) behandeln Klicks selbst.
+    if ((e.target as Element).closest?.('.c-side-note, .b-pop, .note-relations, .note-crumbs')) return;
     const dom = editor.view.dom as HTMLElement;
     if (insertLineAtTop(e, dom)) return;
     if (dom.contains(e.target as Node) || e.clientY <= dom.getBoundingClientRect().bottom) return;
@@ -127,8 +148,9 @@ function NoteScreen({ id }: { id: string }) {
     const { doc } = editor.state;
     // Endet die Notiz mit einem Nicht-Text-Block (Quiz, Diagramm …), eine leere Zeile anhängen.
     if (!doc.lastChild?.isTextblock) editor.chain().insertContentAt(doc.content.size, { type: 'paragraph' }).run();
-    dom.focus();
-    editor.commands.focus('end');
+    // Nicht scrollen – nur den Cursor setzen.
+    dom.focus({ preventScroll: true });
+    editor.commands.focus('end', { scrollIntoView: false });
   }
 
   return (
@@ -165,6 +187,9 @@ function NoteScreen({ id }: { id: string }) {
         </div>
 
         <div className="note-bar-right">
+          <button type="button" className="icon-btn" onClick={() => present()} aria-label="Präsentieren" title="Präsentieren (⌥⌘P)">
+            <Icon name="present" />
+          </button>
           {!learning && (
             <button
               type="button"
@@ -180,6 +205,7 @@ function NoteScreen({ id }: { id: string }) {
       </header>
 
       <motion.main className="note-page" onMouseDown={focusEndBelowEditor} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+        <NoteBreadcrumbs id={id} />
         <textarea
           ref={titleRef}
           className="note-title"
@@ -206,8 +232,11 @@ function NoteScreen({ id }: { id: string }) {
             </motion.p>
           )}
         </AnimatePresence>
-        <NoteEditor content={note.content} learning={learning} onChange={(json) => save({ content: json })} onEditorReady={setEditor} />
+        <NoteEditor noteId={id} content={note.content} learning={learning} onChange={(json) => save({ content: json })} onEditorReady={setEditor} />
+        <NoteRelations id={id} readOnly={learning} editor={editor} />
       </motion.main>
+
+      {presenting && <Presentation note={note} doc={presenting.doc} startAt={presenting.start} onClose={() => setPresenting(null)} />}
 
       <AnimatePresence>
         {showPanel && (

@@ -72,8 +72,182 @@
   --hl-type:#FFA657; --hl-tag:#7EE787; --hl-meta:#8B949E; --hl-del:#FFA198; --hl-del-bg:rgba(248,81,73,.12); --hl-add-bg:rgba(63,185,80,.12);
   color-scheme:dark;
 }
+/* Sepia – warmes Papier-Theme, hell. */
+:root[data-theme="sepia"]{
+  --paper:#F6EFE1; --paper-2:#EFE4D0; --ink:#3A2E20; --ink-soft:#7A6A54; --ink-faint:#AE9C82;
+  --line:#E2D3B4; --card:#FBF6EA; --hover:#EBDFC4;
+  --accent:#A8702C; --accent-bg:#F1E2C4; --accent-soft:#E6CE9C; --on-accent:#FFFFFF;
+  --red:#B23A28; --red-bg:#F5E1D8;
+  --green:#5C7A34; --green-bg:#E8EBD4;
+  --amber:#A3730E; --amber-bg:#F5E6C4;
+  --blue:#3E6E8E; --blue-bg:#DEE9EC;
+  --purple:#8A5A96; --purple-bg:#EFE1EE;
+  --shadow-sm:0 1px 2px rgba(60,40,10,.08);
+  --shadow:0 1px 2px rgba(60,40,10,.06),0 6px 20px -6px rgba(60,40,10,.18);
+  --shadow-lg:0 2px 6px rgba(60,40,10,.08),0 18px 40px -12px rgba(60,40,10,.28);
+  --tag-teal:#3F7566; --tag-teal-bg:#DDEBE2;
+  --tag-blue:#3E6E8E; --tag-blue-bg:#DEE9EC;
+  --tag-green:#5C7A34; --tag-green-bg:#E8EBD4;
+  --tag-graphite:#5A4E3E; --tag-graphite-bg:#E7DCC6;
+  --tag-orange:#A85B26; --tag-orange-bg:#F3DFC8;
+  --tag-purple:#8A5A96; --tag-purple-bg:#EFE1EE;
+  --tag-red:#B23A28; --tag-red-bg:#F5E1D8;
+  --tag-pink:#B0567F; --tag-pink-bg:#F3DFE6;
+  --tag-amber:#A3730E; --tag-amber-bg:#F5E6C4;
+  --code-bg:#EFE4CE; --code-ink:#3A2E20; --code-soft:#7A6A54; --code-gutter:#AE9C82;
+  --code-hover:rgba(60,40,10,.06); --code-line:rgba(60,40,10,.09);
+  --hl-comment:#8A7A5E; --hl-keyword:#A3402E; --hl-string:#4F6B3A; --hl-number:#3E6E8E; --hl-title:#8A5A96;
+  --hl-type:#A3730E; --hl-tag:#5C7A34; --hl-meta:#7A6A54; --hl-del:#8E2E1E; --hl-del-bg:#F0D6CC; --hl-add-bg:#DCE6C6;
+  color-scheme:light;
+}
+
+/* Slate – kühles, dunkles Blau-Theme. */
+:root[data-theme="slate"]{
+  --paper:#0E1520; --paper-2:#141E2C; --ink:#E4EBF5; --ink-soft:#8FA1B8; --ink-faint:#57687F;
+  --line:#223146; --card:#182333; --hover:#1D2B3D;
+  --accent:#5FA8E0; --accent-bg:#16283C; --accent-soft:#20374F; --on-accent:#0E1520;
+  --red:#F0796A; --red-bg:#331B1E;
+  --green:#5FCB93; --green-bg:#11291F;
+  --amber:#F0B65F; --amber-bg:#332510;
+  --blue:#5FA8E0; --blue-bg:#122A3E;
+  --purple:#B196EE; --purple-bg:#211D3A;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -6px rgba(0,0,0,.5);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.4),0 20px 44px -12px rgba(0,0,0,.7);
+  --tag-teal:#5BC4B8; --tag-teal-bg:#123330;
+  --tag-blue:#5FA8E0; --tag-blue-bg:#122A3E;
+  --tag-green:#5FCB93; --tag-green-bg:#11291F;
+  --tag-graphite:#B7C4D6; --tag-graphite-bg:#223146;
+  --tag-orange:#F0996A; --tag-orange-bg:#332216;
+  --tag-purple:#B196EE; --tag-purple-bg:#211D3A;
+  --tag-red:#F0796A; --tag-red-bg:#331B1E;
+  --tag-pink:#EE96C6; --tag-pink-bg:#331C2C;
+  --tag-amber:#F0B65F; --tag-amber-bg:#332510;
+  --code-bg:#101A28; --code-ink:#DCE6F2; --code-soft:#8FA1B8; --code-gutter:#4C5D74;
+  --code-hover:rgba(255,255,255,.06); --code-line:rgba(255,255,255,.07);
+  --hl-comment:#7189A3; --hl-keyword:#F0796A; --hl-string:#8FD4B4; --hl-number:#5FA8E0; --hl-title:#B196EE;
+  --hl-type:#F0B65F; --hl-tag:#5FCB93; --hl-meta:#8FA1B8; --hl-del:#F0796A; --hl-del-bg:rgba(240,121,106,.14); --hl-add-bg:rgba(95,203,147,.14);
+  color-scheme:dark;
+}
+
+/* Mist – neutrales, kühles Grau-Hell ohne Farbstich. */
+:root[data-theme="mist"]{
+  --paper:#F4F5F6; --paper-2:#ECEDEF; --ink:#20232A; --ink-soft:#666C77; --ink-faint:#9BA1AB;
+  --line:#DDE0E4; --card:#FFFFFF; --hover:#E7E9EC;
+  --accent:#3E63DD; --accent-bg:#E7EBFC; --accent-soft:#D2DBF8; --on-accent:#FFFFFF;
+  --red:#D93A2B; --red-bg:#FDEEEC;
+  --green:#1F8A4C; --green-bg:#E8F6EE;
+  --amber:#B8650A; --amber-bg:#FFF6E6;
+  --blue:#1F6FD1; --blue-bg:#EAF3FE;
+  --purple:#8250DF; --purple-bg:#F3EEFC;
+  --shadow-sm:0 1px 2px rgba(20,25,35,.06);
+  --shadow:0 1px 2px rgba(20,25,35,.05),0 6px 20px -6px rgba(20,25,35,.14);
+  --shadow-lg:0 2px 6px rgba(20,25,35,.06),0 18px 40px -12px rgba(20,25,35,.24);
+  --tag-teal:#0E7268; --tag-teal-bg:#E2F1EE;
+  --tag-blue:#175CD3; --tag-blue-bg:#EFF8FF;
+  --tag-green:#15803D; --tag-green-bg:#EAF7EE;
+  --tag-graphite:#3F3F46; --tag-graphite-bg:#EDEDF0;
+  --tag-orange:#9A3412; --tag-orange-bg:#FFF4ED;
+  --tag-purple:#6941C6; --tag-purple-bg:#F4F3FF;
+  --tag-red:#B42318; --tag-red-bg:#FEF3F2;
+  --tag-pink:#C11574; --tag-pink-bg:#FDF2FA;
+  --tag-amber:#B54708; --tag-amber-bg:#FFFAEB;
+  --code-bg:#EBEDEF; --code-ink:#20232A; --code-soft:#666C77; --code-gutter:#9BA1AB;
+  --code-hover:rgba(20,25,35,.05); --code-line:rgba(20,25,35,.08);
+  --hl-comment:#6E7781; --hl-keyword:#CF222E; --hl-string:#0A3069; --hl-number:#0550AE; --hl-title:#8250DF;
+  --hl-type:#953800; --hl-tag:#116329; --hl-meta:#57606A; --hl-del:#82071E; --hl-del-bg:#FFEBE9; --hl-add-bg:#DAFBE1;
+  color-scheme:light;
+}
+
+/* Linen – leicht warm getönte helle Variante, dezenter als Sepia. */
+:root[data-theme="linen"]{
+  --paper:#FAF7F2; --paper-2:#F2EDE3; --ink:#2A251E; --ink-soft:#756C5D; --ink-faint:#ACA391;
+  --line:#E7E0D2; --card:#FFFFFF; --hover:#F0EADA;
+  --accent:#B9722F; --accent-bg:#F3E7D5; --accent-soft:#E9D3AE; --on-accent:#FFFFFF;
+  --red:#C23B28; --red-bg:#F7E4DD;
+  --green:#4E8A45; --green-bg:#E7F0E1;
+  --amber:#A9740D; --amber-bg:#F7EACB;
+  --blue:#3E70A0; --blue-bg:#E4EEF6;
+  --purple:#8A5FA8; --purple-bg:#F1E7F5;
+  --shadow-sm:0 1px 2px rgba(50,40,20,.06);
+  --shadow:0 1px 2px rgba(50,40,20,.05),0 6px 20px -6px rgba(50,40,20,.14);
+  --shadow-lg:0 2px 6px rgba(50,40,20,.06),0 18px 40px -12px rgba(50,40,20,.24);
+  --tag-teal:#3F7D68; --tag-teal-bg:#E2EFE7;
+  --tag-blue:#3E70A0; --tag-blue-bg:#E4EEF6;
+  --tag-green:#4E8A45; --tag-green-bg:#E7F0E1;
+  --tag-graphite:#5C5546; --tag-graphite-bg:#ECE5D6;
+  --tag-orange:#B15E24; --tag-orange-bg:#F6E5D2;
+  --tag-purple:#8A5FA8; --tag-purple-bg:#F1E7F5;
+  --tag-red:#C23B28; --tag-red-bg:#F7E4DD;
+  --tag-pink:#B25587; --tag-pink-bg:#F5E3EC;
+  --tag-amber:#A9740D; --tag-amber-bg:#F7EACB;
+  --code-bg:#F2EBDC; --code-ink:#2A251E; --code-soft:#756C5D; --code-gutter:#ACA391;
+  --code-hover:rgba(50,40,20,.05); --code-line:rgba(50,40,20,.08);
+  --hl-comment:#8C8270; --hl-keyword:#A8402E; --hl-string:#4D6E3E; --hl-number:#3E70A0; --hl-title:#8A5FA8;
+  --hl-type:#A9740D; --hl-tag:#4E8A45; --hl-meta:#756C5D; --hl-del:#8E2E1E; --hl-del-bg:#EFD8CE; --hl-add-bg:#DCEACE;
+  color-scheme:light;
+}
+
+/* Graphite – neutrales, reines Dunkelgrau ohne Farbstich. */
+:root[data-theme="graphite"]{
+  --paper:#161616; --paper-2:#1D1D1D; --ink:#EDEDED; --ink-soft:#9B9B9B; --ink-faint:#666666;
+  --line:#2C2C2C; --card:#1F1F1F; --hover:#282828;
+  --accent:#8C8CF0; --accent-bg:#232336; --accent-soft:#2E2E48; --on-accent:#161616;
+  --red:#FF8A7A; --red-bg:#331E1B;
+  --green:#5FD69A; --green-bg:#132A20;
+  --amber:#FFC15E; --amber-bg:#302410;
+  --blue:#7FB8FF; --blue-bg:#132538;
+  --purple:#BBA0FA; --purple-bg:#241F3A;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -6px rgba(0,0,0,.6);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.5),0 20px 44px -12px rgba(0,0,0,.75);
+  --tag-teal:#5BCBBB; --tag-teal-bg:#15302B;
+  --tag-blue:#7FB8FF; --tag-blue-bg:#132538;
+  --tag-green:#5FD69A; --tag-green-bg:#132A20;
+  --tag-graphite:#D6D6D6; --tag-graphite-bg:#2C2C2C;
+  --tag-orange:#FCA679; --tag-orange-bg:#301E14;
+  --tag-purple:#BBA0FA; --tag-purple-bg:#241F3A;
+  --tag-red:#FF8A7A; --tag-red-bg:#331E1B;
+  --tag-pink:#F5A3D0; --tag-pink-bg:#331E2B;
+  --tag-amber:#FFC15E; --tag-amber-bg:#302410;
+  --code-bg:#121212; --code-ink:#E4E4E4; --code-soft:#9B9B9B; --code-gutter:#5A5A5A;
+  --code-hover:rgba(255,255,255,.06); --code-line:rgba(255,255,255,.07);
+  --hl-comment:#8A8A8A; --hl-keyword:#FF8A7A; --hl-string:#A9DFC4; --hl-number:#7FB8FF; --hl-title:#BBA0FA;
+  --hl-type:#FFC15E; --hl-tag:#5FD69A; --hl-meta:#9B9B9B; --hl-del:#FF8A7A; --hl-del-bg:rgba(255,138,122,.14); --hl-add-bg:rgba(95,214,154,.14);
+  color-scheme:dark;
+}
+
+/* Midnight – leicht getönte dunkle Indigo/Navy-Variante. */
+:root[data-theme="midnight"]{
+  --paper:#12131F; --paper-2:#181A2A; --ink:#E7E8F5; --ink-soft:#9497B8; --ink-faint:#5C5F7D;
+  --line:#252740; --card:#1A1C2E; --hover:#20223A;
+  --accent:#8A93F5; --accent-bg:#20223F; --accent-soft:#2C2F55; --on-accent:#12131F;
+  --red:#F58A8A; --red-bg:#301E2A;
+  --green:#6FD6AE; --green-bg:#132A26;
+  --amber:#F5C579; --amber-bg:#2E2515;
+  --blue:#7FA8F5; --blue-bg:#161F3C;
+  --purple:#B49CF5; --purple-bg:#241F45;
+  --shadow-sm:0 1px 2px rgba(0,0,10,.5);
+  --shadow:0 1px 2px rgba(0,0,10,.4),0 8px 24px -6px rgba(0,0,10,.6);
+  --shadow-lg:0 2px 6px rgba(0,0,10,.5),0 20px 44px -12px rgba(0,0,10,.75);
+  --tag-teal:#6FC9C0; --tag-teal-bg:#152F32;
+  --tag-blue:#7FA8F5; --tag-blue-bg:#161F3C;
+  --tag-green:#6FD6AE; --tag-green-bg:#132A26;
+  --tag-graphite:#C4C6E0; --tag-graphite-bg:#252740;
+  --tag-orange:#F5A579; --tag-orange-bg:#2E2015;
+  --tag-purple:#B49CF5; --tag-purple-bg:#241F45;
+  --tag-red:#F58A8A; --tag-red-bg:#301E2A;
+  --tag-pink:#F0A0D0; --tag-pink-bg:#301E38;
+  --tag-amber:#F5C579; --tag-amber-bg:#2E2515;
+  --code-bg:#101223; --code-ink:#DEE0F5; --code-soft:#9497B8; --code-gutter:#4E5175;
+  --code-hover:rgba(255,255,255,.06); --code-line:rgba(255,255,255,.07);
+  --hl-comment:#7376A0; --hl-keyword:#F58A8A; --hl-string:#A9E0C8; --hl-number:#7FA8F5; --hl-title:#B49CF5;
+  --hl-type:#F5C579; --hl-tag:#6FD6AE; --hl-meta:#9497B8; --hl-del:#F58A8A; --hl-del-bg:rgba(245,138,138,.14); --hl-add-bg:rgba(111,214,174,.14);
+  color-scheme:dark;
+}
+
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
+  :root:not([data-theme]){
     --paper:#121214; --paper-2:#18181B; --ink:#F2F2F3; --ink-soft:#A0A0A8; --ink-faint:#6B6B73;
     --line:#2A2A2F; --card:#1C1C20; --hover:#26262B;
     --accent:#9B9BFF; --accent-bg:#23233F; --accent-soft:#30305A; --on-accent:#121214;
@@ -101,3 +275,16 @@
     color-scheme:dark;
   }
 }
+
+/* ---------- Weicher Wechsel des Farbschemas ---------- */
+/* View Transitions: das ganze Fenster wird überblendet statt schlagartig umgefärbt. */
+::view-transition-old(root),::view-transition-new(root){animation-duration:.45s;animation-timing-function:cubic-bezier(.4,0,.2,1)}
+/* Von dunkel nach hell langsamer – die helle Fläche soll nicht blenden. */
+:root[data-theme-fade="to-light"]::view-transition-old(root),
+:root[data-theme-fade="to-light"]::view-transition-new(root){animation-duration:.9s;animation-timing-function:cubic-bezier(.3,0,.2,1)}
+/* Fallback (und System-Wechsel): Farben animieren. */
+html.theme-fading,html.theme-fading *,html.theme-fading *::before,html.theme-fading *::after{
+  transition:background-color .45s ease,color .45s ease,border-color .45s ease,fill .45s ease,stroke .45s ease,box-shadow .45s ease !important;
+}
+html.theme-fading[data-theme-fade="to-light"],html.theme-fading[data-theme-fade="to-light"] *,
+html.theme-fading[data-theme-fade="to-light"] *::before,html.theme-fading[data-theme-fade="to-light"] *::after{transition-duration:.9s !important}

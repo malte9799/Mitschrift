@@ -7,11 +7,11 @@
 .c-editor-body .tiptap > *{animation:block-in .28s var(--ease) both}
 @keyframes block-in{from{opacity:0;transform:translateY(4px)}}
 .c-editor-body .tiptap p{margin:0}
-.c-editor-body .tiptap h1,.c-editor-body .tiptap h2,.c-editor-body .tiptap h3{margin:1.3em 0 0;line-height:1.3}
+.c-editor-body .tiptap h1,.c-editor-body .tiptap h2,.c-editor-body .tiptap h3{margin:0;line-height:1.3}
 .c-editor-body .tiptap > h1:first-child,.c-editor-body .tiptap > h2:first-child,.c-editor-body .tiptap > h3:first-child{margin-top:0}
-.c-editor-body .tiptap h1{font-size:1.75em;font-weight:700;letter-spacing:-.02em}
-.c-editor-body .tiptap h2{font-size:1.35em;font-weight:650;letter-spacing:-.015em}
-.c-editor-body .tiptap h3{font-size:1.1em;font-weight:600}
+.c-editor-body .tiptap h1{font-size:1.75em;font-weight:700;letter-spacing:-.02em;margin-top:calc(.6em / 1.75)}
+.c-editor-body .tiptap h2{font-size:1.35em;font-weight:650;letter-spacing:-.015em;margin-top:calc(.6em / 1.35)}
+.c-editor-body .tiptap h3{font-size:1.1em;font-weight:600;margin-top:calc(.6em / 1.1)}
 .c-editor-body .tiptap .is-empty::before{
   content:attr(data-placeholder);color:var(--ink-faint);float:left;height:0;pointer-events:none;
 }
@@ -29,7 +29,11 @@
 .c-editor-body .tiptap ul[data-type="taskList"] input[type="checkbox"]{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer}
 .c-editor-body .tiptap ul[data-type="taskList"] li[data-checked="true"] > div{color:var(--ink-faint);text-decoration:line-through}
 .c-editor-body .tiptap blockquote{
-  margin:0;border-left:3px solid var(--accent-soft);padding-left:16px;color:var(--ink-soft);
+  position:relative;margin:0;padding:6px 0 6px 18px;
+}
+/* Balken als Pseudo-Element, damit die Enden abgerundet sind. */
+.c-editor-body .tiptap blockquote::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px;background:var(--ink);
 }
 .c-editor-body .tiptap pre{
   background:var(--code-bg);color:var(--code-ink);border-radius:var(--radius-sm);padding:14px 16px;margin:0;
@@ -37,42 +41,126 @@
 }
 .c-editor-body .tiptap code{font-family:var(--mono);font-size:.88em}
 .c-editor-body .tiptap :not(pre) > code{background:var(--paper-2);border:1px solid var(--line);padding:1px 5px;border-radius:5px}
-.c-editor-body .tiptap hr{border:0;border-top:1px solid var(--line);margin:1.2em 0}
+.c-editor-body .tiptap hr{
+  /* Linie als Pseudo-Element in einem hohen Block – so lässt sich jede Variante per Klick auswählen,
+     und das Auswahl-Highlight schließt den Abstand mit ein. */
+  position:relative;height:40px;border:0;margin:0;overflow:visible;cursor:pointer;
+}
+.c-editor-body .tiptap hr::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--ink-faint);transform:translateY(-50%)}
+.c-editor-body .tiptap hr[data-variant="dotted"]::before{border-top:2px dotted color-mix(in srgb,var(--ink-faint) 80%,transparent)}
+.c-editor-body .tiptap hr[data-variant="bold"]::before{border-top:3px solid var(--ink-soft);border-radius:2px}
+.c-editor-body .tiptap hr[data-variant="dots"]::before{content:'• • •';border:0;text-align:center;letter-spacing:.5em;color:var(--ink-soft);font-size:.8em;line-height:1}
+
+/* Seitenumbruch: Die Lücke zwischen zwei Seiten-Karten (PageFrames). Höhe = Innenabstand unten + Lücke + Innenabstand oben. */
+.c-editor-body{--page-pad-y:36px;--page-gap:28px}
+.c-editor-body .tiptap > hr[data-variant="page"]{height:calc(var(--page-pad-y) * 2 + var(--page-gap));margin:0}
+.c-editor-body .tiptap > hr[data-variant="page"] + *{margin-top:0}
+.c-editor-body .tiptap hr[data-variant="page"]::before{content:none}
+.c-editor-body.has-pages .tiptap{padding:var(--page-pad-y) 0}
+.c-editor-body.has-pages{margin-top:12px}
+.c-page-frames{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.c-page-frame{
+  position:absolute;left:calc(var(--page-pad-x) * -1);right:calc(var(--page-pad-x) * -1);
+  background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-sm);
+}
+/* Mit Seiten wird der Bereich um die Karten abgesetzt – die Karten selbst behalten die Editor-Farbe. */
+.note-screen:has(.c-editor-body.has-pages){background:color-mix(in srgb,var(--paper) 93%,var(--ink))}
+@media (max-width:640px){.c-editor-body{--page-pad-y:24px;--page-gap:20px}}
 .c-editor-body .tiptap img{display:block;max-width:100%;border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
 .c-editor-body .tiptap img.ProseMirror-selectednode{outline:2px solid var(--accent);outline-offset:3px}
 .c-editor-body .tiptap a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-soft);text-underline-offset:3px}
 
-/* Hinweise im GitHub-Stil: farbiger Balken, Titelzeile mit Symbol, Inhalt in normaler Schrift. */
+/* Hervorhebungen: farbig hinterlegte Fläche, Titelzeile mit Symbol, Inhalt in normaler Schrift.
+   --tone setzt die Ansicht je Block (Vorlage oder eigene Farbe). */
 .c-editor-body .tiptap .callout{
-  --tone:var(--blue);--callout-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 16.5v-5M12 7.5h.01'/%3E%3C/svg%3E");
-  margin:.9em 0 0;padding:2px 0 2px 16px;border-left:4px solid var(--tone);
+  --tone:var(--blue);position:relative;margin:.9em 0 0;padding:10px 16px 12px;border-radius:var(--radius-sm);
+  background:color-mix(in srgb,var(--tone) 11%,var(--paper));
 }
-.c-editor-body .tiptap .callout-tip{--tone:var(--green);--callout-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21.5h4M12 2.5a6.5 6.5 0 0 0-4 11.6c.7.6 1 1.3 1 2.1V17h6v-.8c0-.8.4-1.5 1-2.1a6.5 6.5 0 0 0-4-11.6z'/%3E%3C/svg%3E")}
-.c-editor-body .tiptap .callout-important{--tone:var(--purple);--callout-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.5 3.5h-17v13H8v4l4.5-4h8z'/%3E%3Cpath d='M12 7v4.5M12 14h.01'/%3E%3C/svg%3E")}
-.c-editor-body .tiptap .callout-warning{--tone:var(--amber);--callout-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 3.9 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9.5v4M12 17h.01'/%3E%3C/svg%3E")}
-.c-editor-body .tiptap .callout-caution{--tone:var(--red);--callout-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.9 2.5h8.2l5.4 5.4v8.2l-5.4 5.4H7.9l-5.4-5.4V7.9z'/%3E%3Cpath d='M12 7.5v5M12 16.5h.01'/%3E%3C/svg%3E")}
 .c-editor-body .tiptap .callout-title{
   display:flex;align-items:center;gap:8px;margin-bottom:4px;color:var(--tone);font-weight:600;line-height:1.7;user-select:none;
 }
-.c-editor-body .tiptap .callout-title::before{
-  content:"";width:16px;height:16px;flex:none;background:var(--tone);
-  -webkit-mask:var(--callout-icon) center/contain no-repeat;mask:var(--callout-icon) center/contain no-repeat;
+.c-editor-body .tiptap .callout-icon{width:16px;height:16px;flex:none}
+
+/* Anpassen-Menü einer Hervorhebung */
+.c-callout-pop{width:272px}
+.c-callout-presets{display:flex;flex-direction:column;gap:1px;margin-bottom:4px}
+.c-callout-presets button{
+  display:flex;align-items:center;gap:9px;min-height:30px;padding:0 10px;border:0;border-radius:var(--radius-xs);
+  background:none;color:var(--ink);font-size:14px;text-align:left;cursor:pointer;
 }
-.c-editor-body .tiptap .callout-body > :first-child{margin-top:0}
+.c-callout-presets button svg{width:15px;height:15px;color:var(--tone)}
+.c-callout-presets button:hover{background:var(--hover)}
+.c-callout-presets button.is-active{background:color-mix(in srgb,var(--tone) 14%,transparent)}
+.c-callout-pop .b-pop-input{margin:0 4px 4px;width:calc(100% - 8px)}
+.c-callout-icons{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:0 4px 4px}
+.c-callout-icons button{
+  display:flex;align-items:center;justify-content:center;aspect-ratio:1;border:0;border-radius:var(--radius-xs);
+  background:none;color:var(--ink-soft);cursor:pointer;
+}
+.c-callout-icons button svg{width:16px;height:16px}
+.c-callout-icons button:hover{background:var(--hover)}
+.c-callout-icons button.is-active{color:var(--tone);background:color-mix(in srgb,var(--tone) 14%,transparent)}
+.c-callout-colors{display:flex;flex-wrap:wrap;gap:6px;padding:2px 6px 6px}
+.c-callout-colors button{
+  width:22px;height:22px;border:0;border-radius:50%;background:var(--tone);cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);transition:transform .12s var(--ease);
+}
+.c-callout-colors button:hover{transform:scale(1.1)}
+.c-callout-colors button.is-active{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--tone)}
+.c-editor-body .tiptap .callout-body > :first-child,.c-editor-body .tiptap blockquote > :first-child{margin-top:0}
+
+/* ---------- Taste, Formel, Fußnote ---------- */
+.c-editor-body .tiptap kbd{
+  font:.85em var(--mono);background:var(--paper-2);border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:5px;padding:.05em .45em;
+}
+.c-editor-body .tiptap sub,.c-editor-body .tiptap sup{font-size:.75em}
+.c-editor-body .tiptap .math-inline{
+  display:inline-block;padding:0 .2em;border-radius:5px;cursor:pointer;
+}
+.c-editor-body .tiptap .math-inline:hover{background:var(--hover)}
+.c-editor-body .tiptap .math-inline.is-empty{color:var(--ink-faint);background:var(--paper-2);font-size:.85em;font-style:italic;padding:0 .5em}
+.b-math{margin:.6em 0 0}
+.b-math-out{
+  min-height:2.4em;padding:10px 4px;border-radius:var(--radius-sm);text-align:center;overflow-x:auto;
+}
+.b-math-out.is-editable{cursor:pointer}
+.b-math-out.is-editable:hover:not(.is-editing){background:var(--hover)}
+.b-math-out.is-empty{color:var(--ink-faint);font-size:.9em;font-style:italic}
+.b-math-editor{margin-top:6px;padding:10px 12px;border-radius:var(--radius-sm);background:var(--paper-2);border:1px solid var(--line)}
+.b-math-hint{margin:6px 0 0;font-size:12px;color:var(--ink-faint)}
+.c-editor-body .tiptap .fn-ref{
+  color:var(--accent);cursor:pointer;padding:0 1px;border-radius:3px;
+}
+.c-editor-body .tiptap .fn-ref:hover{background:var(--accent-bg)}
+.c-editor-body .tiptap .fn-ref::before{content:attr(data-n)}
+.c-footnotes{font-size:14px;color:var(--ink-soft)}
+.c-footnotes ol{margin:0;padding:6px 0 0 1.3em}
+.c-footnotes li{margin-bottom:4px}
+.c-footnotes button{border:0;background:none;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--ink-faint);text-underline-offset:2px}
+.c-footnotes button:hover{color:var(--ink)}
+.c-inline-edit{width:280px}
+.c-inline-edit.is-math{width:min(480px,calc(100vw - 32px))}
+.c-inline-edit-head{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 8px;margin-bottom:6px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ink-soft)}
+.c-inline-edit-head button{display:flex;padding:4px;border:0;border-radius:6px;background:none;color:var(--ink-faint);cursor:pointer}
+.c-inline-edit-head button:hover{background:var(--red-bg);color:var(--red)}
+.c-inline-edit-head svg{width:13px;height:13px}
+.c-inline-edit-hint{margin:6px 4px 2px;font-size:11.5px;color:var(--ink-faint)}
+.c-inline-edit-hint code{background:var(--paper-2);border-radius:4px;padding:0 4px}
 
 /* ---------- Drag-Handle ---------- */
 .c-editor-draghandle{
-  position:absolute;left:-62px;display:flex;align-items:center;gap:1px;z-index:6;
+  position:absolute;left:-34px;display:flex;align-items:center;z-index:6;
   opacity:0;transition:opacity .15s,top .12s var(--ease);pointer-events:none;
 }
 .c-editor-draghandle.is-visible{opacity:1;pointer-events:auto}
 @media (max-width:860px){.c-editor-draghandle{display:none}}
-.c-editor-draghandle-add,.c-editor-draghandle-grip{
+.c-editor-draghandle-grip{
   display:flex;align-items:center;justify-content:center;width:28px;height:28px;
   color:var(--ink-faint);border-radius:var(--radius-xs);cursor:pointer;background:none;border:0;
   transition:background .12s,color .12s;
 }
-.c-editor-draghandle-add:hover,.c-editor-draghandle-grip:hover{background:var(--hover);color:var(--ink)}
+.c-editor-draghandle-grip:hover{background:var(--hover);color:var(--ink)}
 .c-editor-draghandle svg{width:18px;height:18px}
 .c-editor-draghandle-grip{cursor:grab}
 .c-editor-drop-indicator{
@@ -95,6 +183,20 @@
 }
 /* Grafiken (Tabelle, Diagramm, Code …): Rahmen über dem Inhalt statt Fläche dahinter. */
 .c-block-highlight.is-outline{z-index:5;background:none;border-radius:8px;box-shadow:0 0 0 2px var(--accent)}
+/* Seitenumbruch: Die Lücke selbst bleibt leer; markiert werden die angrenzenden Karten-Kanten –
+   unten an der oberen Seite, oben an der unteren. Die Seitenkanten blenden nach außen hin aus. */
+.c-block-highlight.is-page{background:none;border-radius:0}
+.c-block-highlight.is-page::before,.c-block-highlight.is-page::after{
+  content:"";position:absolute;left:0;right:0;height:44px;border:2px solid var(--accent);
+}
+.c-block-highlight.is-page::before{
+  bottom:100%;border-top:0;border-radius:0 0 18px 18px;
+  mask-image:linear-gradient(to top,#000 40%,transparent);
+}
+.c-block-highlight.is-page::after{
+  top:100%;border-bottom:0;border-radius:18px 18px 0 0;
+  mask-image:linear-gradient(to bottom,#000 40%,transparent);
+}
 @keyframes block-select-in{from{opacity:0}}
 body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 
@@ -121,7 +223,6 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
   background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
   padding:6px;box-shadow:var(--shadow-lg);animation:pop-in .16s var(--ease);transform-origin:inherit;
 }
-.c-insert-menu-inline{position:absolute;left:0;z-index:15}
 .c-insert-menu-group{display:flex;flex-direction:column;gap:1px}
 .c-insert-menu-group + .c-insert-menu-group{margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
 .c-insert-menu-label{font-size:11.5px;font-weight:600;color:var(--ink-faint);padding:6px 10px 4px}
@@ -151,13 +252,13 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 .c-blocks-aside-group{margin-bottom:20px}
 .c-blocks-aside-group:last-child{margin-bottom:0}
 .c-blocks-aside h2,.c-format-tab h2{font-size:11.5px;font-weight:600;margin:0 0 8px;color:var(--ink-faint)}
-.c-blocks-aside-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 8px}
+.c-blocks-aside-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 6px}
 .c-blocks-aside-grid button{
   display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
   background:none;border:0;padding:0;cursor:pointer;color:var(--ink);
 }
 .c-blocks-aside-icon{
-  display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:1.25;
+  display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:1;
   border-radius:var(--radius-sm);background:var(--card);box-shadow:var(--shadow-sm),inset 0 0 0 1px var(--line);
   transition:box-shadow .15s,transform .15s var(--ease);
 }
@@ -165,8 +266,8 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 .c-blocks-aside-grid button:active .c-blocks-aside-icon{transform:scale(.96)}
 .c-blocks-aside-grid button.active .c-blocks-aside-icon{box-shadow:inset 0 0 0 2px var(--accent);color:var(--accent)}
 .c-blocks-aside-grid button.active span:last-child{color:var(--accent)}
-.c-blocks-aside-icon > svg{width:64%;height:80%;color:var(--ink-soft)}
-.c-blocks-aside-grid button span:last-child{font-size:12px;line-height:1.3}
+.c-blocks-aside-icon > svg{width:80%;height:80%;color:var(--ink-soft)}
+.c-blocks-aside-grid button span:last-child{font-size:11px;line-height:1.25;max-width:100%;overflow-wrap:anywhere}
 
 /* Format-Tab: Zeilen aus Segment-Buttons */
 .c-format-tab{display:flex;flex-direction:column;gap:22px}
@@ -209,21 +310,20 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 
 .c-blocks-aside-icon .t-fill{fill:var(--line)}
 .c-blocks-aside-icon .t-fill.t-strong{fill:var(--ink-soft)}
+.c-blocks-aside-icon .t-fill.t-bar{fill:var(--ink)}
+.c-blocks-aside-icon .t-fill.t-text,.c-blocks-aside-icon .t-callout .t-fill.t-text{fill:var(--ink-faint);opacity:1}
 .c-blocks-aside-icon .t-stroke{fill:none;stroke:var(--ink-soft);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .c-blocks-aside-icon .t-num{font-size:8.5px;font-weight:600;fill:var(--ink-soft);font-family:var(--sans);dominant-baseline:middle}
 .c-blocks-aside-icon .t-word{font-family:var(--sans);fill:var(--ink);dominant-baseline:middle}
-.c-blocks-aside-icon .t-word-p{font-size:9px;font-weight:400}
-.c-blocks-aside-icon .t-word-h1{font-size:11px;font-weight:700;letter-spacing:-.01em}
-.c-blocks-aside-icon .t-word-h2{font-size:7.5px;font-weight:700}
-.c-blocks-aside-icon .t-word-h3{font-size:6.4px;font-weight:600}
-.c-blocks-aside-icon .t-word-strong{font-size:9px;font-weight:700}
-.c-blocks-aside-icon .t-word-caption{font-size:5.6px;font-weight:400;fill:var(--ink-soft)}
+.c-blocks-aside-icon .t-word-p{font-size:12px;font-weight:400}
+.c-blocks-aside-icon .t-word-h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.c-blocks-aside-icon .t-word-h2{font-size:13px;font-weight:700}
+.c-blocks-aside-icon .t-word-h3{font-size:11px;font-weight:600}
+.c-blocks-aside-icon .t-word-strong{font-size:12px;font-weight:700}
+.c-blocks-aside-icon .t-word-caption{font-size:10px;font-weight:400;fill:var(--ink-soft)}
 .c-blocks-aside-icon .t-wave{fill:none;stroke:var(--ink-faint);stroke-width:1.2;stroke-linecap:round}
 .c-blocks-aside-icon .t-check{fill:none;stroke:var(--on-accent);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
 .c-blocks-aside-icon .t-box{fill:none;stroke:var(--ink-faint);stroke-width:1.1}
-.c-blocks-aside-icon .t-code-bg{fill:#1c1c20}
-.c-blocks-aside-icon .t-code-cap{fill:#48484f}
-.c-blocks-aside-icon .t-code-line{fill:#4d4d55}
 .c-blocks-aside-icon .t-code-green{fill:#5fd0a3}
 .c-blocks-aside-icon .t-code-pink{fill:#e39fd6}
 .c-blocks-aside-icon .t-photo-bg{fill:var(--paper-2)}
@@ -243,6 +343,10 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 .c-blocks-aside-icon .t-card-front{fill:var(--card);stroke:var(--line)}
 .c-blocks-aside-icon .t-option{fill:none;stroke:var(--line)}
 .c-blocks-aside-icon .t-option-ok{fill:var(--green-bg);stroke:var(--green)}
+.c-blocks-aside-icon .t-stroke.t-stroke-accent{stroke:var(--accent)}
+.c-blocks-aside-icon .t-gap{fill:var(--accent-bg);stroke:var(--accent);stroke-width:1;stroke-dasharray:2 1.6}
+.c-blocks-aside-icon .t-ok-dot{fill:var(--green)}
+.c-blocks-aside-icon .t-ok-text{fill:var(--green);opacity:.6}
 .c-blocks-aside-icon .t-stroke-ok{fill:none;stroke:var(--green);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 
 .c-info-tab{display:flex;flex-direction:column;gap:20px}
@@ -288,16 +392,148 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 }
 .c-editor-body .tiptap.resize-cursor{cursor:col-resize}
 
-.c-table-menu{
-  position:absolute;z-index:14;display:flex;gap:1px;padding:4px;border-radius:var(--radius-sm);
-  background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-lg);
+/* ---------- Optionsleiste markierter Blöcke ---------- */
+.c-block-bar{
+  position:fixed;left:0;top:0;z-index:40;display:flex;align-items:center;gap:1px;padding:4px;max-width:calc(100vw - 16px);
+  overflow-x:auto;scrollbar-width:none;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);
+  box-shadow:var(--shadow-lg);white-space:nowrap;animation:pop-in .14s var(--ease);font-size:13px;color:var(--ink);
 }
-.c-table-menu button{
-  display:flex;align-items:center;justify-content:center;width:32px;height:30px;border:0;border-radius:var(--radius-xs);
-  background:none;color:var(--ink-soft);cursor:pointer;
+.c-block-bar[hidden]{display:none}
+.c-block-bar-slot,.c-block-bar-group{display:contents}
+.c-block-bar-slot:empty + .c-bar-count{flex:none;padding:0 8px 0 6px;color:var(--accent);font-size:12px;font-weight:600}
+.c-bar-count + .c-block-bar-slot:empty + .c-bar-sep{display:block}
+.c-bar-sep{display:none}
+.c-bar-btn{
+  display:flex;align-items:center;justify-content:center;gap:5px;flex:none;min-width:32px;height:30px;padding:0 6px;border:0;
+  border-radius:var(--radius-xs);background:none;color:var(--ink-soft);font:500 13px var(--sans);cursor:pointer;
 }
-.c-table-menu button:hover{background:var(--hover);color:var(--ink)}
-.c-table-menu button.sep{margin-left:5px;position:relative}
-.c-table-menu button.sep::before{content:"";position:absolute;left:-3.5px;top:6px;bottom:6px;width:1px;background:var(--line)}
-.c-table-menu button.danger:hover{background:var(--red-bg);color:var(--red)}
-.c-table-menu svg{width:17px;height:17px}
+.c-bar-btn:hover:not(:disabled){background:var(--hover);color:var(--ink)}
+.c-bar-btn:disabled{opacity:.4;cursor:default}
+.c-bar-btn.is-active{color:var(--accent);background:var(--accent-bg)}
+.c-bar-btn.is-danger:hover:not(:disabled){background:var(--red-bg);color:var(--red)}
+.c-bar-btn.has-text{padding:0 9px}
+.c-bar-btn svg{width:16px;height:16px;flex:none}
+.c-bar-btn .c-bar-chev{width:12px;height:12px;margin-left:-2px;opacity:.7}
+.c-bar-sep{flex:none;width:1px;align-self:stretch;margin:5px 3px;background:var(--line)}
+.c-bar-label{padding:0 6px 0 8px;color:var(--ink-faint);font-size:12px;font-weight:600}
+.c-bar-stepper{display:flex;align-items:center;flex:none}
+.c-bar-stepper > span{min-width:18px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink)}
+.c-bar-select{
+  position:relative;display:flex;align-items:center;gap:4px;flex:none;height:30px;padding:0 8px 0 9px;border-radius:var(--radius-xs);
+  color:var(--ink-soft);font-weight:500;cursor:pointer;
+}
+.c-bar-select:hover{background:var(--hover);color:var(--ink)}
+.c-bar-select select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:14px}
+.c-bar-select svg{width:12px;height:12px;opacity:.7}
+@media (max-width:560px){.c-bar-btn.has-text span{display:none}}
+
+/* ---------- Randnotizen ---------- */
+.c-side-notes{position:absolute;left:0;top:0;width:0;height:0;z-index:5}
+.c-side-note{position:absolute;left:0;top:0;font-size:13.5px;line-height:1.45;color:var(--ink)}
+.c-side-note[data-placed]{transition:transform .25s var(--ease)}
+.c-side-note-card{position:relative;animation:side-note-in .22s var(--ease) both}
+@keyframes side-note-in{from{opacity:0;scale:.94}}
+.c-side-note-card input,.c-side-note-card textarea{
+  display:block;width:100%;padding:0;margin:0;border:0;background:none;outline:none;resize:none;overflow:hidden;
+  font:inherit;color:inherit;
+}
+.c-side-note-card ::placeholder{color:var(--ink-faint)}
+.c-side-note-card p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.c-side-note-title{font-weight:650}
+.c-side-note-body{margin-top:3px}
+
+/* Menü-Knopf, erscheint beim Überfahren */
+.c-side-note-more{
+  position:absolute;top:4px;right:4px;display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;
+  background:none;color:var(--ink-soft);cursor:pointer;opacity:0;transition:opacity .15s,background .15s;
+}
+.c-side-note-more svg{width:15px;height:15px}
+.c-side-note-card:hover .c-side-note-more,.c-side-note-card:focus-within .c-side-note-more,.c-side-note-more.is-open{opacity:1}
+.c-side-note-more:hover,.c-side-note-more.is-open{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.c-side-note-card .c-side-note-title{padding-right:24px}
+
+/* Post-it: farbiger Zettel mit Schatten */
+.c-side-note-card.is-postit{
+  padding:12px 13px 14px;border-radius:3px 3px 12px 3px;
+  background:color-mix(in srgb,var(--tone) 22%,var(--card));color:color-mix(in srgb,var(--tone) 35%,var(--ink));
+  box-shadow:0 1px 1px rgba(0,0,0,.06),0 8px 18px -8px rgba(0,0,0,.28);
+}
+.c-side-note-card.is-postit ::placeholder{color:color-mix(in srgb,var(--tone) 55%,transparent)}
+.c-side-note-card.is-postit .c-side-note-body{margin-top:5px;min-height:3em}
+
+/* Karte: Rahmen, Farbstreifen oben */
+.c-side-note-card.is-card{
+  padding:10px 12px 11px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);
+  box-shadow:var(--shadow-sm),inset 0 3px 0 var(--tone);
+}
+.c-side-note-card.is-card .c-side-note-body{color:var(--ink-soft)}
+
+/* Text: nur ein Farbbalken */
+.c-side-note-card.is-text{padding:1px 0 1px 11px;border-left:2px solid var(--tone)}
+.c-side-note-card.is-text .c-side-note-title{color:var(--tone)}
+.c-side-note-card.is-text .c-side-note-body{color:var(--ink-soft)}
+
+/* Nur Titel: eine Zeile mit Punkt */
+.c-side-note-card.is-title{padding:2px 0 2px 14px;color:var(--ink-soft)}
+.c-side-note-card.is-title::before{content:"";position:absolute;left:0;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--tone)}
+.c-side-note-card.is-title .c-side-note-title{font-weight:500}
+.c-side-note-card.is-title .c-side-note-more{top:0}
+
+/* Schmaler Rand: Pin, der die Notiz schwebend öffnet */
+.c-side-note-pin{
+  display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:7px;cursor:pointer;
+  background:color-mix(in srgb,var(--tone) 20%,var(--card));color:var(--tone);box-shadow:var(--shadow-sm);
+  transition:transform .15s var(--ease);
+}
+.c-side-note-pin:hover,.c-side-note-pin.is-open{transform:scale(1.08)}
+.c-side-note-pin svg{width:14px;height:14px}
+.c-side-note-float{position:absolute;top:32px;width:236px;z-index:30}
+.c-side-note.is-left .c-side-note-float{left:0}
+.c-side-note.is-right .c-side-note-float{right:0}
+.c-side-note-float .c-side-note-card:not(.is-postit):not(.is-card){
+  padding:10px 12px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-lg);
+}
+.c-side-note-float .c-side-note-card.is-title::before{left:12px;top:calc(10px + .72em)}
+.c-side-note-float .c-side-note-card.is-title{padding-left:26px}
+
+/* Menü */
+.c-side-note-pop-text{display:flex;flex-direction:column;line-height:1.25}
+.c-side-note-pop-text small{font-size:11.5px;color:var(--ink-faint)}
+.c-side-note-pop .b-pop-item{min-height:40px}
+.c-side-note-swatch{flex:none;width:18px;height:18px;border-radius:4px}
+.c-side-note-swatch.is-postit{background:color-mix(in srgb,var(--tone) 30%,var(--card));box-shadow:0 2px 4px -1px rgba(0,0,0,.25)}
+.c-side-note-swatch.is-card{background:var(--card);border:1px solid var(--line);box-shadow:inset 0 2px 0 var(--tone)}
+.c-side-note-swatch.is-text{border-left:2px solid var(--tone);border-radius:0;background:repeating-linear-gradient(var(--line) 0 2px,transparent 2px 5px);margin-left:3px;width:15px}
+.c-side-note-swatch.is-title{background:radial-gradient(circle at 4px 50%,var(--tone) 3px,transparent 3.5px),linear-gradient(var(--ink-faint),var(--ink-faint)) 9px 50%/9px 2px no-repeat}
+
+/* Labels an Randnotizen */
+.c-side-note-tags{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
+.c-side-note-tags .tag{height:20px;font-size:11.5px}
+.c-side-note-tags .tag-main{gap:5px;padding:0 8px 0 7px}
+.c-side-note-tags .tag.is-removable .tag-main{padding-right:2px}
+.c-side-note-tags .tag-dot{width:6px;height:6px}
+.c-side-note-tags .tag-remove{width:16px;height:16px;margin-right:2px;opacity:0}
+.c-side-note-tags .tag:hover .tag-remove{opacity:.6}
+.c-side-note-tag-add{
+  display:grid;place-items:center;width:20px;height:20px;padding:0;border:1px dashed color-mix(in srgb,currentColor 35%,transparent);
+  border-radius:999px;background:none;color:inherit;opacity:0;cursor:pointer;transition:opacity .15s,background .15s;
+}
+.c-side-note-tag-add svg{width:11px;height:11px}
+.c-side-note-card:hover .c-side-note-tag-add,.c-side-note-card:focus-within .c-side-note-tag-add,.c-side-note-tag-add.is-open{opacity:.6}
+.c-side-note-tag-add:hover,.c-side-note-tag-add.is-open{opacity:1 !important}
+/* Ohne Labels: kleines #-Symbol links neben dem Menü-Knopf */
+.c-side-note-tag-add.is-corner{position:absolute;top:4px;right:28px;width:22px;height:22px;border:0;border-radius:6px;color:var(--ink-soft)}
+.c-side-note-tag-add.is-corner:hover,.c-side-note-tag-add.is-corner.is-open{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.c-side-note-card.is-title .c-side-note-tag-add.is-corner{top:0}
+.c-side-note-card:has(.is-corner) .c-side-note-title{padding-right:50px}
+.c-side-note-tagpop{width:240px;padding:6px}
+
+/* Stil-Menü der Trennlinie: kleine Vorschau je Variante */
+.c-divider-pop{width:210px}
+.c-divider-sample{position:relative;flex:none;width:34px;height:14px}
+.c-divider-sample::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--ink-faint)}
+.c-divider-sample[data-variant="dotted"]::before{border-top:2px dotted var(--ink-faint)}
+.c-divider-sample[data-variant="bold"]::before{border-top:3px solid var(--ink-soft);border-radius:2px}
+.c-divider-sample[data-variant="dots"]::before{content:'• • •';top:0;border:0;text-align:center;letter-spacing:.3em;color:var(--ink-soft);font-size:9px;line-height:14px}
+.c-divider-sample[data-variant="page"]{border:1px solid var(--line);border-radius:3px;background:var(--paper-2)}
+.c-divider-sample[data-variant="page"]::before{border-top:1px dashed var(--ink-faint)}

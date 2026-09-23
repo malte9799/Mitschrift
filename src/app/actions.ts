@@ -1,7 +1,10 @@
-import { storage, type NotePatch, type TagColor, type TagPatch } from '@/storage';
+import { storage, type Note, type NotePatch, type TagColor, type TagPatch } from '@/storage';
 import { notifyNotesChanged } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 import { welcomeNote } from './welcome';
+import { DEBUG_TAG } from '@/debug/debugDocs';
+import { canMoveUnder } from './noteLinks';
+import { reloadTerms } from '@/glossary/store';
 
 export async function createNote(init?: NotePatch) {
   const note = await storage.createNote(init);
@@ -12,6 +15,14 @@ export async function createNote(init?: NotePatch) {
 export async function deleteNote(id: string) {
   await storage.deleteNote(id);
   notifyNotesChanged();
+}
+
+/** Hängt `id` unter `parentId` (`null` = oberste Ebene). Verhindert Zyklen. */
+export async function moveNote(id: string, parentId: string | null, notes: Note[]) {
+  if (!canMoveUnder(id, parentId, notes)) return false;
+  await storage.updateNote(id, { parentId });
+  notifyNotesChanged();
+  return true;
 }
 
 export async function toggleStar(id: string, starred: boolean) {
@@ -29,7 +40,9 @@ export async function seedIfFirstRun() {
   } catch {
     return;
   }
-  const existing = await storage.listNotes();
+  // Debug-Notizen (nur Dev-Server) zählen nicht – sonst fehlte dort die Willkommens-Notiz.
+  const debugTag = (await storage.listTags()).find((t) => t.name === DEBUG_TAG);
+  const existing = (await storage.listNotes()).filter((n) => !debugTag || !n.tags.includes(debugTag.id));
   if (existing.length > 0) return;
   await storage.createNote(welcomeNote());
   notifyNotesChanged();
@@ -50,6 +63,7 @@ export async function deleteTag(id: string) {
   await storage.deleteTag(id);
   notifyTagsChanged();
   notifyNotesChanged();
+  await reloadTerms();
 }
 
 /** Farbwahl für Tags, in der Reihenfolge der Auswahl-Palette. */

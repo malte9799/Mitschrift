@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import type { Editor } from '@tiptap/react';
 import { blockTypes, type BlockCategory, type BlockTypeId } from '@/editor/blockTypes';
@@ -8,8 +8,15 @@ import { exportFormats, exportNote, type ExportFormat } from '@/export';
 import { createNote } from './actions';
 import { FOCUS_SEARCH_EVENT, useActiveNote } from './activeNote';
 import { useTheme } from './theme';
+import { codeThemeMeta, useCodeTheme } from './codeTheme';
 import { welcomeNote } from './welcome';
-import { alertDialog } from '@/ui/Dialog';
+import { alertDialog, confirmDialog } from '@/ui/Dialog';
+import { setHighlight, useHighlight } from '@/glossary/store';
+import { termFromSelection } from '@/editor/Toolbar';
+import { downloadBackup, lastBackupAt, readBackup, restoreBackup } from '@/storage/backup';
+import { storageStatus, type StorageStatus } from '@/storage/persist';
+import { notifyNotesChanged } from '@/hooks/useNotes';
+import { notifyTagsChanged } from '@/hooks/useTags';
 
 export type MenuEntry =
   | {
@@ -115,7 +122,10 @@ async function pasteInto(editor: Editor | null) {
 export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   const active = useActiveNote();
   const { theme, setTheme } = useTheme();
+  const { theme: codeTheme, setCodeTheme } = useCodeTheme();
+  const glossaryHighlight = useHighlight();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const now = useClock();
   const [open, setOpen] = useState<number | null>(null);
   /** Hervorgehobener Eintrag je Ebene: [Index im Menü, Index im Untermenü …]. */
@@ -147,6 +157,40 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
       console.error(err);
       void alertDialog('Export fehlgeschlagen.');
     });
+  }
+
+  function runBackup() {
+    downloadBackup().catch((err) => {
+      console.error(err);
+      void alertDialog('Backup fehlgeschlagen.');
+    });
+  }
+
+  function runRestore() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const { dump, exportedAt } = await readBackup(file);
+        const ok = await confirmDialog(
+          `Backup vom ${new Date(exportedAt).toLocaleString('de-DE')} mit ${dump.notes.length} Notizen einspielen? ` +
+            'Vorhandene Notizen bleiben erhalten; bei gleichen Notizen gewinnt die neuere Fassung.',
+          { confirmLabel: 'Einspielen' },
+        );
+        if (!ok) return;
+        const r = await restoreBackup(dump);
+        notifyNotesChanged();
+        notifyTagsChanged();
+        await alertDialog(`Backup eingespielt: ${r.added} neu, ${r.updated} aktualisiert, ${r.skipped} unverändert.`);
+      } catch (err) {
+        console.error(err);
+        await alertDialog(err instanceof Error ? err.message : 'Backup konnte nicht gelesen werden.');
+      }
+    };
+    input.click();
   }
 
   function focusSearch() {
@@ -187,6 +231,14 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
             { label: 'Hell', checked: theme === 'light', action: () => setTheme('light') },
             { label: 'Dunkel', checked: theme === 'dark', action: () => setTheme('dark') },
             { label: 'Automatisch', checked: theme === 'system', action: () => setTheme('system') },
+            SEP,
+            { label: 'Mist', checked: theme === 'mist', action: () => setTheme('mist') },
+            { label: 'Linen', checked: theme === 'linen', action: () => setTheme('linen') },
+            { label: 'Sepia', checked: theme === 'sepia', action: () => setTheme('sepia') },
+            SEP,
+            { label: 'Graphite', checked: theme === 'graphite', action: () => setTheme('graphite') },
+            { label: 'Slate', checked: theme === 'slate', action: () => setTheme('slate') },
+            { label: 'Midnight', checked: theme === 'midnight', action: () => setTheme('midnight') },
           ],
         },
       ],
@@ -195,6 +247,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
       label: 'Ablage',
       items: [
         { label: 'Neue Notiz', shortcut: '⌥⌘N', bind: true, action: () => void newNote() },
+        { label: 'Neue Unterseite', shortcut: '⇧⌥⌘N', bind: true, disabled: !note, action: () => note && void newNote({ parentId: note.id, tags: note.tags }) },
         { label: 'Notizen durchsuchen …', shortcut: '⌘K', action: focusSearch },
         SEP,
         {
@@ -203,6 +256,9 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
           submenu: exportFormats.map((f) => ({ label: f.label, action: () => runExport(f.format) })),
         },
         { label: 'Drucken …', shortcut: '⌘P', bind: true, disabled: !note, action: () => runExport('pdf') },
+        SEP,
+        { label: 'Backup aller Notizen sichern …', action: runBackup },
+        { label: 'Backup einspielen …', action: runRestore },
         SEP,
         {
           label: note?.starred ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
@@ -224,6 +280,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         { label: 'Alles auswählen', shortcut: '⌘A', disabled: !ed, action: () => ed?.chain().focus().selectAll().run() },
         SEP,
         { label: 'Link hinzufügen …', disabled: !hasSelection, action: () => window.dispatchEvent(new Event(OPEN_LINK_EVENT)) },
+        { label: 'Als Begriff ins Glossar …', shortcut: '⇧⌘G', bind: true, disabled: !ed, action: () => ed && termFromSelection(ed) },
       ],
     },
     {
@@ -275,9 +332,11 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         ...byCategory('hervorheben'),
         blockItem('toggle'),
         SEP,
-        ...byCategory('lernen'),
+        ...byCategory('rich'),
         SEP,
-        ...byCategory('daten'),
+        ...byCategory('interaktiv'),
+        SEP,
+        ...byCategory('trennlinien'),
         SEP,
         ...byCategory('medien'),
       ],
@@ -288,6 +347,14 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         { label: 'Bearbeiten', shortcut: '⌃⌘E', bind: true, checked: !!active && !active.learning, disabled: !active, action: () => active?.setLearning(false) },
         { label: 'Lernen', shortcut: '⌃⌘L', bind: true, checked: !!active?.learning, disabled: !active, action: () => active?.setLearning(true) },
         SEP,
+        { label: 'Übersicht', shortcut: '⌃⌘H', bind: true, checked: pathname === '/', action: () => navigate('/') },
+        { label: 'Graph-Ansicht', shortcut: '⌃⌘G', bind: true, checked: pathname === '/graph', action: () => navigate('/graph') },
+        { label: 'Glossar', shortcut: '⌃⌘B', bind: true, checked: pathname === '/glossar', action: () => navigate('/glossar') },
+        { label: 'Begriffe hervorheben', checked: glossaryHighlight, action: () => setHighlight(!glossaryHighlight) },
+        SEP,
+        { label: 'Präsentieren', shortcut: '⌥⌘P', bind: true, disabled: !active, action: () => active?.present() },
+        { label: 'Ab aktueller Stelle präsentieren', shortcut: '⇧⌥⌘P', bind: true, disabled: !active, action: () => active?.present(true) },
+        SEP,
         { label: sidebarOpen ? 'Seitenleiste ausblenden' : 'Seitenleiste einblenden', shortcut: '⌃⌘S', bind: true, action: toggleSidebar },
         {
           label: active?.panelOpen ? 'Block-Leiste ausblenden' : 'Block-Leiste einblenden',
@@ -295,6 +362,15 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
           bind: true,
           disabled: !active || active.learning,
           action: () => active?.togglePanel(),
+        },
+        SEP,
+        {
+          label: 'Code-Theme',
+          submenu: codeThemeMeta.map((t) => ({
+            label: t.label,
+            checked: codeTheme === t.value,
+            action: () => setCodeTheme(t.value),
+          })),
         },
         SEP,
         {
@@ -565,6 +641,12 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  const [status, setStatus] = useState<StorageStatus | null>(null);
+  useEffect(() => {
+    if (open) void storageStatus().then(setStatus);
+  }, [open]);
+  const lastBackup = open ? lastBackupAt() : null;
+
   return (
     <AnimatePresence>
       {open && (
@@ -584,6 +666,16 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
             <h2>Mitschrift</h2>
             <p className="mb-about-version">Version 0.1.0</p>
             <p>Notizen mit Lern-Blöcken – Karteikarten, Quiz und Lückentext direkt im Text.</p>
+            {status && (
+              <p className="mb-about-storage">
+                {status.persisted
+                  ? 'Speicher: dauerhaft – der Browser löscht die Notizen nicht von selbst.'
+                  : 'Speicher: nicht geschützt – der Browser darf die Notizen bei Platzmangel oder Inaktivität löschen.'}
+                {status.usage != null && ` Belegt: ${formatBytes(status.usage)}.`}
+                <br />
+                {lastBackup ? `Letztes Backup: ${new Date(lastBackup).toLocaleDateString('de-DE')}.` : 'Noch kein Backup gesichert.'}
+              </p>
+            )}
             <button type="button" className="b-btn" onClick={onClose} autoFocus>
               OK
             </button>
@@ -592,4 +684,9 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
       )}
     </AnimatePresence>
   );
+}
+
+function formatBytes(n: number) {
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
 }

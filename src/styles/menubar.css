@@ -71,4 +71,5 @@
 .mb-about h2{margin:14px 0 2px;font-size:19px;letter-spacing:-.01em}
 .mb-about p{margin:0 0 12px;font-size:13.5px;color:var(--ink-soft);line-height:1.5}
 .mb-about .mb-about-version{font-size:12.5px;color:var(--ink-faint);margin-bottom:14px}
+.mb-about .mb-about-storage{font-size:12px;color:var(--ink-faint);max-width:300px;margin-inline:auto}
 .mb-about .b-btn{min-width:90px;justify-content:center}
