@@ -49,6 +49,20 @@ export const codeLanguages: { value: string; label: string }[] = [
  * (gleicher Knotenname `codeBlock`, bestehende Notizen bleiben kompatibel).
  */
 export const CodeBlock = CodeBlockLowlight.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      /** Pfad im virtuellen Dateisystem des Dokuments, z. B. „src/main.py“. */
+      filename: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-filename'),
+        renderHTML: (attrs) => (attrs.filename ? { 'data-filename': attrs.filename } : {}),
+      },
+      /** Stabile Kennung der Datei für den Vollbild-Editor – wird beim Öffnen vergeben. */
+      fileId: { default: null, rendered: false, keepOnSplit: false },
+    };
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockView);
   },
