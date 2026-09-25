@@ -455,6 +455,21 @@ const PATHS = {
       <path d="M11 7h9M11 14h9M11 19.5h9" />
     </>
   ),
+  fieldRelation: (
+    <>
+      <rect x="2.5" y="5" width="8" height="6" rx="1.5" />
+      <rect x="13.5" y="13" width="8" height="6" rx="1.5" />
+      <path d="M10.5 8h2a3 3 0 0 1 3 3v3" />
+    </>
+  ),
+  erDiagram: (
+    <>
+      <rect x="2.5" y="3.5" width="7" height="6" rx="1" />
+      <rect x="14.5" y="3.5" width="7" height="6" rx="1" />
+      <rect x="8.5" y="14.5" width="7" height="6" rx="1" />
+      <path d="M9.5 6.5h11M6 9.5v4.5M18 9.5v4.5" />
+    </>
+  ),
   arrowDown: <path d="M12 5v14M6 13l6 6 6-6" />,
   arrowUp: <path d="M12 19V5M6 11l6-6 6 6" />,
   arrowLeft: <path d="M19 12H5M11 6l-6 6 6 6" />,

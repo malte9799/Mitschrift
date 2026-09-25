@@ -6,6 +6,7 @@ import { useEditable } from '@/editor/useEditable';
 import { BarButton, useBlockBar } from '@/editor/BlockBar';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { edgeLabel, edgeLocation, edgeRefOf, idsInLine, nodeIdOf, nodeAt, nodeLabel, nodeSpan, setEdgeLabel, setNodeLabel, type EdgeRef, type Span } from './codeLinks';
+import { mermaidToWhiteboard } from './toExcalidraw';
 
 type MermaidApi = typeof import('mermaid').default;
 
@@ -57,6 +58,7 @@ export function MermaidView({ node, editor, getPos, updateAttributes }: NodeView
   const [editing, setEditing] = useState(() => !code.trim());
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
+  const [converting, setConverting] = useState(false);
   const dark = useDarkMode();
   const textareaId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -243,10 +245,34 @@ export function MermaidView({ node, editor, getPos, updateAttributes }: NodeView
     if (e.key === 'Escape') setEditing(false);
   }
 
+  /** Wandelt das Diagramm in eine Excalidraw-Zeichnung um und fügt sie als neuen Whiteboard-Block danach ein. */
+  async function convertToWhiteboard() {
+    const pos = getPos();
+    if (typeof pos !== 'number' || !code.trim() || converting) return;
+    setConverting(true);
+    try {
+      const { scene, svg } = await mermaidToWhiteboard(code);
+      editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'whiteboard', attrs: { scene, svg } }).run();
+    } catch (err) {
+      setError(`Konnte nicht in Excalidraw umgewandelt werden: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setConverting(false);
+    }
+  }
+
   return (
     <NodeViewWrapper className="b-block b-mermaid" data-interactive="">
       {bar.render(
-        <BarButton icon={editing ? 'check' : 'pencil'} label={editing ? 'Fertig' : 'Mermaid-Code bearbeiten'} text={editing ? 'Fertig' : 'Code'} active={editing} onClick={() => setEditing((v) => !v)} />,
+        <>
+          <BarButton icon={editing ? 'check' : 'pencil'} label={editing ? 'Fertig' : 'Mermaid-Code bearbeiten'} text={editing ? 'Fertig' : 'Code'} active={editing} onClick={() => setEditing((v) => !v)} />
+          <BarButton
+            icon="whiteboard"
+            label="Als Excalidraw-Whiteboard einfügen"
+            text={converting ? 'Wird umgewandelt …' : 'Whiteboard'}
+            disabled={!code.trim() || converting}
+            onClick={convertToWhiteboard}
+          />
+        </>,
       )}
       <div contentEditable={false}>
         <div className="b-block-head">

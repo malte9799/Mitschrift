@@ -5,7 +5,8 @@ import type { QuizQuestion } from '@/blocks/quiz/QuizNode';
 import { resolveCallout, type CalloutColor } from '@/editor/CalloutNode';
 import { applyStyle, contentStyleOf, svgDataUrl } from '@/blocks/svg/model';
 import { glossaryRows, plotSummary, plotSvg, timelineRows } from './extraBlocks';
-import { collectionTables, imageAsset, noteBlockAsParagraph, tableRows, untitled, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, tableRows, untitled, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import type { CollectionData } from '@/blocks/collection/model';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -46,6 +47,9 @@ function wrapMark(m: PMMark, inner: string): string {
 
 /** Fußnoten in Dokument-Reihenfolge, gesammelt während `inline()`/`block()` – ihr Index (+1) ist ihre Nummer. */
 let footnotes: string[] = [];
+
+/** Alle Sammlungen der Notiz – für Verknüpfungsfelder, deren Zielblatt in einer anderen Sammlung liegt. */
+let allCollections: CollectionData[] = [];
 
 function inline(nodes: PMNode[] = [], assets?: Assets): string {
   return nodes
@@ -186,7 +190,7 @@ function block(n: PMNode, assets: Assets): string {
     }
     case 'callout': {
       const c = resolveCallout(a);
-      return `<aside class="callout callout-${c.variant}" style="--tone:${calloutHex[c.color]}"><p class="callout-label">${esc(c.title)}</p>${blocks(n.content, assets)}</aside>`;
+      return `<aside class="callout callout-${c.variant} callout-style-${c.style}" style="--tone:${calloutHex[c.color]}"><p class="callout-label">${esc(c.title)}</p>${blocks(n.content, assets)}</aside>`;
     }
     case 'toggleBlock':
       return `<details open><summary>${esc(a.summary || 'Aufklappen')}</summary>${blocks(n.content, assets)}</details>`;
@@ -247,7 +251,7 @@ function block(n: PMNode, assets: Assets): string {
         .join('')}</table>`;
     }
     case 'collection':
-      return collectionTables(a.data)
+      return collectionTables(a.data, allCollections)
         .map((t) => `<section class="collection"><h4>${esc(t.name)}</h4>${table(t.rows.map((r) => r.map(esc)), true)}</section>`)
         .join('\n');
     case 'plot': {
@@ -278,6 +282,7 @@ function block(n: PMNode, assets: Assets): string {
 /** Lesbares HTML eines einzelnen Blocks (ohne Bilder/SVG) – z. B. für die Zwischenablage. */
 export function blockHtml(n: PMNode): string {
   footnotes = [];
+  allCollections = collectCollections(n);
   return block(n, { images: new Map(), mermaid: new Map(), math: new Map() });
 }
 
@@ -287,6 +292,7 @@ export function blockHtml(n: PMNode): string {
  */
 export function previewHtml(doc: PMNode, assets: Assets, limit = 14): string {
   footnotes = [];
+  allCollections = collectCollections(doc);
   return (doc.content ?? [])
     .slice(0, limit)
     .map((n) =>
@@ -372,7 +378,10 @@ figure.svg[data-align="right"]>div{margin-right:0}
 figure.svg[data-align="floatLeft"]{float:left;max-width:50%;margin:4px 20px 12px 0}
 figure.svg[data-align="floatRight"]{float:right;max-width:50%;margin:4px 0 12px 20px}
 figure.svg figcaption{text-align:center}
-.callout{--tone:var(--blue);position:relative;margin:0 0 16px;padding:12px 16px;border-radius:10px;background:color-mix(in srgb,var(--tone) 11%,transparent);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.callout{--tone:var(--blue);position:relative;margin:0 0 16px;padding:6px 0 6px 16px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px;background:var(--tone)}
+.callout-style-background{padding:12px 16px;border-radius:10px;background:color-mix(in srgb,var(--tone) 11%,transparent)}
+.callout-style-background::before{content:none}
 .callout>:last-child{margin-bottom:0}
 .callout-label{color:var(--tone);font-weight:600;margin-bottom:6px}
 .callout-tip{--tone:var(--green)}.callout-important{--tone:var(--purple)}.callout-warning{--tone:var(--amber)}.callout-caution{--tone:var(--red)}
@@ -460,6 +469,7 @@ function footnoteList(): string {
 export function toHtml({ title, tags, doc, assets }: ExportDoc): string {
   const name = untitled(title);
   footnotes = [];
+  allCollections = collectCollections(doc);
   const body = blocks(doc.content, assets);
   return `<!doctype html>
 <html lang="de">

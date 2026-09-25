@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import type { Editor } from '@tiptap/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { tagColors } from '@/app/actions';
 import { fieldIcon, fieldIconOf, fieldTypes, isChoiceType, nextOptionColor, uid, type Field } from './model';
+import { findCollections } from './registry';
 import { Popover } from './Popover';
 import { confirmDialog } from '@/ui/Dialog';
 
@@ -18,11 +20,13 @@ interface FieldMenuProps {
   onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
   onClose: () => void;
+  /** Für Verknüpfungsfelder: um andere Sammlungen im Dokument als Ziel anzubieten. */
+  editor: Editor;
 }
 
 /** Menü am Spaltenkopf: Sortieren, Feld bearbeiten (Name, Typ, Optionen), verschieben, löschen. */
 export function FieldMenu(props: FieldMenuProps) {
-  const { field, sortDir, onSort, onClose } = props;
+  const { field, sortDir, onSort, onClose, editor } = props;
   const [editing, setEditing] = useState(!!props.startInEdit);
 
   if (editing)
@@ -30,6 +34,7 @@ export function FieldMenu(props: FieldMenuProps) {
       <FieldForm
         field={field}
         mode="edit"
+        editor={editor}
         onSubmit={(f) => {
           props.onSave(f);
           onClose();
@@ -91,14 +96,17 @@ interface FieldFormProps {
   mode: 'add' | 'edit';
   onSubmit: (field: Field) => void;
   onCancel: () => void;
+  /** Für Verknüpfungsfelder: um Zielblätter aus dem Dokument anzubieten. */
+  editor?: Editor;
 }
 
 /** Feld anlegen bzw. bearbeiten: Symbol, Name, Typ und Optionen. Übernommen wird erst beim Bestätigen. */
-export function FieldForm({ field, mode, onSubmit, onCancel }: FieldFormProps) {
+export function FieldForm({ field, mode, onSubmit, onCancel, editor }: FieldFormProps) {
   const [draft, setDraft] = useState(field);
-  const [picker, setPicker] = useState<'icon' | 'type' | null>(null);
+  const [picker, setPicker] = useState<'icon' | 'type' | 'relationTarget' | null>(null);
   const iconRef = useRef<HTMLButtonElement>(null);
   const typeRef = useRef<HTMLButtonElement>(null);
+  const relationRef = useRef<HTMLButtonElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   // Nicht per autoFocus: Das Popover ist im ersten Frame noch unsichtbar und nimmt keinen Fokus an.
   useEffect(() => {
@@ -108,7 +116,9 @@ export function FieldForm({ field, mode, onSubmit, onCancel }: FieldFormProps) {
   const options = draft.options ?? [];
   const setOptions = (next: typeof options) => setDraft((d) => ({ ...d, options: next }));
   const type = fieldTypes.find((t) => t.type === draft.type) ?? fieldTypes[0];
-  const valid = draft.name.trim() !== '';
+  const targets = editor ? findCollections(editor).flatMap((c) => c.data.sheets.map((s) => ({ collectionId: c.data.id, sheetId: s.id, label: `${c.data.title || 'Sammlung'} · ${s.name}` }))) : [];
+  const currentTarget = targets.find((t) => t.collectionId === draft.relation?.collectionId && t.sheetId === draft.relation?.sheetId);
+  const valid = draft.name.trim() !== '' && (draft.type !== 'relation' || !!draft.relation);
 
   const submit = () => {
     if (!valid) return;
@@ -165,6 +175,55 @@ export function FieldForm({ field, mode, onSubmit, onCancel }: FieldFormProps) {
         <span>{type.label}</span>
         <Icon name="chevron" className="b-field-select-chevron" />
       </button>
+
+      {draft.type === 'relation' && (
+        <>
+          <p className="b-field-edit-label">Zielblatt</p>
+          <button
+            ref={relationRef}
+            type="button"
+            className={`b-field-select${picker === 'relationTarget' ? ' is-open' : ''}`}
+            aria-haspopup="listbox"
+            aria-expanded={picker === 'relationTarget'}
+            onClick={() => setPicker((p) => (p === 'relationTarget' ? null : 'relationTarget'))}
+          >
+            <Icon name="fieldRelation" className="b-pop-icon" />
+            <span>{currentTarget?.label ?? 'Blatt wählen …'}</span>
+            <Icon name="chevron" className="b-field-select-chevron" />
+          </button>
+          <label className="b-field-checkline">
+            <input
+              type="checkbox"
+              checked={!!draft.relationMulti}
+              onChange={(e) => setDraft((d) => ({ ...d, relationMulti: e.target.checked }))}
+            />
+            Mehrere Zeilen verknüpfen
+          </label>
+
+          {picker === 'relationTarget' && relationRef.current && (
+            <Popover anchor={relationRef.current} onClose={() => setPicker(null)} className="b-typepick" matchWidth>
+              <div className="b-pop-list" role="listbox" aria-label="Zielblatt">
+                {targets.length === 0 && <p className="b-pop-empty">Keine andere Tabellen-Sammlung im Dokument.</p>}
+                {targets.map((t) => (
+                  <button
+                    key={`${t.collectionId}:${t.sheetId}`}
+                    type="button"
+                    role="option"
+                    aria-selected={t.collectionId === draft.relation?.collectionId && t.sheetId === draft.relation?.sheetId}
+                    className={`b-pop-item${t.collectionId === draft.relation?.collectionId && t.sheetId === draft.relation?.sheetId ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setDraft((d) => ({ ...d, relation: { collectionId: t.collectionId, sheetId: t.sheetId } }));
+                      setPicker(null);
+                    }}
+                  >
+                    <Icon name="fieldRelation" className="b-pop-icon" /> {t.label}
+                  </button>
+                ))}
+              </div>
+            </Popover>
+          )}
+        </>
+      )}
 
       {isChoiceType(draft.type) && (
         <>

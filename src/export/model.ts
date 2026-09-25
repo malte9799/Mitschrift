@@ -175,8 +175,24 @@ export async function collectAssets(doc: PMNode, opts: { png?: boolean; mermaid?
   return assets;
 }
 
-/** Zellwert einer Sammlung als Text. */
-export function formatCell(field: Field, value: CellValue | undefined): string {
+/** Alle Sammlungen in der Notiz (für Verknüpfungsfelder – deren Zielblatt kann in einer anderen Sammlung liegen). */
+export function collectCollections(doc: PMNode, out: CollectionData[] = []): CollectionData[] {
+  if (doc.type === 'collection' && doc.attrs?.data) out.push(doc.attrs.data as CollectionData);
+  for (const child of doc.content ?? []) collectCollections(child, out);
+  return out;
+}
+
+/** Titel (erstes Feld) einer Zeile in einem bestimmten Blatt – für Verknüpfungsfelder. */
+function relationRowTitle(all: CollectionData[], collectionId: string, sheetId: string, rowId: string): string {
+  const sheet = all.find((c) => c.id === collectionId)?.sheets.find((s) => s.id === sheetId);
+  const row = sheet?.rows.find((r) => r.id === rowId);
+  const titleField = sheet?.fields[0];
+  if (!row || !titleField) return '';
+  return formatCell(titleField, row.cells[titleField.id], all) || '(ohne Titel)';
+}
+
+/** Zellwert einer Sammlung als Text. `all`: alle Sammlungen der Notiz, zum Auflösen von Verknüpfungsfeldern. */
+export function formatCell(field: Field, value: CellValue | undefined, all: CollectionData[] = []): string {
   if (value === null || value === undefined || value === '') return '';
   switch (field.type) {
     case 'checkbox':
@@ -192,17 +208,22 @@ export function formatCell(field: Field, value: CellValue | undefined): string {
         .map((id) => field.options?.find((o) => o.id === id)?.label)
         .filter(Boolean)
         .join(', ');
+    case 'relation': {
+      if (!field.relation) return '';
+      const ids = Array.isArray(value) ? value : [value as string];
+      return ids.map((id) => relationRowTitle(all, field.relation!.collectionId, field.relation!.sheetId, id)).filter(Boolean).join(', ');
+    }
     default:
       return String(value);
   }
 }
 
-/** Alle Blätter einer Sammlung als Text-Tabellen (Kopfzeile + Zeilen). */
-export function collectionTables(data: CollectionData | undefined): { name: string; rows: string[][] }[] {
+/** Alle Blätter einer Sammlung als Text-Tabellen (Kopfzeile + Zeilen). `all`: alle Sammlungen der Notiz, für Verknüpfungsfelder. */
+export function collectionTables(data: CollectionData | undefined, all: CollectionData[] = data ? [data] : []): { name: string; rows: string[][] }[] {
   if (!data?.sheets) return [];
   return data.sheets.map((s) => ({
     name: data.sheets.length > 1 ? `${data.title ? `${data.title} – ` : ''}${s.name}` : data.title || s.name,
-    rows: [s.fields.map((f) => f.name), ...s.rows.map((r) => s.fields.map((f) => formatCell(f, r.cells[f.id])))],
+    rows: [s.fields.map((f) => f.name), ...s.rows.map((r) => s.fields.map((f) => formatCell(f, r.cells[f.id], all)))],
   }));
 }
 

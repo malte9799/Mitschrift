@@ -3,7 +3,8 @@ import type { Flashcard } from '@/blocks/flashcard/FlashcardsNode';
 import type { QuizQuestion } from '@/blocks/quiz/QuizNode';
 import { resolveCallout } from '@/editor/CalloutNode';
 import { glossaryRows, plotSummary, timelineRows } from './extraBlocks';
-import { collectionTables, imageAsset, noteBlockAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import type { CollectionData } from '@/blocks/collection/model';
 
 /** Markdown und reiner Text teilen sich den Aufbau, nur die Auszeichnung unterscheidet sich. */
 type Mode = 'md' | 'txt';
@@ -53,6 +54,9 @@ const escMd = (s: string) => s.replace(/([\\`*_[\]<|])/g, '\\$1');
 
 /** Fußnoten in Dokument-Reihenfolge, gesammelt während `inline()` – ihr Index (+1) ist ihre Nummer (nur Markdown-Export). */
 let footnotes: string[] = [];
+
+/** Alle Sammlungen der Notiz – für Verknüpfungsfelder, deren Zielblatt in einer anderen Sammlung liegt. */
+let allCollections: CollectionData[] = [];
 
 /** Markdown-Inline mit Marken-Stapel, damit aufeinanderfolgende Textstücke nicht `****` erzeugen. */
 function inlineMd(nodes: PMNode[] = [], ctx: Ctx): string {
@@ -319,7 +323,7 @@ function block(n: PMNode, ctx: Ctx): string {
       return table(rows, ctx);
     }
     case 'collection':
-      return collectionTables(a.data)
+      return collectionTables(a.data, allCollections)
         .map((t) => `${label(t.name, ctx)}\n\n${table(t.rows.map((r) => r.map((c) => escCell(c, ctx))), ctx)}`)
         .join('\n\n');
     case 'plot': {
@@ -352,6 +356,7 @@ function block(n: PMNode, ctx: Ctx): string {
 export function toMarkdown({ title, tags, doc, assets }: ExportDoc): string {
   const ctx: Ctx = { mode: 'md', assets, shiftHeadings: true };
   footnotes = [];
+  allCollections = collectCollections(doc);
   const body = blocks(doc.content, ctx);
   const head = [`# ${escMd(untitled(title))}`, tags.length ? tags.map((t) => `\`${t}\``).join(' ') : ''].filter(Boolean).join('\n\n');
   const notes = footnotes.length ? footnotes.map((text, i) => `[^${i + 1}]: ${escMd(text)}`).join('\n') : '';
@@ -361,11 +366,13 @@ export function toMarkdown({ title, tags, doc, assets }: ExportDoc): string {
 /** Blöcke ohne Titel als Markdown – für die Zwischenablage. */
 export function blocksToMarkdown(nodes: PMNode[]): string {
   footnotes = [];
+  allCollections = nodes.flatMap((n) => collectCollections(n));
   return blocks(nodes, { mode: 'md', assets: { images: new Map(), mermaid: new Map(), math: new Map() } });
 }
 
 export function toPlainText({ title, tags, doc, assets }: ExportDoc): string {
   const ctx: Ctx = { mode: 'txt', assets, shiftHeadings: true };
+  allCollections = collectCollections(doc);
   const name = untitled(title);
   const head = [`${name}\n${'═'.repeat(width(name))}`, tags.length ? tags.join(' · ') : ''].filter(Boolean).join('\n');
   return `${[head, blocks(doc.content, ctx)].filter(Boolean).join('\n\n')}\n`;

@@ -7,7 +7,9 @@ import { CollectionCell } from './CollectionCell';
 import { FieldForm, FieldMenu } from './FieldMenu';
 import { BarButton, BarSep, useBlockBar } from '@/editor/BlockBar';
 import { Popover } from './Popover';
-import { cellText, changeFieldType, fieldIconOf, isChoiceType, newSheet, nextOptionColor, parseCell, sortedRows, uid, type CellValue, type CollectionData, type Field, type Sheet } from './model';
+import { cellText, changeFieldType, fieldIconOf, isChoiceType, migrateCollection, newSheet, nextOptionColor, parseCell, rowTitle, sortedRows, uid, type CellValue, type CollectionData, type Field, type Sheet } from './model';
+import { findCollections, findSheet } from './registry';
+import { generateErDiagram } from './erDiagram';
 import { confirmDialog } from '@/ui/Dialog';
 
 /** Zelle als Zeilen-/Spaltenindex in der angezeigten (sortierten) Reihenfolge. */
@@ -34,7 +36,12 @@ const arrows: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: 
 export function CollectionView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const editable = useEditable(editor);
   const bar = useBlockBar(editor, getPos);
-  const data = node.attrs.data as CollectionData;
+  const data = migrateCollection(node.attrs.data as CollectionData);
+  // Ältere Sammlung ohne ID: einmalig die ergänzte ID speichern, sonst würde bei jedem Rendern eine neue entstehen.
+  useEffect(() => {
+    if ((node.attrs.data as CollectionData).id !== data.id) updateAttributes({ data });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim ersten Rendern mit fehlender ID
+  }, []);
   const [activeId, setActiveId] = useState(data.sheets[0]?.id);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ fieldId: string; anchor: HTMLElement; edit: boolean } | null>(null);
@@ -274,6 +281,17 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
     }
   }
 
+  /** Für ein Verknüpfungsfeld: Zeilen-ID → Titel der Zeile im Zielblatt. */
+  function relationTitleResolver(field: Field) {
+    if (field.type !== 'relation' || !field.relation) return undefined;
+    const target = findSheet(editor, field.relation.collectionId, field.relation.sheetId);
+    if (!target) return undefined;
+    return (rowId: string) => {
+      const row = target.sheet.rows.find((r) => r.id === rowId);
+      return row ? rowTitle(target.sheet, row) : null;
+    };
+  }
+
   /** ⌘C / ⌘X: markierte Zellen als Tab-getrennten Text (passt in Tabellenkalkulationen). */
   function onGridCopy(e: ClipboardEvent<HTMLDivElement>) {
     if (e.target !== gridRef.current || !sel) return;
@@ -282,7 +300,7 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
       .map((row) =>
         sheet.fields
           .slice(sel.c0, sel.c1 + 1)
-          .map((f) => cellText(f, row.cells[f.id] ?? null).replace(/[\t\n]/g, ' '))
+          .map((f) => cellText(f, row.cells[f.id] ?? null, relationTitleResolver(f)).replace(/[\t\n]/g, ' '))
           .join('\t'),
       )
       .join('\n');
@@ -336,6 +354,14 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
   const menuField = menu && sheet.fields.find((f) => f.id === menu.fieldId);
   const menuIndex = menuField ? sheet.fields.indexOf(menuField) : -1;
 
+  /** Fügt nach der Sammlung ein Beziehungsdiagramm (Mermaid erDiagram) über alle Sammlungen im Dokument ein. */
+  function insertErDiagram() {
+    const pos = getPos();
+    if (typeof pos !== 'number') return;
+    const code = generateErDiagram(findCollections(editor));
+    editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'mermaid', attrs: { code } }).run();
+  }
+
   return (
     <NodeViewWrapper className={`b-block b-coll${checkedRows.length ? ' has-checked' : ''}`} data-interactive="">
       {bar.render(
@@ -371,6 +397,8 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
             />
             <BarSep />
             <BarButton icon="plus" label="Tabellenblatt hinzufügen" text="Blatt" onClick={addSheet} />
+            <BarSep />
+            <BarButton icon="erDiagram" label="Beziehungsdiagramm einfügen" text="Diagramm" onClick={insertErDiagram} />
           </>
         ),
       )}
@@ -531,6 +559,7 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
                         primary={fi === 0}
                         onChange={(v) => setCell(row.id, f.id, v)}
                         onFieldChange={updateField}
+                        editor={editor}
                       />
                     </td>
                   ))}
@@ -552,7 +581,7 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
 
       {adding && (
         <Popover anchor={adding} onClose={() => setAdding(null)} className="b-fieldmenu" align="end">
-          <FieldForm field={{ id: uid(), name: '', type: 'text' }} mode="add" onSubmit={addField} onCancel={() => setAdding(null)} />
+          <FieldForm field={{ id: uid(), name: '', type: 'text' }} mode="add" editor={editor} onSubmit={addField} onCancel={() => setAdding(null)} />
         </Popover>
       )}
 
@@ -562,6 +591,7 @@ export function CollectionView({ node, editor, getPos, updateAttributes }: NodeV
             key={`${menuField.id}-${menu.edit}`}
             field={menuField}
             startInEdit={menu.edit}
+            editor={editor}
             sortDir={sheet.sort?.fieldId === menuField.id ? sheet.sort.dir : null}
             canDelete={sheet.fields.length > 1}
             canMoveLeft={menuIndex > 0}

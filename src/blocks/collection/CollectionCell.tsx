@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import type { Editor } from '@tiptap/react';
 import { Icon } from '@/ui/Icon';
 import { Popover } from './Popover';
-import { cellHref, nextOptionColor, uid, type CellValue, type Field, type SelectOption } from './model';
+import { findSheet } from './registry';
+import { rowTitle, sortedRows, cellHref, nextOptionColor, uid, type CellValue, type Field, type SelectOption } from './model';
 
 interface CellProps {
   field: Field;
@@ -12,6 +14,8 @@ interface CellProps {
   onChange: (value: CellValue) => void;
   /** Für neu angelegte Auswahl-Optionen. */
   onFieldChange: (field: Field) => void;
+  /** Nur für Verknüpfungsfelder: zum Auflösen des Zielblatts im Dokument. */
+  editor?: Editor;
 }
 
 const formatDate = (v: string) => {
@@ -20,7 +24,7 @@ const formatDate = (v: string) => {
 };
 
 /** Eine Tabellenzelle, je nach Feldtyp mit passendem Eingabeelement. */
-export function CollectionCell({ field, value, editable, primary, onChange, onFieldChange }: CellProps) {
+export function CollectionCell({ field, value, editable, primary, onChange, onFieldChange, editor }: CellProps) {
   switch (field.type) {
     case 'checkbox':
       return (
@@ -69,6 +73,8 @@ export function CollectionCell({ field, value, editable, primary, onChange, onFi
     case 'select':
     case 'multiselect':
       return <ChoiceCell field={field} value={value} editable={editable} onChange={onChange} onFieldChange={onFieldChange} />;
+    case 'relation':
+      return <RelationCell field={field} value={value} editable={editable} onChange={onChange} editor={editor} />;
     default:
       return editable ? (
         <input className={`b-cell-input${primary ? ' is-primary' : ''}`} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />
@@ -148,6 +154,77 @@ function ChoiceCell({ field, value, editable, onChange, onFieldChange }: Omit<Ce
           <OptionPicker options={options} selected={selectedIds} onToggle={toggle} onCreate={create} />
         </Popover>
       )}
+    </>
+  );
+}
+
+/** Chip für eine verknüpfte Zeile (Titel aus dem Zielblatt). */
+function RelationChip({ label }: { label: string }) {
+  return (
+    <span className="b-chip b-chip-relation">
+      <Icon name="fieldRelation" />
+      {label}
+    </span>
+  );
+}
+
+function RelationCell({ field, value, editable, onChange, editor }: Omit<CellProps, 'primary' | 'onFieldChange'>) {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLButtonElement>(null);
+  const target = field.relation;
+  const targetSheet = editor && target ? findSheet(editor, target.collectionId, target.sheetId) : undefined;
+  const multi = !!field.relationMulti;
+  const selectedIds = multi ? ((value as string[] | null) ?? []) : value ? [value as string] : [];
+  const targetRows = targetSheet ? sortedRows(targetSheet.sheet) : [];
+  const titleOf = (rowId: string) => {
+    const row = targetRows.find((r) => r.id === rowId);
+    return row ? rowTitle(targetSheet!.sheet, row) : null;
+  };
+  const chips = selectedIds.map((id) => titleOf(id)).filter((s): s is string => !!s);
+
+  if (!target) return <span className="b-cell-text is-muted">Kein Zielblatt gewählt</span>;
+
+  if (!editable) return <span className="b-cell-chips">{chips.map((label, i) => <RelationChip key={selectedIds[i]} label={label} />)}</span>;
+
+  function toggle(id: string) {
+    if (multi) onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+    else {
+      onChange(selectedIds[0] === id ? null : id);
+      setOpen(false);
+    }
+  }
+
+  return (
+    <>
+      <button ref={anchor} type="button" className={`b-cell-choice${open ? ' is-open' : ''}`} onClick={() => setOpen((o) => !o)}>
+        <span className="b-cell-chips">{chips.length ? chips.map((label, i) => <RelationChip key={selectedIds[i]} label={label} />) : <span className="b-cell-placeholder">Zeile wählen …</span>}</span>
+      </button>
+      {open && anchor.current && (
+        <Popover anchor={anchor.current} onClose={() => setOpen(false)} className="b-optpick">
+          <RelationPicker rows={targetRows.map((r) => ({ id: r.id, label: rowTitle(targetSheet!.sheet, r) }))} selected={selectedIds} onToggle={toggle} />
+        </Popover>
+      )}
+    </>
+  );
+}
+
+function RelationPicker({ rows, selected, onToggle }: { rows: { id: string; label: string }[]; selected: string[]; onToggle: (id: string) => void }) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const filtered = rows.filter((r) => r.label.toLowerCase().includes(q));
+
+  return (
+    <>
+      <input autoFocus className="b-pop-input" value={query} placeholder="Zeile suchen …" onChange={(e) => setQuery(e.target.value)} />
+      <div className="b-pop-list">
+        {filtered.map((r) => (
+          <button key={r.id} type="button" className="b-pop-item" onClick={() => onToggle(r.id)}>
+            <RelationChip label={r.label} />
+            {selected.includes(r.id) && <Icon name="check" className="b-pop-check" />}
+          </button>
+        ))}
+        {filtered.length === 0 && <p className="b-pop-empty">{rows.length === 0 ? 'Zielblatt hat noch keine Zeilen.' : 'Keine Treffer.'}</p>}
+      </div>
     </>
   );
 }

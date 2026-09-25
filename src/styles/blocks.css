@@ -515,6 +515,14 @@ td .b-cell-chips:not(:empty){padding:0 10px}
   display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;white-space:nowrap;
   background:var(--tag-bg);color:var(--tag);font-size:12.5px;font-weight:550;
 }
+.b-chip-relation{gap:4px;background:var(--accent-bg);color:var(--accent)}
+.b-chip-relation svg{width:12px;height:12px}
+.b-cell-placeholder{color:var(--ink-faint);font-size:13px}
+.b-cell-text.is-muted{color:var(--ink-faint);font-size:13px}
+.b-field-checkline{
+  display:flex;align-items:center;gap:7px;margin:8px 0 0;padding:2px 0;font-size:13.5px;color:var(--ink-soft);cursor:pointer;
+}
+.b-field-checkline input{width:15px;height:15px;margin:0;accent-color:var(--accent);cursor:pointer}
 .b-coll-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 .b-coll-addrow{
   display:flex;align-items:center;gap:6px;padding:7px 10px;border:0;border-radius:var(--radius-xs);

@@ -3,7 +3,8 @@ import type { Flashcard } from '@/blocks/flashcard/FlashcardsNode';
 import type { QuizQuestion } from '@/blocks/quiz/QuizNode';
 import { resolveCallout, type CalloutColor } from '@/editor/CalloutNode';
 import { glossaryRows, plotSummary, timelineRows } from './extraBlocks';
-import { collectionTables, imageAsset, noteBlockAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import type { CollectionData } from '@/blocks/collection/model';
 
 /** A4 mit 2 cm Rand: nutzbare Breite in Twips (1/1440 Zoll). */
 const PAGE_W = 11906;
@@ -65,7 +66,14 @@ class RtfWriter {
   colors = [...BASE_COLORS];
   /** Fußnoten in Dokument-Reihenfolge – ihr Index (+1) ist ihre Nummer. */
   footnotes: string[] = [];
-  constructor(private assets: Assets) {}
+  /** Alle Sammlungen der Notiz – für Verknüpfungsfelder, deren Zielblatt in einer anderen Sammlung liegt. */
+  private allCollections: CollectionData[];
+  constructor(
+    private assets: Assets,
+    doc?: PMNode,
+  ) {
+    this.allCollections = doc ? collectCollections(doc) : [];
+  }
 
   color(value: unknown): number | null {
     const rgb = parseColor(value);
@@ -311,7 +319,7 @@ class RtfWriter {
         );
       }
       case 'collection':
-        return collectionTables(a.data)
+        return collectionTables(a.data, this.allCollections)
           .map((t) => this.para(esc(t.name), box, `\\b\\fs20\\cf${C.soft}\\keepn`, 80) + this.table(t.rows.map((r) => r.map(esc)), true, box.indent))
           .join('');
       default:
@@ -322,7 +330,7 @@ class RtfWriter {
 
 /** Rich Text Format – öffnet sich in TextEdit, Pages, Word und LibreOffice. */
 export function toRtf({ title, tags, doc, assets }: ExportDoc): string {
-  const w = new RtfWriter(assets);
+  const w = new RtfWriter(assets, doc);
   const body =
     w.para(esc(untitled(title)), { indent: 0 }, '\\b\\fs52', tags.length ? 80 : 280) +
     (tags.length ? w.para(esc(tags.join('  ·  ')), { indent: 0 }, `\\fs20\\cf${C.accent}`, 280) : '') +

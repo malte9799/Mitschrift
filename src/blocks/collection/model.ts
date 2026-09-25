@@ -1,12 +1,18 @@
 import type { TagColor } from '@/storage';
 import type { IconName } from '@/ui/Icon';
 
-export type FieldType = 'text' | 'number' | 'checkbox' | 'date' | 'url' | 'email' | 'phone' | 'select' | 'multiselect';
+export type FieldType = 'text' | 'number' | 'checkbox' | 'date' | 'url' | 'email' | 'phone' | 'select' | 'multiselect' | 'relation';
 
 export interface SelectOption {
   id: string;
   label: string;
   color: TagColor;
+}
+
+/** Ziel einer Verknüpfung: ein Tabellenblatt (in dieser oder einer anderen Sammlung im Dokument). */
+export interface RelationTarget {
+  collectionId: string;
+  sheetId: string;
 }
 
 export interface Field {
@@ -17,9 +23,12 @@ export interface Field {
   icon?: IconName;
   /** Nur für Einzel-/Mehrfachauswahl. */
   options?: SelectOption[];
+  /** Nur für Verknüpfung: Zielblatt und ob mehrere Zeilen wählbar sind. */
+  relation?: RelationTarget;
+  relationMulti?: boolean;
 }
 
-/** text/url/email/phone/date: string, number: number, checkbox: boolean, select: Options-ID, multiselect: IDs. */
+/** text/url/email/phone/date: string, number: number, checkbox: boolean, select: Options-ID, multiselect/relation: IDs. */
 export type CellValue = string | number | boolean | string[] | null;
 
 export interface Row {
@@ -36,6 +45,8 @@ export interface Sheet {
 }
 
 export interface CollectionData {
+  /** Eindeutige ID der Sammlung – Ziel für Verknüpfungsfelder aus anderen Sammlungen. */
+  id: string;
   title: string;
   sheets: Sheet[];
 }
@@ -51,6 +62,7 @@ export const fieldTypes: { type: FieldType; label: string; icon: IconName; group
   { type: 'phone', label: 'Telefon', icon: 'phone' },
   { type: 'select', label: 'Einzelauswahl', icon: 'fieldSelect', group: true },
   { type: 'multiselect', label: 'Mehrfachauswahl', icon: 'fieldMulti' },
+  { type: 'relation', label: 'Verknüpfung', icon: 'fieldRelation', group: true },
 ];
 
 export const fieldIcon = (type: FieldType): IconName => fieldTypes.find((f) => f.type === type)?.icon ?? 'fieldText';
@@ -63,6 +75,11 @@ const optionColors: TagColor[] = ['blue', 'green', 'amber', 'purple', 'red', 'te
 export const nextOptionColor = (options: SelectOption[]): TagColor => optionColors[options.length % optionColors.length];
 
 const emptyRows = (n: number): Row[] => Array.from({ length: n }, () => ({ id: uid(), cells: {} }));
+
+/** Ältere gespeicherte Sammlungen haben noch keine `id` (für Verknüpfungsfelder) – beim Laden ergänzen. */
+export function migrateCollection(data: CollectionData): CollectionData {
+  return data.id ? data : { ...data, id: uid() };
+}
 
 export function newSheet(name: string): Sheet {
   return { id: uid(), name, fields: [{ id: uid(), name: 'Titel', type: 'text' }], rows: emptyRows(3), sort: null };
@@ -84,12 +101,22 @@ export function sampleCollection(): CollectionData {
     },
     { id: uid(), name: 'Datum', type: 'date' },
   );
-  return { title: 'Sammlung', sheets: [sheet] };
+  return { id: uid(), title: 'Sammlung', sheets: [sheet] };
 }
 
-/** Zellwert als Klartext (Kopieren, Typwechsel). */
-export function cellText(field: Field, value: CellValue): string {
+/** Titel (erstes Feld) einer Zeile – für die Anzeige in Verknüpfungs-Zellen. */
+export function rowTitle(sheet: Sheet, row: Row): string {
+  const titleField = sheet.fields[0];
+  return (titleField && cellText(titleField, row.cells[titleField.id])) || '(ohne Titel)';
+}
+
+/** Zellwert als Klartext (Kopieren, Typwechsel). Für Verknüpfungen wird `resolveTitle` benutzt, falls angegeben. */
+export function cellText(field: Field, value: CellValue, resolveTitle?: (rowId: string) => string | null): string {
   if (value === null || value === undefined) return '';
+  if (field.type === 'relation' && resolveTitle) {
+    const ids = Array.isArray(value) ? value : [value as string];
+    return ids.map((id) => resolveTitle(id)).filter((s): s is string => !!s).join(', ');
+  }
   if (Array.isArray(value)) return value.map((id) => field.options?.find((o) => o.id === id)?.label ?? '').filter(Boolean).join(', ');
   if (field.type === 'select') return field.options?.find((o) => o.id === value)?.label ?? '';
   if (typeof value === 'boolean') return value ? 'Ja' : '';
@@ -135,6 +162,8 @@ export function convertValue(value: CellValue, from: Field, to: FieldType): Cell
     case 'select':
     case 'multiselect':
       return null; // Optionen werden beim Typwechsel aus den Texten erzeugt (siehe changeFieldType).
+    case 'relation':
+      return null; // Verknüpfungen lassen sich nicht aus Text erzeugen – Zeile im Picker neu wählen.
     default:
       return asText() || null;
   }
@@ -149,7 +178,10 @@ export function changeFieldType(sheet: Sheet, fieldId: string, type: FieldType):
   const rows = sheet.rows.map((row) => {
     const value = row.cells[fieldId];
     let next: CellValue;
-    if (isChoice(type) && isChoice(field.type)) {
+    if (type === 'relation' && field.type === 'relation') {
+      // Ein-/Mehrfachverknüpfung wechseln: Werte einfach übernehmen (unten wird ggf. gekürzt).
+      next = value;
+    } else if (isChoice(type) && isChoice(field.type)) {
       // Einzel ↔ Mehrfach: Optionen bleiben, Wert wird Liste bzw. erster Eintrag.
       next = type === 'multiselect' ? (Array.isArray(value) ? value : value ? [value as string] : []) : Array.isArray(value) ? value[0] ?? null : value;
     } else if (isChoice(type)) {
@@ -170,7 +202,11 @@ export function changeFieldType(sheet: Sheet, fieldId: string, type: FieldType):
   });
   return {
     ...sheet,
-    fields: sheet.fields.map((f) => (f.id === fieldId ? { ...f, type, options: isChoice(type) ? options : undefined } : f)),
+    fields: sheet.fields.map((f) =>
+      f.id === fieldId
+        ? { ...f, type, options: isChoice(type) ? options : undefined, relation: type === 'relation' ? f.relation : undefined, relationMulti: type === 'relation' ? f.relationMulti : undefined }
+        : f,
+    ),
     rows,
   };
 }
@@ -187,6 +223,8 @@ function sortKey(field: Field, value: CellValue): string | number | null {
       return field.options?.find((o) => o.id === value)?.label ?? null;
     case 'multiselect':
       return (value as string[]).map((id) => field.options?.find((o) => o.id === id)?.label ?? '').join(', ');
+    case 'relation':
+      return null; // Titel der Zielzeile ist hier nicht bekannt – Sortierung nach Verknüpfung ergibt wenig Sinn.
     default:
       return String(value);
   }
