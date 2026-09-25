@@ -66,21 +66,26 @@ export function calloutVariant(raw: unknown): CalloutVariant {
   return (calloutVariants as string[]).includes(v) ? (v as CalloutVariant) : (legacy[v] ?? 'note');
 }
 
+/** Darstellung: Strich vorne (wie ein Zitat) oder Fläche hinter dem ganzen Block. Strich ist der Standard. */
+export type CalloutStyle = 'bar' | 'background';
+
 export interface ResolvedCallout {
   variant: CalloutVariant;
   title: string;
   icon: CalloutIcon;
   color: CalloutColor;
+  style: CalloutStyle;
 }
 
-/** Vorlage plus eigene Anpassungen (Titel, Symbol, Farbe) zu den tatsächlich angezeigten Werten auflösen. */
+/** Vorlage plus eigene Anpassungen (Titel, Symbol, Farbe, Stil) zu den tatsächlich angezeigten Werten auflösen. */
 export function resolveCallout(attrs: Record<string, unknown>): ResolvedCallout {
   const variant = calloutVariant(attrs.variant);
   const preset = calloutPresets[variant];
   const title = typeof attrs.title === 'string' && attrs.title.trim() ? attrs.title : calloutLabels[variant];
   const icon = typeof attrs.icon === 'string' && attrs.icon in calloutIcons ? (attrs.icon as CalloutIcon) : preset.icon;
   const color = typeof attrs.color === 'string' && attrs.color in calloutColors ? (attrs.color as CalloutColor) : preset.color;
-  return { variant, title, icon, color };
+  const style = attrs.style === 'background' ? 'background' : 'bar';
+  return { variant, title, icon, color, style };
 }
 
 declare module '@tiptap/core' {
@@ -113,6 +118,7 @@ export const CalloutNode = Node.create({
       title: dataAttr('title'),
       icon: dataAttr('icon'),
       color: dataAttr('color'),
+      style: dataAttr('style'),
     };
   },
 
@@ -129,7 +135,11 @@ export const CalloutNode = Node.create({
     const c = resolveCallout(node.attrs);
     return [
       'div',
-      mergeAttributes(HTMLAttributes, { class: `callout callout-${c.variant}`, 'data-callout': c.variant, style: `--tone:${calloutColors[c.color].css}` }),
+      mergeAttributes(HTMLAttributes, {
+        class: `callout callout-${c.variant} callout-style-${c.style}`,
+        'data-callout': c.variant,
+        style: `--tone:${calloutColors[c.color].css}`,
+      }),
       ['div', { class: 'callout-title', contenteditable: 'false' }, c.title],
       ['div', { class: 'callout-body' }, 0],
     ];

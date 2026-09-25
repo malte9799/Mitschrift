@@ -116,7 +116,7 @@ const KEEP_SELECTION = '.c-block-bar,.b-pop,.note-panel,.dialog-backdrop';
 const HL_PAD_X = 10;
 const HL_INSET_Y = 2;
 /** Blöcke mit Fließtext bekommen eine Fläche, Grafiken und Kästen (Tabelle, Diagramm, Code, Hinweis …) nur einen Rahmen. */
-const FILLED_BLOCKS = new Set(['listItem', 'taskItem', 'blockquote', 'toggleBlock', 'horizontalRule']);
+const FILLED_BLOCKS = new Set(['listItem', 'taskItem', 'blockquote', 'toggleBlock', 'horizontalRule', 'callout']);
 
 type Highlight = { pos: number; top: number; left: number; height: number; width: number; outline: boolean; page?: boolean };
 
@@ -133,6 +133,19 @@ function measureHighlight(editor: Editor, pos: number, c: DOMRect): Highlight | 
   }
   const filled = (node.isTextblock && node.type.name !== 'codeBlock') || FILLED_BLOCKS.has(node.type.name);
   if (!filled) return { pos, top: r.top - c.top, left: r.left - c.left, height: r.height, width: r.width, outline: true };
+  // Zitat und Hervorhebung (Strich-Darstellung): Fläche vorne bündig am Strich beginnen lassen, nicht davor;
+  // hinten wie gewohnt mit Überstand.
+  const isCalloutBar = node.type.name === 'callout' && node.attrs.style !== 'background';
+  if (node.type.name === 'blockquote' || isCalloutBar) {
+    return {
+      pos,
+      top: r.top - c.top + HL_INSET_Y,
+      left: r.left - c.left,
+      height: r.height - 2 * HL_INSET_Y,
+      width: r.width + HL_PAD_X,
+      outline: false,
+    };
+  }
   // Normale Listenpunkte: das Aufzählungszeichen steht außerhalb des <li> im Einzug der Liste.
   let left = r.left;
   const el = editor.view.nodeDOM(pos);

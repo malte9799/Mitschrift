@@ -10,7 +10,7 @@ import { alertDialog } from '@/ui/Dialog';
 import { EditedImage, type NaturalSize } from './EditedImage';
 import { ImageEditor } from './ImageEditor';
 import { Lightbox } from './Lightbox';
-import { imageFiles, pickImage, storeImage } from './files';
+import { imageFiles, pickImage, pickImageWithName, storeImage, storeImageFile } from './files';
 import { canvasToBlob, loadPixels, renderEdited } from './pixels';
 import { frameLabels, isRemote, layoutLabels, outputSize, type ImageAlign, type ImageEdit, type ImageFrame, type ImageLayout } from './model';
 
@@ -34,6 +34,7 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
   const bar = useBlockBar(editor, getPos);
   const dark = useDarkMode();
   const src = node.attrs.src as string;
+  const filename = node.attrs.filename as string | null;
   const alt = (node.attrs.alt as string | null) ?? '';
   const caption = node.attrs.title as string | null;
   const width = node.attrs.width as number | null;
@@ -181,7 +182,7 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
     return (
       <NodeViewWrapper className="c-img is-empty" data-interactive="">
         {editable ? (
-          <ImagePlaceholder onSrc={(s) => updateAttributes({ src: s })} onDelete={deleteNode} />
+          <ImagePlaceholder onSrc={(s) => updateAttributes({ src: s, filename: null })} onFile={(f) => updateAttributes({ src: f.src, filename: f.filename })} onDelete={deleteNode} />
         ) : (
           <div className="c-img-ph is-readonly">
             <Icon name="image" /> Kein Bild
@@ -394,7 +395,11 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
           {menu === 'replace' && (
             <SourceForm
               onSrc={(s) => {
-                updateAttributes({ src: s, edit: null });
+                updateAttributes({ src: s, edit: null, filename: null });
+                closeMenu();
+              }}
+              onFile={(f) => {
+                updateAttributes({ src: f.src, edit: null, filename: f.filename });
                 closeMenu();
               }}
             />
@@ -411,13 +416,26 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
           onClose={() => setEditing(false)}
         />
       )}
-      {viewing && <Lightbox items={[{ src, edit, caption, alt }]} index={0} onClose={() => setViewing(false)} />}
+      {viewing && <Lightbox items={[{ src, edit, caption, alt, filename }]} index={0} onClose={() => setViewing(false)} />}
     </NodeViewWrapper>
   );
 }
 
 /** Datei hochladen oder Bild-Link eingeben. */
-export function SourceForm({ onSrc, multiple = false, onMany }: { onSrc: (src: string) => void; multiple?: boolean; onMany?: (srcs: string[]) => void }) {
+export function SourceForm({
+  onSrc,
+  onFile,
+  multiple = false,
+  onMany,
+  onManyFiles,
+}: {
+  onSrc: (src: string) => void;
+  /** Wie `onSrc`, meldet zusätzlich den ursprünglichen Dateinamen – wird bevorzugt, wenn gesetzt. */
+  onFile?: (item: { src: string; filename: string | null }) => void;
+  multiple?: boolean;
+  onMany?: (srcs: string[]) => void;
+  onManyFiles?: (items: { src: string; filename: string | null }[]) => void;
+}) {
   const [url, setUrl] = useState('');
   const valid = /^(https?:\/\/|data:image\/)\S+$/i.test(url.trim());
   return (
@@ -426,14 +444,19 @@ export function SourceForm({ onSrc, multiple = false, onMany }: { onSrc: (src: s
         type="button"
         className="b-pop-item"
         onClick={() => {
-          if (multiple && onMany) {
+          if (multiple && (onMany || onManyFiles)) {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
             input.multiple = true;
-            input.onchange = async () => onMany(await Promise.all([...(input.files ?? [])].filter((f) => f.type.startsWith('image/')).map(storeImage)));
+            input.onchange = async () => {
+              const items = await Promise.all([...(input.files ?? [])].filter((f) => f.type.startsWith('image/')).map(storeImageFile));
+              if (onManyFiles) onManyFiles(items);
+              else onMany?.(items.map((i) => i.src));
+            };
             input.click();
-          } else pickImage(onSrc);
+          } else if (onFile) pickImageWithName(onFile);
+          else pickImage(onSrc);
         }}
       >
         <Icon name="upload" className="b-pop-icon" /> {multiple ? 'Dateien hochladen …' : 'Datei hochladen …'}
@@ -456,7 +479,16 @@ export function SourceForm({ onSrc, multiple = false, onMany }: { onSrc: (src: s
 }
 
 /** Leerer Bild-Block: Datei wählen, hineinziehen, einfügen oder Link angeben. */
-function ImagePlaceholder({ onSrc, onDelete }: { onSrc: (src: string) => void; onDelete: () => void }) {
+function ImagePlaceholder({
+  onSrc,
+  onFile,
+  onDelete,
+}: {
+  onSrc: (src: string) => void;
+  /** Wie `onSrc`, meldet zusätzlich den ursprünglichen Dateinamen. */
+  onFile?: (item: { src: string; filename: string | null }) => void;
+  onDelete: () => void;
+}) {
   const [over, setOver] = useState(false);
   const [url, setUrl] = useState('');
   const valid = /^(https?:\/\/|data:image\/)\S+$/i.test(url.trim());
@@ -475,18 +507,20 @@ function ImagePlaceholder({ onSrc, onDelete }: { onSrc: (src: string) => void; o
         setOver(false);
         if (!file) return;
         e.preventDefault();
-        onSrc(await storeImage(file));
+        if (onFile) onFile(await storeImageFile(file));
+        else onSrc((await storeImageFile(file)).src);
       }}
       onPaste={async (e) => {
         const [file] = imageFiles(e.clipboardData);
         if (!file) return;
         e.preventDefault();
-        onSrc(await storeImage(file));
+        if (onFile) onFile(await storeImageFile(file));
+        else onSrc((await storeImageFile(file)).src);
       }}
     >
       <Icon name="image" className="c-img-ph-icon" />
       <div className="c-img-ph-main">
-        <button type="button" className="b-btn b-btn-primary" onClick={() => pickImage(onSrc)}>
+        <button type="button" className="b-btn b-btn-primary" onClick={() => (onFile ? pickImageWithName(onFile) : pickImage(onSrc))}>
           <Icon name="upload" /> Hochladen
         </button>
         <span className="c-img-ph-or">oder</span>

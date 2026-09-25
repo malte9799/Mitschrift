@@ -37,7 +37,7 @@ export function CalloutView({ node, editor, getPos, updateAttributes }: NodeView
   const custom = !!(node.attrs.title || node.attrs.icon || node.attrs.color);
 
   return (
-    <NodeViewWrapper className={`callout callout-${c.variant}`} data-callout={c.variant} style={tone}>
+    <NodeViewWrapper className={`callout callout-${c.variant} callout-style-${c.style}`} data-callout={c.variant} style={tone}>
       {bar.render(
         <BarButton icon="palette" label="Hervorhebung anpassen: Vorlage, Titel, Symbol, Farbe" text="Stil" chevron active={!!anchor} onClick={(e) => setAnchor(anchor ? null : e.currentTarget)} />,
       )}
@@ -101,6 +101,16 @@ export function CalloutView({ node, editor, getPos, updateAttributes }: NodeView
                 onClick={() => updateAttributes({ color: color === calloutPresets[c.variant].color ? null : color })}
               />
             ))}
+          </div>
+
+          <p className="b-pop-label">Darstellung</p>
+          <div className="c-callout-style" style={tone}>
+            <button type="button" className={c.style === 'bar' ? 'is-active' : ''} onClick={() => updateAttributes({ style: null })}>
+              Strich
+            </button>
+            <button type="button" className={c.style === 'background' ? 'is-active' : ''} onClick={() => updateAttributes({ style: 'background' })}>
+              Fläche
+            </button>
           </div>
         </Popover>
       )}

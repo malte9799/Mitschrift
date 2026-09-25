@@ -12,6 +12,8 @@ export interface GalleryItem {
   caption: string;
   alt?: string;
   edit?: ImageEdit | null;
+  /** Ursprünglicher Dateiname beim Hochladen, falls bekannt. */
+  filename?: string | null;
 }
 
 export const galleryLayouts: GalleryLayout[] = ['grid', 'masonry', 'carousel', 'strip', 'compare'];

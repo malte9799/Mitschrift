@@ -10,7 +10,7 @@ import { EditedImage } from '@/editor/image/EditedImage';
 import { ImageEditor } from '@/editor/image/ImageEditor';
 import { Lightbox } from '@/editor/image/Lightbox';
 import { SourceForm } from '@/editor/image/ImageView';
-import { imageFiles, storeImage } from '@/editor/image/files';
+import { imageFiles, storeImageFile } from '@/editor/image/files';
 import { outputSize } from '@/editor/image/model';
 import { galleryLayouts, newItemId, type GalleryItem, type GalleryLayout } from './GalleryNode';
 
@@ -52,6 +52,8 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
   const setItems = (next: GalleryItem[]) => updateAttributes({ items: next });
   const patchItem = (id: string, p: Partial<GalleryItem>) => setItems(items.map((it) => (it.id === id ? { ...it, ...p } : it)));
   const addSrcs = (srcs: string[]) => setItems([...items, ...srcs.map((src) => ({ id: newItemId(), src, caption: '' }))]);
+  const addFiles = (files: { src: string; filename: string | null }[]) =>
+    setItems([...items, ...files.map(({ src, filename }) => ({ id: newItemId(), src, caption: '', filename }))]);
   const ratioOf = (it: GalleryItem) => ratios[it.id] ?? 4 / 3;
   const onNatural = (it: GalleryItem) => (n: { w: number; h: number }) => {
     const o = outputSize(n, it.edit);
@@ -79,7 +81,7 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
     const files = imageFiles(e.dataTransfer);
     if (files.length) {
       e.preventDefault();
-      addSrcs(await Promise.all(files.map(storeImage)));
+      addFiles(await Promise.all(files.map(storeImageFile)));
     }
   }
   function moveItem(from: number, to: number) {
@@ -210,8 +212,8 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
           {menu.kind === 'add' ? (
             <SourceForm
               multiple
-              onMany={(srcs) => {
-                addSrcs(srcs);
+              onManyFiles={(files) => {
+                addFiles(files);
                 setMenu(null);
               }}
               onSrc={(src) => {
@@ -241,7 +243,7 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
 
       {viewing !== null && (
         <Lightbox
-          items={items.map((it) => ({ src: it.src, edit: it.edit, caption: it.caption, alt: it.alt }))}
+          items={items.map((it) => ({ src: it.src, edit: it.edit, caption: it.caption, alt: it.alt, filename: it.filename }))}
           index={viewing}
           onClose={() => setViewing(null)}
         />

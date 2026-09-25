@@ -203,6 +203,7 @@ button.ie-slider-value:disabled{cursor:default}
 .lb-top{display:flex;align-items:center;gap:6px;width:100%;padding:12px 14px;flex:none}
 .lb-spacer{flex:1}
 .lb-count{font-size:13px;font-weight:600;opacity:.75;font-variant-numeric:tabular-nums;padding-left:6px}
+.lb-filename{font-size:13px;opacity:.6;padding-left:10px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb-btn{
   display:flex;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:50%;
   background:rgba(255,255,255,.08);color:#fff;cursor:pointer;

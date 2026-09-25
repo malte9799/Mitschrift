@@ -70,12 +70,19 @@
 .c-editor-body .tiptap img.ProseMirror-selectednode{outline:2px solid var(--accent);outline-offset:3px}
 .c-editor-body .tiptap a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-soft);text-underline-offset:3px}
 
-/* Hervorhebungen: farbig hinterlegte Fläche, Titelzeile mit Symbol, Inhalt in normaler Schrift.
-   --tone setzt die Ansicht je Block (Vorlage oder eigene Farbe). */
+/* Hervorhebungen: Titelzeile mit Symbol, Inhalt in normaler Schrift.
+   --tone setzt die Ansicht je Block (Vorlage oder eigene Farbe).
+   Standard: farbiger Strich vorne, wie ein Zitat. Option je Block: farbige Fläche dahinter. */
 .c-editor-body .tiptap .callout{
-  --tone:var(--blue);position:relative;margin:.9em 0 0;padding:10px 16px 12px;border-radius:var(--radius-sm);
-  background:color-mix(in srgb,var(--tone) 11%,var(--paper));
+  --tone:var(--blue);position:relative;margin:.9em 0 0;padding:6px 0 6px 18px;
 }
+.c-editor-body .tiptap .callout::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px;background:var(--tone);
+}
+.c-editor-body .tiptap .callout-style-background{
+  padding:10px 16px 12px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--tone) 11%,var(--paper));
+}
+.c-editor-body .tiptap .callout-style-background::before{content:none}
 .c-editor-body .tiptap .callout-title{
   display:flex;align-items:center;gap:8px;margin-bottom:4px;color:var(--tone);font-weight:600;line-height:1.7;user-select:none;
 }
@@ -107,6 +114,13 @@
 }
 .c-callout-colors button:hover{transform:scale(1.1)}
 .c-callout-colors button.is-active{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--tone)}
+.c-callout-style{display:flex;gap:4px;padding:0 4px}
+.c-callout-style button{
+  flex:1;min-height:30px;border:0;border-radius:var(--radius-xs);background:var(--paper-2);
+  color:var(--ink-soft);font-size:13px;cursor:pointer;
+}
+.c-callout-style button:hover{background:var(--hover)}
+.c-callout-style button.is-active{background:color-mix(in srgb,var(--tone) 14%,transparent);color:var(--tone);font-weight:600}
 .c-editor-body .tiptap .callout-body > :first-child,.c-editor-body .tiptap blockquote > :first-child{margin-top:0}
 
 /* ---------- Taste, Formel, Fußnote ---------- */
@@ -172,8 +186,7 @@
 /* ---------- Rubber-Band-Auswahl ---------- */
 .c-block-selection-layer{position:fixed;inset:0;pointer-events:none;z-index:30}
 .c-block-selection-box{
-  position:fixed;background:color-mix(in srgb,var(--accent) 10%,transparent);
-  border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);border-radius:4px;
+  position:fixed;background:color-mix(in srgb,var(--accent) 16%,transparent);border-radius:4px;
 }
 .c-block-selection-drop{position:fixed;height:3px;background:var(--accent);border-radius:2px;z-index:20;pointer-events:none}
 /* Markierter Block: abgerundete Fläche hinter dem Inhalt (Position aus BlockSelection). */

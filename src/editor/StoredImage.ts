@@ -3,7 +3,7 @@ import { ReactNodeViewRenderer } from '@tiptap/react';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { jsonAttr } from '@/blocks/jsonAttr';
 import { ImageView } from './image/ImageView';
-import { imageFiles, storeImage } from './image/files';
+import { imageFiles, storeImageFile } from './image/files';
 import { looksLikeImageUrl, type ImageAlign, type ImageEdit, type ImageFrame, type ImageLayout } from './image/model';
 
 export { resolveSrc, pickImage } from './image/files';
@@ -52,6 +52,12 @@ export const StoredImage = Image.extend({
       x: num('x', 0),
       y: num('y', 0),
       edit: jsonAttr<ImageEdit | null>('edit', null),
+      // Ursprünglicher Dateiname beim Hochladen (für die Großansicht), sonst null.
+      filename: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-filename'),
+        renderHTML: (a: Record<string, unknown>) => (a.filename ? { 'data-filename': a.filename } : {}),
+      },
     };
   },
 
@@ -83,8 +89,8 @@ export const StoredImage = Image.extend({
     const { editor, name } = this;
     /** Bilddateien ablegen und als Bild-Blöcke an `pos` (sonst an der Auswahl) einfügen. */
     const insertFiles = async (files: File[], pos?: number) => {
-      const srcs = await Promise.all(files.map(storeImage));
-      const content = srcs.map((src) => ({ type: name, attrs: { src } }));
+      const items = await Promise.all(files.map(storeImageFile));
+      const content = items.map(({ src, filename }) => ({ type: name, attrs: { src, filename } }));
       const at = Math.min(pos ?? editor.state.selection.from, editor.state.doc.content.size);
       editor.chain().focus().insertContentAt(at, content).run();
     };

@@ -11,6 +11,8 @@ export interface LightboxItem {
   edit?: ImageEdit | null;
   caption?: string | null;
   alt?: string | null;
+  /** Ursprünglicher Dateiname beim Hochladen, falls bekannt. */
+  filename?: string | null;
 }
 
 interface LightboxProps {
@@ -69,6 +71,11 @@ export function Lightbox({ items, index: initial, onIndex, onClose }: LightboxPr
         {many && (
           <span className="lb-count">
             {index + 1} / {items.length}
+          </span>
+        )}
+        {item.filename && (
+          <span className="lb-filename" title={item.filename}>
+            {item.filename}
           </span>
         )}
         <span className="lb-spacer" />
