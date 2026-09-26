@@ -189,6 +189,7 @@ export const idbAdapter: StorageAdapter = {
       noteId: null,
       tags: [],
       source: 'manual',
+      completed: false,
       createdAt: now,
       updatedAt: now,
       ...init,

@@ -28,6 +28,31 @@
 .c-editor-body .tiptap ul[data-type="taskList"] li > div{flex:1;min-width:0}
 .c-editor-body .tiptap ul[data-type="taskList"] input[type="checkbox"]{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer}
 .c-editor-body .tiptap ul[data-type="taskList"] li[data-checked="true"] > div{color:var(--ink-faint);text-decoration:line-through}
+
+/* Aufgabenzeile mit Fälligkeitsdatum: Textbereich und Badge nebeneinander, Durchstreichen nur auf dem Text. */
+.c-editor-body .tiptap .b-task-due-body{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.c-editor-body .tiptap .b-task-due-body > [data-node-view-content]{flex:1;min-width:120px}
+.c-editor-body .tiptap li.b-task-due[data-checked="true"] .b-task-due-body > [data-node-view-content]{color:var(--ink-faint);text-decoration:line-through}
+.b-task-due-badge{
+  display:inline-flex;align-items:center;gap:5px;flex:none;margin-top:.15em;
+  padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--paper-2);
+  font-size:12px;color:var(--ink-faint);cursor:pointer;white-space:nowrap;
+}
+.b-task-due-badge svg{width:13px;height:13px}
+.b-task-due-badge:hover{border-color:var(--accent);color:var(--ink)}
+.b-task-due-badge.is-set{color:var(--accent);border-color:var(--accent-bg);background:var(--accent-bg)}
+.b-task-due-badge.is-readonly{cursor:default;pointer-events:none}
+.b-task-due[data-checked="true"] .b-task-due-badge.is-set{opacity:.6;text-decoration:line-through}
+
+.b-pop.b-task-due-pop{display:flex;flex-direction:column;gap:6px;padding:10px;min-width:200px}
+.b-pop.b-task-due-pop input[type="date"],.b-pop.b-task-due-pop input[type="time"]{
+  border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;background:var(--paper);color:var(--ink);
+}
+.b-pop.b-task-due-pop .b-pop-remove{
+  margin-top:2px;padding:6px 8px;border-radius:8px;border:0;background:none;text-align:left;
+  font-size:13px;color:var(--red);cursor:pointer;
+}
+.b-pop.b-task-due-pop .b-pop-remove:hover{background:var(--red-bg)}
 .c-editor-body .tiptap blockquote{
   position:relative;margin:0;padding:6px 0 6px 18px;
 }

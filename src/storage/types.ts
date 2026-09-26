@@ -70,11 +70,13 @@ export interface CalendarEvent {
   tags: string[];
   /** Herkunft; `manual` ist von Hand angelegt und in der Kalender-UI editierbar. */
   source: CalendarSource;
+  /** Erledigt (z. B. abgehakte Aufgabe/Kanban-Karte mit Fälligkeitsdatum). Fehlt bei älteren Terminen = false. */
+  completed: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
-export type CalendarEventPatch = Partial<Pick<CalendarEvent, 'title' | 'date' | 'time' | 'endTime' | 'notes' | 'noteId' | 'tags'>>;
+export type CalendarEventPatch = Partial<Pick<CalendarEvent, 'title' | 'date' | 'time' | 'endTime' | 'notes' | 'noteId' | 'tags' | 'completed'>>;
 
 /**
  * Speicher-Grenze der App. V1 nutzt IndexedDB, später kann ein Tauri-Adapter

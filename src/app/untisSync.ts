@@ -58,6 +58,7 @@ function toEvent(l: UntisLesson): CalendarEvent {
     noteId: null,
     tags: [],
     source: 'untis',
+    completed: false,
     createdAt: now,
     updatedAt: now,
   };

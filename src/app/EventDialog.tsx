@@ -19,6 +19,7 @@ interface Draft {
   noteId: string | null;
   tags: string[];
   source: CalendarSource;
+  completed: boolean;
 }
 
 const todayISO = () => new Date().toLocaleDateString('sv-SE'); // sv-SE liefert YYYY-MM-DD
@@ -45,8 +46,9 @@ export function EventDialogHost() {
           noteId: existing.noteId,
           tags: existing.tags,
           source: existing.source,
+          completed: existing.completed,
         });
-      else setDraft({ title: '', date: d.date ?? todayISO(), time: '', endTime: '', notes: '', noteId: null, tags: [], source: 'manual' });
+      else setDraft({ title: '', date: d.date ?? todayISO(), time: '', endTime: '', notes: '', noteId: null, tags: [], source: 'manual', completed: false });
     };
     window.addEventListener(OPEN_EVENT_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_EVENT_EVENT, onOpen);
@@ -74,7 +76,15 @@ export function EventDialogHost() {
 
   async function save() {
     if (!draft || readOnly || !draft.title.trim() || !draft.date) return;
-    const patch = { title: draft.title.trim(), date: draft.date, time: draft.time, notes: draft.notes.trim(), noteId: draft.noteId, tags: draft.tags };
+    const patch = {
+      title: draft.title.trim(),
+      date: draft.date,
+      time: draft.time,
+      notes: draft.notes.trim(),
+      noteId: draft.noteId,
+      tags: draft.tags,
+      completed: draft.completed,
+    };
     if (draft.id) await updateEvent(draft.id, patch);
     else await createEvent(patch);
     setDraft(null);
@@ -116,6 +126,17 @@ export function EventDialogHost() {
               <span>Titel</span>
               <input ref={titleRef} value={draft.title} placeholder="z. B. Mathe-Klausur" readOnly={readOnly} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
             </label>
+            {draft.id && (
+              <label className="cal-dialog-completed">
+                <input
+                  type="checkbox"
+                  checked={draft.completed}
+                  disabled={!!readOnly}
+                  onChange={(e) => setDraft({ ...draft, completed: e.target.checked })}
+                />
+                <span>Erledigt</span>
+              </label>
+            )}
             <div className="cal-dialog-row">
               <label className="gl-field">
                 <span>Datum</span>

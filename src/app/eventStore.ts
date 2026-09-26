@@ -50,9 +50,10 @@ export async function createEvent(init: CalendarEventPatch & { date: string }) {
 
 export async function updateEvent(id: string, patch: CalendarEventPatch) {
   const e = await storage.updateEvent(id, patch);
-  if (!e) return;
+  if (!e) return undefined;
   events = sortEvents(events.map((x) => (x.id === id ? e : x)));
   emit();
+  return e;
 }
 
 export async function deleteEvent(id: string) {

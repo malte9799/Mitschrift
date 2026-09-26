@@ -191,7 +191,11 @@ export function CalendarPage() {
             ) : (
               <ul className="cal-agenda-list">
                 {selectedEvents.map((e) => (
-                  <li key={e.id} className={`cal-event is-${e.source}`} onClick={() => openEventDialog({ id: e.id })}>
+                  <li
+                    key={e.id}
+                    className={`cal-event is-${e.source}${e.completed ? ' is-completed' : ''}`}
+                    onClick={() => openEventDialog({ id: e.id })}
+                  >
                     <div className="cal-event-head">
                       {e.time && (
                         <span className="cal-event-time">

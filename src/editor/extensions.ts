@@ -2,7 +2,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import { Color, TextStyle } from '@tiptap/extension-text-style';
-import { TaskItem, TaskList } from '@tiptap/extension-list';
+import { TaskList } from '@tiptap/extension-list';
+import { TaskDueItem } from './TaskDueItem';
 import { TextVariantExtension } from './TextVariant';
 import { CalloutNode } from './CalloutNode';
 import { Divider } from './Divider';
@@ -31,7 +32,7 @@ export const noteExtensions = [
   Divider,
   CodeBlock,
   TaskList,
-  TaskItem.configure({ nested: true }),
+  TaskDueItem.configure({ nested: true }),
   TextStyle,
   Color,
   TextAlign.configure({ types: ['heading', 'paragraph'], alignments: ['left', 'center', 'right', 'justify'] }),
