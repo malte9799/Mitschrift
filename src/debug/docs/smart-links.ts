@@ -9,8 +9,8 @@ const smart = (href: string, view: string, title: string) => ({ type: 'smartLink
 const doc = {
   type: 'doc',
   content: [
-    h('Karte (generischer Link)'),
-    smart('https://github.com/anthropics/claude-code', 'card', 'anthropics/claude-code'),
+    h('Zeile (generischer Link)'),
+    smart('https://github.com/anthropics/claude-code', 'row', 'anthropics/claude-code'),
     h('Bild (Imgur, ohne Endung)'),
     smart('https://i.imgur.com/6EqNoZR.jpeg', 'image', 'Testbild'),
     h('Video (YouTube)'),
@@ -25,4 +25,4 @@ const doc = {
   ],
 };
 
-export default { key: 'smart-links', title: 'Debug: Smart Links', doc, version: 1 } satisfies DebugDoc;
+export default { key: 'smart-links', title: 'Debug: Smart Links', doc, version: 2 } satisfies DebugDoc;

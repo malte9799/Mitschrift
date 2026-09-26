@@ -77,7 +77,7 @@ export function SmartLinkHover({ editor }: { editor: Editor }) {
     timer.current = setTimeout(() => setTarget(null), CLOSE_DELAY);
   };
 
-  function embed(view: 'card' | 'image' | 'video' | 'audio') {
+  function embed(view: 'row' | 'image' | 'video' | 'audio') {
     const at = editor.view.posAtDOM(target!.el, 0);
     setTarget(null);
     externalLinkToBlock(editor, at, view);
@@ -97,8 +97,8 @@ export function SmartLinkHover({ editor }: { editor: Editor }) {
       </a>
       {editable && (
         <div className="sl-hover-options">
-          <button type="button" className="sl-hover-embed" onClick={() => embed('card')}>
-            <Icon name="noteCard" /> Als Karte
+          <button type="button" className="sl-hover-embed" onClick={() => embed('row')}>
+            <Icon name="noteRow" /> Als Zeile
           </button>
           {embedView && (
             <button type="button" className="sl-hover-embed" onClick={() => embed(embedView)}>

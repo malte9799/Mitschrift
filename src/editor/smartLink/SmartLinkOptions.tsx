@@ -4,15 +4,15 @@ import { smartLinkViewLabels, type SmartLinkView_ } from './SmartLinkNode';
 interface SmartLinkOptionsProps {
   view: SmartLinkView_;
   /** Welche eingebetteten Darstellungen für diese URL erkannt wurden (max. eine, je nach Art). */
-  embedView: Exclude<SmartLinkView_, 'link' | 'card'> | null;
+  embedView: Exclude<SmartLinkView_, 'link' | 'row'> | null;
   onView: (view: SmartLinkView_) => void;
 }
 
-const viewIcons: Record<SmartLinkView_, IconName> = { link: 'link', card: 'noteCard', image: 'image', video: 'play', audio: 'audio' };
+const viewIcons: Record<SmartLinkView_, IconName> = { link: 'link', row: 'noteRow', image: 'image', video: 'play', audio: 'audio' };
 
-/** Darstellungs-Auswahl für externe Links: Link, Karte, plus die zur URL passende Einbettung. */
+/** Darstellungs-Auswahl für externe Links: Link, Zeile, plus die zur URL passende Einbettung. */
 export function SmartLinkOptions({ view, embedView, onView }: SmartLinkOptionsProps) {
-  const views: SmartLinkView_[] = embedView ? ['link', 'card', embedView] : ['link', 'card'];
+  const views: SmartLinkView_[] = embedView ? ['link', 'row', embedView] : ['link', 'row'];
   return (
     <div className="nv-options">
       <p className="b-pop-label">Darstellung</p>

@@ -7,12 +7,12 @@ import { smartBlockToLink, type SmartLinkView_ } from './SmartLinkNode';
 import { SmartLinkOptions } from './SmartLinkOptions';
 import { analyzeUrl, faviconUrl } from './urlPatterns';
 
-/** Externer Link als Block: Karte mit Favicon/Domain, eingebettetes Bild, Video oder Audio. */
+/** Externer Link als Block: Zeile mit Favicon/Domain, eingebettetes Bild, Video oder Audio. */
 export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const bar = useBlockBar(editor, getPos);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [broken, setBroken] = useState(false);
-  const { href, view, title } = node.attrs as { href: string; view: 'card' | 'image' | 'video' | 'audio'; title: string };
+  const { href, view, title } = node.attrs as { href: string; view: 'row' | 'image' | 'video' | 'audio'; title: string };
 
   const info = useMemo(() => analyzeUrl(href), [href]);
   const embedView = info.kind === 'generic' ? null : info.kind;
@@ -38,7 +38,7 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
     <>
       {bar.render(
         <>
-          <BarButton icon="noteCard" label="Darstellung anpassen" text="Darstellung" chevron active={!!anchor} onClick={(e) => setAnchor(anchor ? null : e.currentTarget)} />
+          <BarButton icon="noteRow" label="Darstellung anpassen" text="Darstellung" chevron active={!!anchor} onClick={(e) => setAnchor(anchor ? null : e.currentTarget)} />
           <BarSep />
           <BarButton icon="external" label="Link öffnen" text="Öffnen" onClick={() => window.open(href, '_blank', 'noopener,noreferrer')} />
         </>,
@@ -80,11 +80,11 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
     );
   }
 
-  // Karte (auch Fallback, falls die Einbettung fehlschlägt).
+  // Zeile (auch Fallback, falls die Einbettung fehlschlägt).
   return (
-    <NodeViewWrapper className={`sl sl--card${bar.active ? ' is-selected' : ''}`} contentEditable={false}>
+    <NodeViewWrapper className={`sl sl--row${bar.active ? ' is-selected' : ''}`} contentEditable={false}>
       {menu}
-      <a href={href} className="sl-card" onClick={open} draggable={false}>
+      <a href={href} className="sl-row" onClick={open} draggable={false}>
         <span className="sl-icon" aria-hidden="true">
           <img src={faviconUrl(info.domain)} alt="" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
         </span>

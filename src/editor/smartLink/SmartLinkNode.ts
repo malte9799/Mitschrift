@@ -3,12 +3,12 @@ import { ReactNodeViewRenderer } from '@tiptap/react';
 import { SmartLinkView } from './SmartLinkView';
 import { analyzeUrl, type SmartLinkKind } from './urlPatterns';
 
-/** Darstellung eines externen Links: im Text, als Karte mit Vorschau, eingebettetes Bild/Video/Audio. */
-export type SmartLinkView_ = 'link' | 'card' | 'image' | 'video' | 'audio';
+/** Darstellung eines externen Links: im Text, als Zeile (Favicon, Titel, Domain), eingebettetes Bild/Video/Audio. */
+export type SmartLinkView_ = 'link' | 'row' | 'image' | 'video' | 'audio';
 
 export const smartLinkViewLabels: Record<SmartLinkView_, string> = {
   link: 'Link',
-  card: 'Karte',
+  row: 'Zeile',
   image: 'Bild',
   video: 'Video',
   audio: 'Audio',
@@ -35,7 +35,7 @@ const str = (name: string, fallback: string | null) => ({
   renderHTML: (a: Record<string, unknown>) => (a[name] === null || a[name] === undefined ? {} : { [`data-${name}`]: String(a[name]) }),
 });
 
-/** Verweis auf eine externe Seite als eigener Block: Karte, eingebettetes Bild, Video oder Audio. */
+/** Verweis auf eine externe Seite als eigener Block: Zeile, eingebettetes Bild, Video oder Audio. */
 export const SmartLinkNode = Node.create({
   name: 'smartLink',
   group: 'block',
@@ -46,7 +46,7 @@ export const SmartLinkNode = Node.create({
   addAttributes() {
     return {
       href: str('href', ''),
-      view: str('view', 'card'),
+      view: str('view', 'row'),
       title: str('title', ''),
     };
   },
@@ -71,7 +71,7 @@ export const SmartLinkNode = Node.create({
       insertSmartLink:
         (attrs) =>
         ({ commands }) =>
-          commands.insertContent({ type: this.name, attrs: { view: analyzeUrl(attrs.href).kind === 'generic' ? 'card' : analyzeUrl(attrs.href).kind, ...attrs } }),
+          commands.insertContent({ type: this.name, attrs: { view: analyzeUrl(attrs.href).kind === 'generic' ? 'row' : analyzeUrl(attrs.href).kind, ...attrs } }),
     };
   },
 });
