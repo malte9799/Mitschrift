@@ -69,6 +69,13 @@ export function noteBlockAsParagraph(n: PMNode): PMNode {
   return { type: 'paragraph', content: [{ type: 'text', text: untitled(String(a.title ?? '')), marks: [{ type: 'link', attrs: { href: `/n/${a.id}` } }] }] };
 }
 
+/** Smart-Link-Block (Karte/Bild/Video/Audio) für Exporte: ein Absatz mit dem externen Link. */
+export function smartLinkAsParagraph(n: PMNode): PMNode {
+  const a = n.attrs ?? {};
+  const href = String(a.href ?? '');
+  return { type: 'paragraph', content: [{ type: 'text', text: String(a.title ?? '') || href, marks: [{ type: 'link', attrs: { href } }] }] };
+}
+
 export function walk(node: PMNode, fn: (n: PMNode) => void) {
   fn(node);
   node.content?.forEach((c) => walk(c, fn));

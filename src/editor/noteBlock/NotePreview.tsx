@@ -131,6 +131,13 @@ function renderBlocks(nodes: PMJson[] | undefined, budget: { n: number }): React
           </div>,
         );
         break;
+      case 'smartLink':
+        out.push(
+          <div key={i} className="np-box is-note">
+            ↗ {n.attrs?.title || n.attrs?.href || 'Link'}
+          </div>,
+        );
+        break;
       default:
         out.push(
           <div key={i} className="np-ph">

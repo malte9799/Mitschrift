@@ -3,7 +3,7 @@ import type { Flashcard } from '@/blocks/flashcard/FlashcardsNode';
 import type { QuizQuestion } from '@/blocks/quiz/QuizNode';
 import { resolveCallout } from '@/editor/CalloutNode';
 import { glossaryRows, plotSummary, timelineRows } from './extraBlocks';
-import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, smartLinkAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
 import type { CollectionData } from '@/blocks/collection/model';
 
 /** Markdown und reiner Text teilen sich den Aufbau, nur die Auszeichnung unterscheidet sich. */
@@ -231,6 +231,8 @@ function block(n: PMNode, ctx: Ctx): string {
     }
     case 'noteBlock':
       return block(noteBlockAsParagraph(n), ctx);
+    case 'smartLink':
+      return block(smartLinkAsParagraph(n), ctx);
     case 'mathBlock': {
       const latex = String(a.latex ?? '').trim();
       if (!latex) return '';

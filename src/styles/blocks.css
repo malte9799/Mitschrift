@@ -804,6 +804,55 @@ td .b-cell-chips:not(:empty){padding:0 10px}
 .nl-hover-missing{display:flex;align-items:center;gap:8px;margin:0;padding:14px;font-size:13.5px;color:var(--ink-soft)}
 .nl-hover-missing svg{width:15px;height:15px;color:var(--red)}
 
+/* ---------- Smart Link: externer Link als Karte, Bild, Video oder Audio ---------- */
+.sl{position:relative}
+.sl a{color:inherit;text-decoration:none}
+
+.sl-card{
+  display:flex;align-items:center;gap:11px;min-width:0;padding:9px 14px 9px 10px;border:1px solid var(--line);border-radius:12px;
+  background:var(--card);box-shadow:var(--shadow-sm);cursor:pointer;transition:border-color .15s,box-shadow .2s;
+}
+.sl-card:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));box-shadow:var(--shadow)}
+.sl-icon{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:var(--paper-2);overflow:hidden}
+.sl-icon img{width:18px;height:18px}
+.sl-text{display:flex;flex-direction:column;min-width:0;gap:1px}
+.sl-title{font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-size:15px}
+.sl-domain{color:var(--ink-soft);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-go{width:15px;height:15px;flex:none;color:var(--ink-faint);transition:transform .2s var(--ease),color .15s}
+.sl-card:hover .sl-go{color:var(--accent);transform:translateX(2px)}
+.sl.is-selected .sl-card,.ProseMirror-selectednode > .sl .sl-card{box-shadow:0 0 0 2px var(--accent),var(--shadow-sm)}
+
+.sl-image{display:block;border-radius:12px;overflow:hidden;background:var(--paper-2);cursor:pointer}
+.sl-image img{display:block;width:100%;max-height:480px;object-fit:contain}
+.sl-image-broken{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;height:160px;color:var(--ink-faint);font-size:13.5px}
+.sl.is-selected .sl-image,.ProseMirror-selectednode > .sl .sl-image{box-shadow:0 0 0 2px var(--accent)}
+
+.sl-embed{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000}
+.sl-embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.sl.is-selected .sl-embed,.ProseMirror-selectednode > .sl .sl-embed{box-shadow:0 0 0 2px var(--accent)}
+.sl--embed.is-audio .sl-embed{background:var(--paper-2)}
+
+/* ---------- Vorschau beim Überfahren eines externen Links ---------- */
+.sl-hover{
+  position:fixed;z-index:60;width:280px;border:1px solid var(--line);border-radius:14px;background:var(--card);
+  box-shadow:var(--shadow-lg);overflow:hidden;animation:pop-in .16s var(--ease);
+}
+.sl-hover-main{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;text-align:left;color:inherit}
+.sl-hover-main:hover{background:var(--paper-2)}
+.sl-hover-icon{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--paper-2);overflow:hidden}
+.sl-hover-icon img{width:16px;height:16px}
+.sl-hover-text{display:flex;flex-direction:column;min-width:0;gap:1px;flex:1}
+.sl-hover-domain{font-size:14px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.sl-hover-url{font-size:12px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sl-hover-main svg{width:14px;height:14px;flex:none;color:var(--ink-faint)}
+.sl-hover-options{display:flex;gap:4px;padding:6px;border-top:1px solid var(--line)}
+.sl-hover-embed{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 6px;border:0;border-radius:8px;background:none;
+  color:var(--ink-soft);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;
+}
+.sl-hover-embed:hover{background:var(--paper-2);color:var(--ink)}
+.sl-hover-embed svg{width:14px;height:14px}
+
 /* ==========================================================================
    SVG-Grafik: Darstellung, Werkzeugleiste, Stil-Popover, Vollbild-Editor
    ========================================================================== */

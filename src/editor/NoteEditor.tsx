@@ -5,6 +5,7 @@ import { noteExtensions } from './extensions';
 import { SlashCommand } from './SlashCommand';
 import { NoteLink } from './NoteLink';
 import { NoteLinkHover } from './noteBlock/NoteLinkHover';
+import { SmartLinkHover } from './smartLink/SmartLinkHover';
 import { GlossaryHover } from '@/glossary/GlossaryHover';
 import { Toolbar } from './Toolbar';
 import { DragHandle } from './DragHandle';
@@ -84,6 +85,7 @@ export function NoteEditor({ noteId, content, onChange, learning, onEditorReady 
         <EditorContent editor={editor} />
         <SideNotesLayer editor={editor} />
         <NoteLinkHover editor={editor} />
+        <SmartLinkHover editor={editor} />
         <GlossaryHover editor={editor} />
         {!learning && <BlockSelection editor={editor} />}
         {!learning && <BlockBar editor={editor} />}

@@ -5,7 +5,7 @@ import type { QuizQuestion } from '@/blocks/quiz/QuizNode';
 import { resolveCallout, type CalloutColor } from '@/editor/CalloutNode';
 import { applyStyle, contentStyleOf, svgDataUrl } from '@/blocks/svg/model';
 import { glossaryRows, plotSummary, plotSvg, timelineRows } from './extraBlocks';
-import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, tableRows, untitled, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, smartLinkAsParagraph, tableRows, untitled, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
 import type { CollectionData } from '@/blocks/collection/model';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -156,6 +156,8 @@ function block(n: PMNode, assets: Assets): string {
       return `<blockquote>${blocks(n.content, assets)}</blockquote>`;
     case 'noteBlock':
       return block(noteBlockAsParagraph(n), assets);
+    case 'smartLink':
+      return block(smartLinkAsParagraph(n), assets);
     case 'mathBlock': {
       const mathml = assets.math.get(`true:${a.latex}`);
       return mathml ? `<div class="math-block">${mathml}</div>` : `<pre class="code"><code>${esc(String(a.latex ?? ''))}</code></pre>`;

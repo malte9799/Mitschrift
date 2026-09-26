@@ -16,6 +16,7 @@ import Superscript from '@tiptap/extension-superscript';
 import { MathBlock, MathInline } from './math/MathNodes';
 import { Footnote, Kbd } from './Footnote';
 import { NoteBlockNode } from './noteBlock/NoteBlockNode';
+import { SmartLinkNode } from './smartLink/SmartLinkNode';
 import { GlossaryHighlight } from '@/glossary/GlossaryHighlight';
 
 export const noteExtensions = [
@@ -44,6 +45,7 @@ export const noteExtensions = [
   MathBlock,
   Footnote,
   NoteBlockNode,
+  SmartLinkNode,
   MarkdownClipboard,
   GlossaryHighlight,
   ConfirmDelete,

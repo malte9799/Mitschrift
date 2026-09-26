@@ -3,7 +3,7 @@ import type { Flashcard } from '@/blocks/flashcard/FlashcardsNode';
 import type { QuizQuestion } from '@/blocks/quiz/QuizNode';
 import { resolveCallout, type CalloutColor } from '@/editor/CalloutNode';
 import { glossaryRows, plotSummary, timelineRows } from './extraBlocks';
-import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
+import { collectCollections, collectionTables, imageAsset, noteBlockAsParagraph, smartLinkAsParagraph, tableRows, textOf, untitled, whiteboardTexts, type Assets, type ExportDoc, type PMMark, type PMNode } from './model';
 import type { CollectionData } from '@/blocks/collection/model';
 
 /** A4 mit 2 cm Rand: nutzbare Breite in Twips (1/1440 Zoll). */
@@ -209,6 +209,8 @@ class RtfWriter {
         return this.para(esc(a.summary || 'Aufklappen'), { ...box, marker: box.marker ?? '▸' }, '\\b', 60) + this.blocks(n.content, { indent: box.indent + 360 });
       case 'noteBlock':
         return this.block(noteBlockAsParagraph(n), box);
+      case 'smartLink':
+        return this.block(smartLinkAsParagraph(n), box);
       case 'mathBlock': {
         const latex = String(a.latex ?? '').trim();
         if (!latex) return '';
