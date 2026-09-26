@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Icon } from '@/ui/Icon';
 import { Popover } from '@/blocks/collection/Popover';
@@ -17,6 +17,8 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
   const info = useMemo(() => analyzeUrl(href), [href]);
   const embedView = info.kind === 'generic' ? null : info.kind;
   const label = title || href;
+
+  useEffect(() => setBroken(false), [href]);
 
   function open(e: React.MouseEvent) {
     if (e.button !== 0) return;
@@ -45,13 +47,23 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
       )}
       {anchor && (
         <Popover anchor={anchor} onClose={() => setAnchor(null)} align="end" className="nv-pop">
-          <SmartLinkOptions view={view} embedView={embedView} onView={setView} />
+          <SmartLinkOptions
+            view={view}
+            embedView={embedView}
+            onView={setView}
+            title={title}
+            placeholder={info.domain}
+            onTitle={(t) => updateAttributes({ title: t })}
+          />
         </Popover>
       )}
     </>
   );
 
-  if (view === 'image' && info.imageSrc) {
+  if (view === 'image') {
+    // Ohne erkanntes Bild-Muster (z. B. Imgur-Galerie-Link) die URL selbst probieren –
+    // viele Bild-Hoster liefern auch ohne Datei-Endung ein Bild aus.
+    const src = info.imageSrc ?? href;
     return (
       <NodeViewWrapper className={`sl sl--image${bar.active ? ' is-selected' : ''}`} contentEditable={false}>
         {menu}
@@ -62,7 +74,7 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
               <span>Bild konnte nicht geladen werden</span>
             </div>
           ) : (
-            <img src={info.imageSrc} alt={label} onError={() => setBroken(true)} />
+            <img src={src} alt={label} onError={() => setBroken(true)} />
           )}
         </a>
       </NodeViewWrapper>

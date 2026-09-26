@@ -6,13 +6,18 @@ interface SmartLinkOptionsProps {
   /** Welche eingebetteten Darstellungen für diese URL erkannt wurden (max. eine, je nach Art). */
   embedView: Exclude<SmartLinkView_, 'link' | 'row'> | null;
   onView: (view: SmartLinkView_) => void;
+  /** Anzeigetitel – wie der Linktext bei einem normalen Markdown-Link `[Titel](url)`. */
+  title: string;
+  /** Platzhalter, wenn kein eigener Titel gesetzt ist (die Domain). */
+  placeholder: string;
+  onTitle: (title: string) => void;
 }
 
 const viewIcons: Record<SmartLinkView_, IconName> = { link: 'link', row: 'noteRow', image: 'image', video: 'play', audio: 'audio' };
 
-/** Darstellungs-Auswahl für externe Links: Link, Zeile, plus die zur URL passende Einbettung. */
-export function SmartLinkOptions({ view, embedView, onView }: SmartLinkOptionsProps) {
-  const views: SmartLinkView_[] = embedView ? ['link', 'row', embedView] : ['link', 'row'];
+/** Darstellungs-Auswahl für externe Links: Link, Zeile, Bild (immer wählbar) – plus Video/Audio, wenn erkannt – und der Anzeigetitel. */
+export function SmartLinkOptions({ view, embedView, onView, title, placeholder, onTitle }: SmartLinkOptionsProps) {
+  const views: SmartLinkView_[] = ['link', 'row', 'image', ...(embedView && embedView !== 'image' ? [embedView] : [])];
   return (
     <div className="nv-options">
       <p className="b-pop-label">Darstellung</p>
@@ -24,6 +29,12 @@ export function SmartLinkOptions({ view, embedView, onView }: SmartLinkOptionsPr
           </button>
         ))}
       </div>
+      {view !== 'link' && (
+        <>
+          <p className="b-pop-label">Titel</p>
+          <input className="b-pop-input" value={title} placeholder={placeholder} onChange={(e) => onTitle(e.target.value)} />
+        </>
+      )}
     </div>
   );
 }

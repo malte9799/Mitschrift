@@ -13,6 +13,10 @@ const doc = {
     smart('https://github.com/anthropics/claude-code', 'row', 'anthropics/claude-code'),
     h('Bild (Imgur, ohne Endung)'),
     smart('https://i.imgur.com/6EqNoZR.jpeg', 'image', 'Testbild'),
+    h('Bild (echtes Foto, i.imgur.com direkt)'),
+    smart('https://i.imgur.com/sCjJJry.png', 'image', ''),
+    h('Karte, die man manuell zu Bild machen kann (Imgur-Galerie mit Titel-Slug)'),
+    smart('https://imgur.com/gallery/doggonne-fnP69sj', 'row', ''),
     h('Video (YouTube)'),
     smart('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'video', 'YouTube-Video'),
     h('Audio (Spotify)'),
@@ -21,8 +25,9 @@ const doc = {
     link('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'YouTube-Link im Fließtext'),
     link('https://i.imgur.com/6EqNoZR.jpeg', 'Bild-Link im Fließtext'),
     link('https://example.com', 'Generischer Link im Fließtext'),
+    link('https://imgur.com/gallery/doggonne-fnP69sj', 'Imgur-Galerie-Link im Fließtext'),
     p(''),
   ],
 };
 
-export default { key: 'smart-links', title: 'Debug: Smart Links', doc, version: 2 } satisfies DebugDoc;
+export default { key: 'smart-links', title: 'Debug: Smart Links', doc, version: 3 } satisfies DebugDoc;

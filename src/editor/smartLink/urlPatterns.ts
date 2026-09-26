@@ -56,13 +56,19 @@ function spotifyEmbed(u: URL): string | null {
 
 /** SoundCloud lässt sich nur über die oEmbed-API einbetten (kein Server hier) – daher nur als Karte. */
 
-/** imgur.com/abc123 (ohne Endung) → direkter Bildlink; i.imgur.com/*.ext ist ohnehin schon direkt. */
+/**
+ * imgur.com/abc123 oder imgur.com/a|gallery/irgendein-titel-abc123 → direkter Bildlink
+ * (die ID steckt als letzter Block nach einem „-“, oder ist der ganze Pfad).
+ * i.imgur.com/*.ext ist ohnehin schon eine direkte Bild-URL.
+ */
 function imgurImage(u: URL): string | null {
   const host = u.hostname.replace(/^www\./, '');
   if (host === 'i.imgur.com') return u.href;
   if (host !== 'imgur.com') return null;
-  const m = u.pathname.match(/^\/(?:a\/|gallery\/)?([a-zA-Z0-9]{5,7})$/);
-  return m ? `https://i.imgur.com/${m[1]}.jpg` : null;
+  const m = u.pathname.match(/^\/(?:a\/|gallery\/)?([a-zA-Z0-9-]+)$/);
+  if (!m) return null;
+  const id = m[1].split('-').pop() || '';
+  return /^[a-zA-Z0-9]{5,7}$/.test(id) ? `https://i.imgur.com/${id}.jpg` : null;
 }
 
 /** Erkennt Art und Einbettung einer externen URL. */

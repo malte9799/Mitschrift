@@ -100,12 +100,16 @@ export function SmartLinkHover({ editor }: { editor: Editor }) {
           <button type="button" className="sl-hover-embed" onClick={() => embed('row')}>
             <Icon name="noteRow" /> Als Zeile
           </button>
-          {embedView && (
+          {embedView && embedView !== 'image' && (
             <button type="button" className="sl-hover-embed" onClick={() => embed(embedView)}>
-              <Icon name={embedView === 'image' ? 'image' : embedView === 'video' ? 'play' : 'audio'} />
-              {embedView === 'image' ? 'Als Bild' : embedView === 'video' ? 'Als Video' : 'Als Audio'}
+              <Icon name={embedView === 'video' ? 'play' : 'audio'} />
+              {embedView === 'video' ? 'Als Video' : 'Als Audio'}
             </button>
           )}
+          {/* Auch ohne erkanntes Bild-Muster anbieten – manche Bild-Hoster lassen sich nicht aus der URL allein erkennen. */}
+          <button type="button" className="sl-hover-embed" onClick={() => embed('image')}>
+            <Icon name="image" /> Als Bild
+          </button>
         </div>
       )}
     </div>,
