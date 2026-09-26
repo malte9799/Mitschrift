@@ -350,6 +350,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         { label: 'Übersicht', shortcut: '⌃⌘H', bind: true, checked: pathname === '/', action: () => navigate('/') },
         { label: 'Graph-Ansicht', shortcut: '⌃⌘G', bind: true, checked: pathname === '/graph', action: () => navigate('/graph') },
         { label: 'Glossar', shortcut: '⌃⌘B', bind: true, checked: pathname === '/glossar', action: () => navigate('/glossar') },
+        { label: 'Kalender', shortcut: '⌃⌘K', bind: true, checked: pathname === '/kalender', action: () => navigate('/kalender') },
         { label: 'Begriffe hervorheben', checked: glossaryHighlight, action: () => setHighlight(!glossaryHighlight) },
         SEP,
         { label: 'Präsentieren', shortcut: '⌥⌘P', bind: true, disabled: !active, action: () => active?.present() },

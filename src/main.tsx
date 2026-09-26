@@ -8,6 +8,7 @@ import { NotePage } from './app/NotePage';
 import { GraphPage } from './app/GraphPage';
 import { ShowcasePage } from './app/ShowcasePage';
 import { GlossaryPage } from './app/GlossaryPage';
+import { CalendarPage } from './app/CalendarPage';
 import { requestPersistence } from './storage/persist';
 import './styles/tokens.css';
 import './styles/app.css';
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: '/graph', element: <GraphPage /> },
       { path: '/showcase', element: <ShowcasePage /> },
       { path: '/glossar', element: <GlossaryPage /> },
+      { path: '/kalender', element: <CalendarPage /> },
     ],
   },
 ]);

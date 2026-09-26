@@ -355,6 +355,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           Glossar
         </button>
 
+        <button
+          type="button"
+          className={`side-new side-graph${location.pathname === '/kalender' ? ' active' : ''}`}
+          onClick={() => {
+            navigate('/kalender');
+            if (window.innerWidth <= 860) onClose();
+          }}
+        >
+          <Icon name="calendar" />
+          Kalender
+        </button>
+
         {tags && tags.length > 0 && (
           <div className="side-tags" role="group" aria-label="Nach Fach filtern">
             {tags.map((t) => (

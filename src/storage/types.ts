@@ -52,6 +52,30 @@ export interface Term {
 
 export type TermPatch = Partial<Pick<Term, 'term' | 'expansion' | 'definition' | 'tags'>>;
 
+/** Woher ein Termin stammt. Von Hand angelegte Termine sind `manual`; Integrationen liefern den Rest. */
+export type CalendarSource = 'manual' | 'untis' | 'itslearning';
+
+/** Ein Termin im Kalender, optional mit einer Notiz verknüpft. */
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  /** Datum als „YYYY-MM-DD“ (lokal, ohne Uhrzeit-Zeitzonen-Ärger). */
+  date: string;
+  /** „HH:MM“, oder leer für einen ganztägigen Termin. */
+  time: string;
+  /** „HH:MM“, oder leer ohne bekanntes Ende (z. B. bei manuellen Terminen). */
+  endTime: string;
+  notes: string;
+  noteId: string | null;
+  tags: string[];
+  /** Herkunft; `manual` ist von Hand angelegt und in der Kalender-UI editierbar. */
+  source: CalendarSource;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type CalendarEventPatch = Partial<Pick<CalendarEvent, 'title' | 'date' | 'time' | 'endTime' | 'notes' | 'noteId' | 'tags'>>;
+
 /**
  * Speicher-Grenze der App. V1 nutzt IndexedDB, später kann ein Tauri-Adapter
  * (Markdown-Dateien auf Disk) dieselbe Schnittstelle implementieren.
@@ -78,6 +102,16 @@ export interface StorageAdapter {
   createTerm(init: TermPatch & { term: string }): Promise<Term>;
   updateTerm(id: string, patch: TermPatch): Promise<Term | undefined>;
   deleteTerm(id: string): Promise<void>;
+
+  listEvents(): Promise<CalendarEvent[]>;
+  createEvent(init: CalendarEventPatch & { date: string }): Promise<CalendarEvent>;
+  updateEvent(id: string, patch: CalendarEventPatch): Promise<CalendarEvent | undefined>;
+  deleteEvent(id: string): Promise<void>;
+  /**
+   * Ersetzt alle Termine einer Integrationsquelle (z. B. `untis`) durch die frisch abgerufenen.
+   * Von Hand angelegte Termine (`manual`) bleiben unberührt.
+   */
+  replaceSyncedEvents(source: Exclude<CalendarSource, 'manual'>, events: CalendarEvent[]): Promise<void>;
 
   putFile(blob: Blob): Promise<string>;
   getFile(id: string): Promise<Blob | undefined>;

@@ -1,5 +1,5 @@
 import { openDB, type DBSchema } from 'idb';
-import type { Note, NotePatch, Snippet, StorageAdapter, StorageDump, Tag, Term } from './types';
+import type { CalendarEvent, Note, NotePatch, Snippet, StorageAdapter, StorageDump, Tag, Term } from './types';
 
 interface MitschriftDB extends DBSchema {
   notes: { key: string; value: Note; indexes: { updatedAt: number } };
@@ -7,9 +7,10 @@ interface MitschriftDB extends DBSchema {
   files: { key: string; value: { id: string; blob: Blob } };
   tags: { key: string; value: Tag };
   terms: { key: string; value: Term };
+  events: { key: string; value: CalendarEvent; indexes: { date: string } };
 }
 
-const dbPromise = openDB<MitschriftDB>('mitschrift', 3, {
+const dbPromise = openDB<MitschriftDB>('mitschrift', 4, {
   upgrade(db, oldVersion) {
     if (oldVersion < 1) {
       const notes = db.createObjectStore('notes', { keyPath: 'id' });
@@ -19,6 +20,10 @@ const dbPromise = openDB<MitschriftDB>('mitschrift', 3, {
     }
     if (oldVersion < 2) db.createObjectStore('tags', { keyPath: 'id' });
     if (oldVersion < 3) db.createObjectStore('terms', { keyPath: 'id' });
+    if (oldVersion < 4) {
+      const events = db.createObjectStore('events', { keyPath: 'id' });
+      events.createIndex('date', 'date');
+    }
   },
   // Ein anderer Tab hält noch diese (alte) Verbindung offen und würde damit das Upgrade dort
   // für immer blockieren – hier einfach schließen, der andere Tab lädt sich bei Bedarf neu.
@@ -166,6 +171,55 @@ export const idbAdapter: StorageAdapter = {
 
   async deleteTerm(id) {
     await (await dbPromise).delete('terms', id);
+  },
+
+  async listEvents() {
+    const all = await (await dbPromise).getAllFromIndex('events', 'date');
+    return all;
+  },
+
+  async createEvent(init) {
+    const now = Date.now();
+    const event: CalendarEvent = {
+      id: crypto.randomUUID(),
+      title: '',
+      time: '',
+      endTime: '',
+      notes: '',
+      noteId: null,
+      tags: [],
+      source: 'manual',
+      createdAt: now,
+      updatedAt: now,
+      ...init,
+    };
+    await (await dbPromise).put('events', event);
+    return event;
+  },
+
+  async updateEvent(id, patch) {
+    const db = await dbPromise;
+    const prev = await db.get('events', id);
+    if (!prev) return undefined;
+    const next = { ...prev, ...patch, updatedAt: Date.now() };
+    await db.put('events', next);
+    return next;
+  },
+
+  async deleteEvent(id) {
+    await (await dbPromise).delete('events', id);
+  },
+
+  async replaceSyncedEvents(source, events) {
+    const db = await dbPromise;
+    const tx = db.transaction('events', 'readwrite');
+    const store = tx.store;
+    // Alte Termine dieser Quelle raus, damit gestrichene/verschobene Stunden nicht liegen bleiben.
+    for (const e of await store.getAll()) {
+      if (e.source === source) await store.delete(e.id);
+    }
+    for (const e of events) await store.put(e);
+    await tx.done;
   },
 
   async putFile(blob) {

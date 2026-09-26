@@ -6,6 +6,7 @@ import { seedDefaultTags } from './actions';
 import { seedDebugDocs } from '@/debug/debugDocs';
 import { DialogHost } from '@/ui/Dialog';
 import { TermDialogHost } from '@/glossary/TermDialog';
+import { EventDialogHost } from './EventDialog';
 import { NAVIGATE_EVENT } from './noteLinks';
 import { importLibraryFromHash } from '@/blocks/whiteboard/library';
 
@@ -67,6 +68,7 @@ export function AppLayout() {
         <Outlet context={{ sidebarOpen, toggleSidebar } satisfies LayoutContext} />
       </div>
       <TermDialogHost />
+      <EventDialogHost />
       <DialogHost />
     </div>
   );
