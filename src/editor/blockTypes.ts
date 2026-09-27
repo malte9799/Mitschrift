@@ -39,6 +39,7 @@ export type BlockTypeId =
   | 'image'
   | 'gallery'
   | 'svg'
+  | 'attachment'
   | 'code'
   | 'dividerDots'
   | 'dividerDotted'
@@ -282,6 +283,14 @@ export const blockTypes: BlockTypeDef[] = [
     keywords: ['svg', 'vektor', 'grafik', 'icon', 'illustration', 'zeichnung', 'vector'],
     // Leerer Block zum Einfügen – SVG-Code direkt in die Notiz einfügen geht auch.
     run: (editor) => insertBlockAfterLine(editor, { type: 'svg' }),
+  },
+  {
+    id: 'attachment',
+    label: 'Datei-Anhang',
+    icon: 'file',
+    category: 'medien',
+    keywords: ['datei', 'anhang', 'attachment', 'pdf', 'dokument', 'upload', 'download', 'zip'],
+    run: (editor) => insertBlockAfterLine(editor, { type: 'attachment', attrs: { fileId: null } }),
   },
 
   // ---------- Listen ----------

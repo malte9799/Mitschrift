@@ -1,10 +1,11 @@
 import { openDB, type DBSchema } from 'idb';
-import type { CalendarEvent, Note, NotePatch, Snippet, StorageAdapter, StorageDump, Tag, Term } from './types';
+import type { CalendarEvent, Note, NotePatch, Snippet, StorageAdapter, StorageDump, StoredFile, Tag, Term } from './types';
 
 interface MitschriftDB extends DBSchema {
   notes: { key: string; value: Note; indexes: { updatedAt: number } };
   snippets: { key: string; value: Snippet };
-  files: { key: string; value: { id: string; blob: Blob } };
+  // name/mimeType/size kamen später dazu (siehe StoredFile) – ältere Einträge (z. B. Bilder) haben sie nicht.
+  files: { key: string; value: StoredFile };
   tags: { key: string; value: Tag };
   terms: { key: string; value: Term };
   events: { key: string; value: CalendarEvent; indexes: { date: string } };
@@ -223,14 +224,21 @@ export const idbAdapter: StorageAdapter = {
     await tx.done;
   },
 
-  async putFile(blob) {
+  async putFile(blob, meta) {
     const id = crypto.randomUUID();
-    await (await dbPromise).put('files', { id, blob });
+    await (await dbPromise).put('files', { id, blob, name: meta?.name, mimeType: meta?.mimeType, size: blob.size });
     return id;
   },
 
   async getFile(id) {
     return (await (await dbPromise).get('files', id))?.blob;
+  },
+
+  async getFileMeta(id) {
+    const file = await (await dbPromise).get('files', id);
+    if (!file) return undefined;
+    const { blob: _blob, ...meta } = file;
+    return meta;
   },
   async dumpAll() {
     const db = await dbPromise;

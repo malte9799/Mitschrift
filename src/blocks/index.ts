@@ -12,6 +12,23 @@ import { TimelineNode } from './timeline/TimelineNode';
 import { GlossaryListNode } from './glossary/GlossaryListNode';
 import { GalleryNode } from './gallery/GalleryNode';
 import { SvgNode } from './svg/SvgNode';
+import { AttachmentNode } from './attachment/AttachmentNode';
 
 /** Alle interaktiven Blöcke. Neue Blöcke hier + in editor/blockTypes.ts registrieren. */
-export const learnExtensions = [ToggleNode, FlashcardsNode, QuizNode, ClozeMark, DiagramNode, MermaidNode, WhiteboardNode, CollectionNode, PlotNode, TimelineNode, GlossaryListNode, GalleryNode, SvgNode, ...tableExtensions];
+export const learnExtensions = [
+  ToggleNode,
+  FlashcardsNode,
+  QuizNode,
+  ClozeMark,
+  DiagramNode,
+  MermaidNode,
+  WhiteboardNode,
+  CollectionNode,
+  PlotNode,
+  TimelineNode,
+  GlossaryListNode,
+  GalleryNode,
+  SvgNode,
+  AttachmentNode,
+  ...tableExtensions,
+];

@@ -18,6 +18,7 @@ const GUARDED: Record<string, string> = {
   codeBlock: 'Codeblock',
   timeline: 'Zeitstrahl',
   plot: 'Funktionsplotter',
+  attachment: 'Datei-Anhang',
 };
 
 /** Meta für Transaktionen, die geschützte Blöcke bewusst ersetzen (z. B. Umwandeln) – ohne Nachfrage. */
@@ -30,6 +31,7 @@ function hasContent(n: PMNode): boolean {
   if (n.type.name === 'codeBlock') return !!n.textContent.trim();
   if (n.type.name === 'timeline') return (n.attrs.entries as { date: string; title: string }[] | undefined)?.some((e) => e.date.trim() || e.title.trim()) ?? false;
   if (n.type.name === 'plot') return (n.attrs.fns as { expr: string }[] | undefined)?.some((f) => f.expr.trim()) ?? false;
+  if (n.type.name === 'attachment') return !!n.attrs.fileId;
   return true;
 }
 

@@ -830,7 +830,10 @@ td .b-cell-chips:not(:empty){padding:0 10px}
 .sl-embed{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000}
 .sl-embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .sl.is-selected .sl-embed,.ProseMirror-selectednode > .sl .sl-embed{box-shadow:0 0 0 2px var(--accent)}
-.sl--embed.is-audio .sl-embed{background:var(--paper-2)}
+/* Spotify bestimmt seine Höhe selbst (kompakt bei Track/Episode, hoch bei Album/Playlist) –
+   die Karte soll nur so groß sein wie der Player, kein erzwungenes Seitenverhältnis mit Rest-Fläche. */
+.sl--embed.is-audio .sl-embed{aspect-ratio:unset;background:none;line-height:0}
+.sl--embed.is-audio .sl-embed iframe{display:block;position:static;height:var(--sl-audio-h,152px)}
 
 /* ---------- Vorschau beim Überfahren eines externen Links ---------- */
 .sl-hover{
@@ -1017,3 +1020,33 @@ td .b-cell-chips:not(:empty){padding:0 10px}
   .b-svge-main{flex-direction:column}
   .b-svge-side{width:auto;max-height:42vh;border-left:0;border-top:1px solid var(--line)}
 }
+
+/* ---------- Datei-Anhang ---------- */
+.b-attach-ph{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 20px;border-radius:var(--radius);
+  border:1.5px dashed var(--line);background:var(--paper-2);color:var(--ink-soft);transition:border-color .15s,background .15s;
+}
+.b-attach-ph.is-over{border-color:var(--accent);background:var(--accent-bg)}
+.b-attach-ph.is-readonly{flex-direction:row;justify-content:center;padding:16px;font-size:14px}
+.b-attach-ph.is-readonly svg{width:16px;height:16px}
+.b-attach-ph-icon{width:26px;height:26px;color:var(--ink-faint)}
+.b-attach-ph-main{display:flex;flex-direction:column;align-items:center;gap:6px}
+.b-attach-ph-hint{margin:0;font-size:12.5px;color:var(--ink-faint)}
+
+.b-attach{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius);
+  border:1px solid var(--line);background:var(--card);
+}
+.b-attach-icon{width:26px;height:26px;flex:none;color:var(--ink-faint)}
+.b-attach-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.b-attach-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b-attach-meta{font-size:12px;color:var(--ink-faint)}
+.b-attach-warning{font-size:12px;color:var(--amber)}
+.b-attach-actions{display:flex;gap:4px;flex:none}
+.b-attach-btn{
+  display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:0;
+  background:none;color:var(--ink-soft);cursor:pointer;text-decoration:none;
+}
+.b-attach-btn:hover{background:var(--hover);color:var(--ink)}
+.b-attach-btn.is-danger:hover{background:var(--red-bg);color:var(--red)}
+.b-attach-btn svg{width:16px;height:16px}

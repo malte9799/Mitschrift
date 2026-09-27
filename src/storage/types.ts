@@ -78,6 +78,15 @@ export interface CalendarEvent {
 
 export type CalendarEventPatch = Partial<Pick<CalendarEvent, 'title' | 'date' | 'time' | 'endTime' | 'notes' | 'noteId' | 'tags' | 'completed'>>;
 
+/** Gespeicherte Datei; `name`/`mimeType`/`size` fehlen bei älteren Einträgen (z. B. Bildern vor diesem Feld). */
+export interface StoredFile {
+  id: string;
+  blob: Blob;
+  name?: string;
+  mimeType?: string;
+  size?: number;
+}
+
 /**
  * Speicher-Grenze der App. V1 nutzt IndexedDB, später kann ein Tauri-Adapter
  * (Markdown-Dateien auf Disk) dieselbe Schnittstelle implementieren.
@@ -115,8 +124,10 @@ export interface StorageAdapter {
    */
   replaceSyncedEvents(source: Exclude<CalendarSource, 'manual'>, events: CalendarEvent[]): Promise<void>;
 
-  putFile(blob: Blob): Promise<string>;
+  putFile(blob: Blob, meta?: { name?: string; mimeType?: string }): Promise<string>;
   getFile(id: string): Promise<Blob | undefined>;
+  /** Nur die Metadaten (ohne den Blob), z. B. für die Anzeige eines Anhangs. */
+  getFileMeta(id: string): Promise<Omit<StoredFile, 'blob'> | undefined>;
 
   /** Kompletter Inhalt des Speichers, z. B. für ein Backup. */
   dumpAll(): Promise<StorageDump>;
@@ -131,7 +142,7 @@ export interface StorageDump {
   notes: Note[];
   tags: Tag[];
   snippets: Snippet[];
-  files: { id: string; blob: Blob }[];
+  files: StoredFile[];
 }
 
 export interface MergeResult {
