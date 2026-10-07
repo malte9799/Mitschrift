@@ -15,9 +15,11 @@ interface SmartLinkOptionsProps {
 
 const viewIcons: Record<SmartLinkView_, IconName> = { link: 'link', row: 'noteRow', image: 'image', video: 'play', audio: 'audio' };
 
-/** Darstellungs-Auswahl für externe Links: Link, Zeile, Bild (immer wählbar) – plus Video/Audio, wenn erkannt – und der Anzeigetitel. */
+/** Darstellungs-Auswahl für externe Links: Link, Zeile – plus Bild als Fallback-Versuch bei generischen Links,
+ * oder Video/Audio, wenn eine Einbettung erkannt wurde (dann ergibt eine separate Bild-Option keinen Sinn,
+ * das Thumbnail zeigt schon die Video-/Audio-Darstellung selbst) – und der Anzeigetitel. */
 export function SmartLinkOptions({ view, embedView, onView, title, placeholder, onTitle }: SmartLinkOptionsProps) {
-  const views: SmartLinkView_[] = ['link', 'row', 'image', ...(embedView && embedView !== 'image' ? [embedView] : [])];
+  const views: SmartLinkView_[] = ['link', 'row', ...(embedView && embedView !== 'image' ? [embedView] : ['image'])];
   return (
     <div className="nv-options">
       <p className="b-pop-label">Darstellung</p>
