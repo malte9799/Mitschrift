@@ -333,6 +333,10 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
 
     function onMouseDown(e: MouseEvent) {
       if (e.button !== 0) return;
+      // Ein vorheriger Drag, dessen mouseup nie ankam (Zeiger blieb beim Loslassen über einem
+      // iframe – YouTube/Spotify schlucken dann das Event), hinterlässt sonst einen hängenden
+      // start/active-Zustand, der den nächsten Klick verfälscht. Vor allem Weiteren bereinigen.
+      if (start) onMouseUp();
       // Klicks in der Optionsleiste, ihren Menüs und der rechten Leiste lassen die Auswahl stehen.
       if (e.target instanceof Element && e.target.closest(KEEP_SELECTION)) return;
       const selected = selectedRef.current;
@@ -371,6 +375,7 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
       start = { x: e.clientX - d.left, y: e.clientY - d.top };
       last = { x: e.clientX, y: e.clientY };
       active = false;
+      setIframesInert(true);
       // Auch Eingabefelder in Blöcken (z. B. Sammlungs-Zelle) verlieren den Fokus.
       const focused = document.activeElement;
       if (focused instanceof HTMLElement && focused !== dom && dom.contains(focused)) focused.blur();
@@ -412,6 +417,19 @@ export function BlockSelection({ editor }: BlockSelectionProps) {
       active = false;
       cancelAnimationFrame(raf);
       setDragRect(null);
+      setIframesInert(false);
+    }
+
+    /**
+     * iframes (YouTube/Spotify-Einbettungen) schlucken mousemove/mouseup, sobald der Zeiger
+     * darüber steht – der Browser routet die Events dann an das iframe-Dokument statt an
+     * unser window, wodurch eine laufende Drag-Auswahl beim Überqueren hängen bleibt.
+     * Während des Ziehens blenden wir sie daher für Zeigerereignisse aus.
+     */
+    function setIframesInert(inert: boolean) {
+      dom.querySelectorAll('iframe').forEach((f) => {
+        (f as HTMLIFrameElement).style.pointerEvents = inert ? 'none' : '';
+      });
     }
 
     function onScroll() {
