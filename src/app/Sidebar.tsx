@@ -345,6 +345,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
         <button
           type="button"
+          className={`side-new side-graph${location.pathname.startsWith('/handbuch') ? ' active' : ''}`}
+          onClick={() => {
+            navigate('/handbuch');
+            if (window.innerWidth <= 860) onClose();
+          }}
+        >
+          <Icon name="sparkle" />
+          Handbuch
+        </button>
+
+        <button
+          type="button"
           className={`side-new side-graph${location.pathname === '/glossar' ? ' active' : ''}`}
           onClick={() => {
             navigate('/glossar');

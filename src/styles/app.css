@@ -564,3 +564,29 @@ button.tag-main{cursor:pointer}
   .lib-size-l{--tile:220px}
   .lib-grid{gap:18px 12px}
 }
+
+/* ---------- Handbuch ---------- */
+.handbuch-screen{height:calc(100vh - var(--menubar-h));overflow-y:auto;display:flex}
+.handbuch-nav{
+  flex:none;width:220px;padding:24px 12px;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:2px;overflow-y:auto;
+}
+.handbuch-nav a{
+  display:block;padding:6px 10px;border-radius:var(--radius-xs);color:var(--ink-soft);text-decoration:none;
+  font-size:14px;transition:background .15s,color .15s;
+}
+.handbuch-nav a:hover{background:var(--hover);color:var(--ink)}
+.handbuch-nav a.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm),inset 0 0 0 1px var(--line)}
+.handbuch-nav-home{font-weight:600;margin-bottom:6px}
+.handbuch-nav ul{list-style:none;margin:0;padding-left:12px;display:flex;flex-direction:column;gap:2px}
+@media (max-width:860px){.handbuch-nav{display:none}}
+
+.handbuch-main{flex:1;min-width:0}
+.handbuch-bar{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  height:52px;padding:0 24px;background:color-mix(in srgb,var(--paper) 82%,transparent);
+  backdrop-filter:saturate(1.6) blur(14px);-webkit-backdrop-filter:saturate(1.6) blur(14px);
+}
+.handbuch-page{max-width:var(--page-w);margin:0 auto;padding:16px 24px 30vh}
+@media (max-width:640px){.handbuch-page{padding:16px 16px 30vh}}
+.handbuch-title{margin-bottom:24px}
