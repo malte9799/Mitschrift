@@ -1,5 +1,6 @@
 import { Extension, type Editor } from '@tiptap/core';
 import { Plugin, PluginKey, type EditorState } from '@tiptap/pm/state';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import type { TagColor } from '@/storage';
 
 /** Darstellung einer Randnotiz. */
@@ -49,6 +50,16 @@ export function isSideNoteEmpty(n: SideNote): boolean {
   return !n.title.trim() && !n.body.trim() && n.tags.length === 0;
 }
 
+/** IDs der Kommentar-Markierungen im Dokument, zu denen es keine Randnotiz (mehr) gibt. */
+function orphanedComments(doc: PMNode, notes: SideNote[]): Set<string> {
+  const known = new Set(notes.filter((n) => n.comment).map((n) => n.id));
+  const orphans = new Set<string>();
+  doc.descendants((node) => {
+    for (const m of node.marks) if (m.type.name === 'comment' && !known.has(m.attrs.id as string)) orphans.add(m.attrs.id as string);
+  });
+  return orphans;
+}
+
 /**
  * Notiz am Rand neben dem Text. `pos` zeigt auf den Anfang des Blocks, neben dem sie steht,
  * `dy` ist der Abstand von dessen Oberkante – so wandert die Notiz mit dem Text.
@@ -64,6 +75,10 @@ export interface SideNote {
   body: string;
   /** Labels wie „Prüfungsrelevant“, als Namen gespeichert. */
   tags: string[];
+  /** Kommentar zu einer Textstelle: Die Markierung im Text (Mark `comment`) trägt dieselbe ID. */
+  comment?: boolean;
+  /** Der kommentierte Text beim Anlegen – bleibt lesbar, falls die Stelle später gelöscht wird. */
+  quote?: string;
 }
 
 type Action =
@@ -113,6 +128,7 @@ export function parseSideNotes(raw: unknown): SideNote[] {
       title: typeof n.title === 'string' ? n.title : '',
       body: typeof n.body === 'string' ? n.body : '',
       tags: Array.isArray(n.tags) ? n.tags.filter((t): t is string => typeof t === 'string' && !!t.trim()) : [],
+      ...(n.comment === true ? { comment: true, quote: typeof n.quote === 'string' ? n.quote : '' } : {}),
     }));
 }
 
@@ -147,6 +163,18 @@ export const SideNotes = Extension.create<{ initial: SideNote[] }>({
             const action = tr.getMeta(sideNotesKey) as Action | undefined;
             return action ? reduce(next, action) : next;
           },
+        },
+        // Kommentar gelöscht (oder Text mit fremder Markierung eingefügt): Markierung ohne Notiz entfernen.
+        appendTransaction(trs, _old, state) {
+          if (!trs.some((tr) => tr.docChanged || tr.getMeta(sideNotesKey))) return null;
+          const type = state.schema.marks.comment;
+          const orphans = type ? orphanedComments(state.doc, sideNotesKey.getState(state) ?? []) : new Set<string>();
+          if (!orphans.size) return null;
+          const tr = state.tr;
+          state.doc.descendants((node, pos) => {
+            for (const m of node.marks) if (m.type === type && orphans.has(m.attrs.id as string)) tr.removeMark(pos, pos + node.nodeSize, m);
+          });
+          return tr.setMeta('addToHistory', false);
         },
       }),
     ];

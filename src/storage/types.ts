@@ -8,11 +8,13 @@ export interface Note {
   parentId?: string | null;
   tags: string[];
   starred: boolean;
+  /** Als Vorlage markiert: erscheint unter „Neue Notiz aus Vorlage“. */
+  template?: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
-export type NotePatch = Partial<Pick<Note, 'title' | 'content' | 'folder' | 'parentId' | 'tags' | 'starred'>>;
+export type NotePatch = Partial<Pick<Note, 'title' | 'content' | 'folder' | 'parentId' | 'tags' | 'starred' | 'template'>>;
 
 /** Farbton eines Tags; die konkreten Werte (hell/dunkel) stehen in tokens.css. */
 export type TagColor = 'teal' | 'blue' | 'green' | 'orange' | 'purple' | 'graphite' | 'red' | 'pink' | 'amber';

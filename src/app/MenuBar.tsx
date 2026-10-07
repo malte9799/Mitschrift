@@ -6,6 +6,7 @@ import { blockTypes, type BlockCategory, type BlockTypeId } from '@/editor/block
 import { OPEN_LINK_EVENT } from '@/editor/Toolbar';
 import { exportFormats, exportNote, type ExportFormat } from '@/export';
 import { createNote } from './actions';
+import { builtinTemplates, userTemplates } from './templates';
 import { FOCUS_SEARCH_EVENT, useActiveNote } from './activeNote';
 import { useTheme } from './theme';
 import { codeThemeMeta, useCodeTheme } from './codeTheme';
@@ -15,7 +16,7 @@ import { setHighlight, useHighlight } from '@/glossary/store';
 import { termFromSelection } from '@/editor/Toolbar';
 import { downloadBackup, lastBackupAt, readBackup, restoreBackup } from '@/storage/backup';
 import { storageStatus, type StorageStatus } from '@/storage/persist';
-import { notifyNotesChanged } from '@/hooks/useNotes';
+import { notifyNotesChanged, useNotes } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 
 export type MenuEntry =
@@ -142,6 +143,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   }, []);
 
   const note = active?.note ?? null;
+  const ownTemplates = userTemplates(useNotes() ?? []);
   // Editor-Befehle nur im Bearbeiten-Modus.
   const ed = active && !active.learning ? active.editor : null;
   const hasSelection = !!ed && !ed.state.selection.empty;
@@ -248,6 +250,13 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
       items: [
         { label: 'Neue Notiz', shortcut: '⌥⌘N', bind: true, action: () => void newNote() },
         { label: 'Neue Unterseite', shortcut: '⇧⌥⌘N', bind: true, disabled: !note, action: () => note && void newNote({ parentId: note.id, tags: note.tags }) },
+        {
+          label: 'Neue Notiz aus Vorlage',
+          submenu: [
+            ...builtinTemplates.map((t) => ({ label: t.name, action: () => void newNote(t.init()) })),
+            ...(ownTemplates.length ? [SEP, ...ownTemplates.map((t) => ({ label: t.name, action: () => void newNote(t.init()) }))] : []),
+          ],
+        },
         { label: 'Notizen durchsuchen …', shortcut: '⌘K', action: focusSearch },
         SEP,
         {
@@ -265,6 +274,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
           disabled: !note,
           action: () => active?.toggleStar(),
         },
+        { label: 'Als Vorlage verwenden', checked: !!note?.template, disabled: !note, action: () => active?.toggleTemplate() },
         { label: 'Notiz löschen …', disabled: !note, action: () => active?.remove() },
       ],
     },

@@ -19,6 +19,8 @@ import { Footnote, Kbd } from './Footnote';
 import { NoteBlockNode } from './noteBlock/NoteBlockNode';
 import { SmartLinkNode } from './smartLink/SmartLinkNode';
 import { GlossaryHighlight } from '@/glossary/GlossaryHighlight';
+import { CommentMark } from './sideNotes/CommentMark';
+import { Column, Columns } from './columns/Columns';
 
 export const noteExtensions = [
   StarterKit.configure({
@@ -47,6 +49,9 @@ export const noteExtensions = [
   Footnote,
   NoteBlockNode,
   SmartLinkNode,
+  CommentMark,
+  Columns,
+  Column,
   MarkdownClipboard,
   GlossaryHighlight,
   ConfirmDelete,

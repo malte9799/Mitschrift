@@ -210,6 +210,32 @@ export function BlockThumbnail({ id }: { id: BlockTypeId }) {
           <path d="m25 20.2 1.5 1.5 2.5-3" className="t-stroke-ok" />
         </svg>
       );
+    case 'columns2':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="4" y="7" width="13" height="22" rx="3" className="t-card-front" />
+          <rect x="19" y="7" width="13" height="22" rx="3" className="t-card-front" />
+          <path d="M7 12h7M7 16h7M7 20h5M22 12h7M22 16h7M22 20h5" className="t-grid" />
+        </svg>
+      );
+    case 'columns3':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="4" y="7" width="8" height="22" rx="2.5" className="t-card-front" />
+          <rect x="14" y="7" width="8" height="22" rx="2.5" className="t-card-front" />
+          <rect x="24" y="7" width="8" height="22" rx="2.5" className="t-card-front" />
+          <path d="M6.5 12h3M6.5 16h3M16.5 12h3M16.5 16h3M26.5 12h3M26.5 16h3" className="t-grid" />
+        </svg>
+      );
+    case 'toc':
+      return (
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="6" y="9" width="16" height="2.6" rx="1.3" className="t-accent" />
+          <rect x="10" y="14.5" width="18" height="2.4" rx="1.2" className="t-fill" />
+          <rect x="10" y="19.5" width="14" height="2.4" rx="1.2" className="t-fill" />
+          <rect x="6" y="24.5" width="13" height="2.6" rx="1.3" className="t-accent-soft" />
+        </svg>
+      );
     case 'table':
       return (
         <svg viewBox="0 0 36 36" aria-hidden="true">

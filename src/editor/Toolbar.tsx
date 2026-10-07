@@ -5,6 +5,7 @@ import { NodeSelection } from '@tiptap/pm/state';
 import { Icon, type IconName } from '@/ui/Icon';
 import { openTermDialog } from '@/glossary/store';
 import { guessTerm } from '@/glossary/match';
+import { commentSelection } from './sideNotes/CommentMark';
 
 interface ToolbarProps {
   editor: Editor;
@@ -137,6 +138,9 @@ export function Toolbar({ editor }: ToolbarProps) {
             <Icon name="link" />
           </button>
           <span className="c-editor-toolbar-sep" />
+          <button type="button" onMouseDown={preventFocusLoss} onClick={() => commentSelection(editor)} aria-label="Kommentieren" title="Kommentieren (⌥⌘M)">
+            <Icon name="sticky" />
+          </button>
           <button type="button" onMouseDown={preventFocusLoss} onClick={() => termFromSelection(editor)} aria-label="Als Begriff ins Glossar" title="Als Begriff ins Glossar (⇧⌘G)">
             <Icon name="book" />
           </button>

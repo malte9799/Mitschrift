@@ -14,6 +14,7 @@ import { GlossaryListNode } from './glossary/GlossaryListNode';
 import { GalleryNode } from './gallery/GalleryNode';
 import { SvgNode } from './svg/SvgNode';
 import { AttachmentNode } from './attachment/AttachmentNode';
+import { TocNode } from './toc/TocNode';
 
 /** Alle interaktiven Blöcke. Neue Blöcke hier + in editor/blockTypes.ts registrieren. */
 export const learnExtensions = [
@@ -32,5 +33,6 @@ export const learnExtensions = [
   GalleryNode,
   SvgNode,
   AttachmentNode,
+  TocNode,
   ...tableExtensions,
 ];

@@ -21,6 +21,7 @@ import {
   type SideNoteColor,
   type SideNoteStyle,
 } from './model';
+import { FOCUS_SIDE_NOTE_EVENT } from './CommentMark';
 
 /** Maße im Rand: Abstand zum Text (links Platz für den Griff), Mindestbreite, bevor Notizen zu Pins werden. */
 const GAP = { left: 72, right: 32 } as const;
@@ -62,6 +63,17 @@ function blockTop(view: EditorView, pos: number): number | null {
   return dom instanceof HTMLElement ? dom.getBoundingClientRect().top : null;
 }
 
+/** Oberkante (Viewport) der Stelle, an der eine Notiz steht: bei Kommentaren die markierte Textstelle, sonst Block + Abstand. */
+function anchorTop(view: EditorView, note: SideNote): number | null {
+  if (note.comment) {
+    const mark = view.dom.querySelector(`[data-comment-id="${note.id}"]`);
+    // Etwas über der Zeile ansetzen, damit die Karte auf Höhe des Textes beginnt.
+    if (mark) return mark.getBoundingClientRect().top - 4;
+  }
+  const top = blockTop(view, note.pos);
+  return top === null ? null : top + note.dy;
+}
+
 /** Letzter oberster Block, dessen Oberkante über `y` liegt (sonst der erste). */
 function blockAtY(view: EditorView, y: number): { pos: number; top: number } | null {
   let hit: { pos: number; top: number } | null = null;
@@ -99,6 +111,10 @@ export function SideNotesLayer({ editor }: { editor: Editor }) {
   const [compact, setCompact] = useState({ left: false, right: false });
   const [openId, setOpenId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
+  // Hervorgehobener Kommentar: Maus/Fokus auf der Notiz bzw. Klick auf die markierte Textstelle.
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const activeComment = hoverId ?? pickedId;
   const layerRef = useRef<HTMLDivElement>(null);
   const els = useRef(new Map<string, HTMLElement>());
 
@@ -128,7 +144,7 @@ export function SideNotesLayer({ editor }: { editor: Editor }) {
       const width = Math.min(MAX_W, space[side]);
       const items = notes
         .filter((n) => n.side === side)
-        .map((n) => ({ el: els.current.get(n.id), top: (blockTop(editor.view, n.pos) ?? b.top) - b.top + n.dy }))
+        .map((n) => ({ el: els.current.get(n.id), top: (anchorTop(editor.view, n) ?? b.top) - b.top }))
         .sort((x, y) => x.top - y.top);
       let floor = -Infinity;
       for (const { el, top } of items) {
@@ -217,11 +233,34 @@ export function SideNotesLayer({ editor }: { editor: Editor }) {
     return () => screen.removeEventListener('dblclick', onDoubleClick);
   }, [editor]);
 
+  // Neuer Kommentar (Toolbar, Tastenkürzel): seine Notiz bekommt den Fokus.
+  useEffect(() => {
+    const onFocus = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      setFocusId(id);
+      setOpenId(id);
+    };
+    window.addEventListener(FOCUS_SIDE_NOTE_EVENT, onFocus);
+    return () => window.removeEventListener(FOCUS_SIDE_NOTE_EVENT, onFocus);
+  }, []);
+
+  // Klick auf eine kommentierte Textstelle hebt den Kommentar hervor (und öffnet ihn als Pin).
+  useEffect(() => {
+    const dom = editor.view.dom;
+    const onClick = (e: MouseEvent) => {
+      const id = e.target instanceof Element ? e.target.closest('[data-comment-id]')?.getAttribute('data-comment-id') ?? null : null;
+      setPickedId(id);
+      if (id) setOpenId(id);
+    };
+    dom.addEventListener('click', onClick);
+    return () => dom.removeEventListener('click', onClick);
+  }, [editor]);
+
   // Geöffneter Pin schließt beim Klick daneben.
   useEffect(() => {
     if (!openId) return;
     const onDown = (e: MouseEvent) => {
-      if (e.target instanceof Element && (e.target.closest(`[data-side-note="${openId}"]`) || e.target.closest('.b-pop'))) return;
+      if (e.target instanceof Element && (e.target.closest(`[data-side-note="${openId}"]`) || e.target.closest('.b-pop') || e.target.closest(`[data-comment-id="${openId}"]`))) return;
       setOpenId(null);
       dropIfEmpty(editor, openId);
     };
@@ -236,6 +275,7 @@ export function SideNotesLayer({ editor }: { editor: Editor }) {
 
   return (
     <div ref={layerRef} className="c-side-notes" aria-label="Randnotizen">
+      {activeComment && <style>{`.c-editor-body .tiptap [data-comment-id="${activeComment}"]{background:var(--comment-active);box-shadow:0 0 0 2px var(--comment-active)}`}</style>}
       {notes.map((note) => (
         <SideNoteItem
           key={note.id}
@@ -245,6 +285,8 @@ export function SideNotesLayer({ editor }: { editor: Editor }) {
           compact={compact[note.side]}
           tagSuggestions={tagSuggestions}
           open={openId === note.id}
+          active={activeComment === note.id}
+          onHover={(on) => setHoverId((cur) => (on ? note.id : cur === note.id ? null : cur))}
           autoFocus={focusId === note.id}
           onFocused={() => setFocusId(null)}
           onToggle={() => {
@@ -266,13 +308,16 @@ interface ItemProps {
   compact: boolean;
   tagSuggestions: string[];
   open: boolean;
+  /** Kommentar, dessen Textstelle gerade hervorgehoben ist. */
+  active: boolean;
+  onHover: (on: boolean) => void;
   autoFocus: boolean;
   onFocused: () => void;
   onToggle: () => void;
   register: (el: HTMLElement | null) => void;
 }
 
-function SideNoteItem({ editor, note, editable, compact, tagSuggestions, open, autoFocus, onFocused, onToggle, register }: ItemProps) {
+function SideNoteItem({ editor, note, editable, compact, tagSuggestions, open, active, onHover, autoFocus, onFocused, onToggle, register }: ItemProps) {
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   const [tagPicker, setTagPicker] = useState<HTMLElement | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -352,12 +397,13 @@ function SideNoteItem({ editor, note, editable, compact, tagSuggestions, open, a
         dropIfEmpty(editor, note.id);
       }}
     >
+      {note.comment && note.quote && <p className="c-side-note-quote">{note.quote}</p>}
       {editable ? (
         <input
           ref={titleRef}
           className="c-side-note-title"
           value={note.title}
-          placeholder={note.style === 'title' ? 'Randnotiz' : 'Titel'}
+          placeholder={note.comment ? 'Kommentar' : note.style === 'title' ? 'Randnotiz' : 'Titel'}
           onChange={(e) => update({ title: e.target.value })}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -477,8 +523,8 @@ function SideNoteItem({ editor, note, editable, compact, tagSuggestions, open, a
               removeSideNote(editor, note.id);
             }}
           >
-            <Icon name="trash" className="b-pop-icon" />
-            Löschen
+            <Icon name={note.comment ? 'check' : 'trash'} className="b-pop-icon" />
+            {note.comment ? 'Erledigt – Kommentar entfernen' : 'Löschen'}
           </button>
           </div>
         </Popover>
@@ -489,15 +535,19 @@ function SideNoteItem({ editor, note, editable, compact, tagSuggestions, open, a
   return (
     <div
       ref={register}
-      className={`c-side-note is-${note.side}${compact ? ' is-compact' : ''}`}
+      className={`c-side-note is-${note.side}${compact ? ' is-compact' : ''}${note.comment ? ' is-comment' : ''}${active ? ' is-active' : ''}`}
       data-side-note={note.id}
+      onMouseEnter={note.comment ? () => onHover(true) : undefined}
+      onMouseLeave={note.comment ? () => onHover(false) : undefined}
+      onFocus={note.comment ? () => onHover(true) : undefined}
+      onBlur={note.comment ? (e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHover(false) : undefined}
       data-interactive=""
       style={{ '--tone': sideNoteColors[note.color].css } as CSSProperties}
     >
       {compact ? (
         <>
           <button type="button" className={`c-side-note-pin${open ? ' is-open' : ''}`} onClick={onToggle} title={[note.title || 'Randnotiz', ...note.tags].join(' · ')} aria-expanded={open}>
-            <Icon name="sticky" />
+            <Icon name={note.comment ? 'quote' : 'sticky'} />
           </button>
           {open && <div className="c-side-note-float">{card}</div>}
         </>

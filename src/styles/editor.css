@@ -588,3 +588,48 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 .c-divider-sample[data-variant="dots"]::before{content:'• • •';top:0;border:0;text-align:center;letter-spacing:.3em;color:var(--ink-soft);font-size:9px;line-height:14px}
 .c-divider-sample[data-variant="page"]{border:1px solid var(--line);border-radius:3px;background:var(--paper-2)}
 .c-divider-sample[data-variant="page"]::before{border-top:1px dashed var(--ink-faint)}
+
+/* ---------- Spalten-Layout ---------- */
+.c-editor-body .tiptap .cols{position:relative;margin:.6em 0;container-type:inline-size}
+.c-editor-body .tiptap .cols-grid,
+.c-editor-body .tiptap .cols-grid > [data-node-view-content-react]{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:0 28px;align-items:start}
+.c-editor-body .tiptap .cols-grid:has(> [data-node-view-content-react]){display:block}
+.c-editor-body .tiptap .cols-2{--cols:2}.c-editor-body .tiptap .cols-3{--cols:3}.c-editor-body .tiptap .cols-4{--cols:4}
+.c-editor-body .tiptap .cols[data-layout="wide-left"] .cols-grid,
+.c-editor-body .tiptap .cols[data-layout="wide-left"] .cols-grid > [data-node-view-content-react]{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.c-editor-body .tiptap .cols[data-layout="wide-right"] .cols-grid,
+.c-editor-body .tiptap .cols[data-layout="wide-right"] .cols-grid > [data-node-view-content-react]{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.c-editor-body .tiptap .cols-col{min-width:0;border-radius:var(--radius-xs);outline:1px dashed transparent;outline-offset:6px;transition:outline-color .15s}
+.c-editor-body .tiptap .cols-col > :first-child{margin-top:0}
+.c-editor-body .tiptap .cols-col > :last-child{margin-bottom:0}
+/* Spaltengrenzen nur zeigen, solange man im Layout arbeitet. */
+.c-editor-body:not(.is-learning) .tiptap .cols.is-active .cols-col,
+.c-editor:not(.is-learning) .tiptap .cols:hover .cols-col{outline-color:var(--line)}
+@container (max-width: 520px){
+  .c-editor-body .tiptap .cols .cols-grid,
+  .c-editor-body .tiptap .cols .cols-grid > [data-node-view-content-react]{grid-template-columns:minmax(0,1fr) !important;gap:14px 0}
+}
+
+/* ---------- Inhaltsverzeichnis ---------- */
+.b-toc{margin:.8em 0;padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card)}
+.b-toc.is-selected{border-color:var(--accent)}
+.b-toc-label{margin:0 0 6px;font-size:11.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint)}
+.b-toc-empty{margin:0;font-size:14px;color:var(--ink-faint)}
+.b-toc nav{display:flex;flex-direction:column}
+.c-editor-body .tiptap .b-toc-item,.b-toc-item{
+  display:block;padding:3px 8px;margin:0 -8px;border-radius:var(--radius-xs);color:var(--ink-soft);font-size:14.5px;line-height:1.45;
+  text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.b-toc-item:hover{background:var(--hover);color:var(--accent)}
+.b-toc-item.is-l1{font-weight:600;color:var(--ink)}
+.b-toc-item.is-l2{padding-left:24px}
+.b-toc-item.is-l3{padding-left:40px;font-size:14px}
+
+/* ---------- Kommentare: markierte Textstelle + Randnotiz ---------- */
+:root{--comment:color-mix(in srgb,var(--tag-amber) 22%,transparent);--comment-active:color-mix(in srgb,var(--tag-amber) 45%,transparent)}
+.c-editor-body .tiptap .c-comment{background:var(--comment);border-bottom:2px solid color-mix(in srgb,var(--tag-amber) 70%,transparent);border-radius:2px;cursor:pointer;transition:background .15s}
+.c-side-note-quote{
+  margin:0 0 6px !important;padding-left:8px;border-left:2px solid var(--tone);color:var(--ink-faint);font-size:12.5px;font-style:italic;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal !important;
+}
+.c-side-note.is-comment.is-active .c-side-note-card{box-shadow:0 0 0 2px var(--tone),var(--shadow)}

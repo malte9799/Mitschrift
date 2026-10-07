@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Popover } from '@/blocks/collection/Popover';
+import { builtinTemplates, userTemplates } from './templates';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Icon } from '@/ui/Icon';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
-import type { Note } from '@/storage';
+import type { Note, NotePatch } from '@/storage';
 import { TagChip } from '@/ui/TagChip';
 import { createNote, deleteNote, moveNote } from './actions';
 import { NOTE_DRAG_TYPE } from '@/editor/NoteLink';
@@ -58,6 +60,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const notes = useNotes();
   const tags = useTags();
   const [query, setQuery] = useState('');
+  const [templateMenu, setTemplateMenu] = useState<HTMLElement | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(() => {
     try {
       return localStorage.getItem(TAG_FILTER_KEY);
@@ -154,9 +157,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const asTree = !query.trim() && !activeFilter;
   const roots = children.get(null) ?? [];
 
-  async function onCreate() {
-    // Neue Notiz bekommt direkt das gefilterte Fach.
-    const note = await createNote(activeFilter ? { tags: [activeFilter] } : undefined);
+  async function onCreate(init: NotePatch = {}) {
+    // Neue Notiz bekommt direkt das gefilterte Fach (eine Vorlage mit eigenen Fächern behält ihre).
+    const note = await createNote({ ...(activeFilter ? { tags: [activeFilter] } : {}), ...init });
     navigate(`/n/${note.id}`);
     if (window.innerWidth <= 860) onClose();
   }
@@ -314,10 +317,48 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <kbd>⌘K</kbd>
         </label>
 
-        <button type="button" className="side-new" onClick={onCreate}>
-          <Icon name="plus" />
-          Neue Notiz
-        </button>
+        <div className="side-new-row">
+          <button type="button" className="side-new" onClick={() => void onCreate()}>
+            <Icon name="plus" />
+            Neue Notiz
+          </button>
+          <button
+            type="button"
+            className={`side-new side-new-tpl${templateMenu ? ' active' : ''}`}
+            aria-label="Neue Notiz aus Vorlage"
+            title="Neue Notiz aus Vorlage"
+            onClick={(e) => setTemplateMenu(templateMenu ? null : e.currentTarget)}
+          >
+            <Icon name="chevron" />
+          </button>
+        </div>
+        {templateMenu && (
+          <Popover anchor={templateMenu} onClose={() => setTemplateMenu(null)} className="side-tpl-pop" align="end">
+            <div className="b-pop-list">
+              <p className="b-pop-label">Neue Notiz aus Vorlage</p>
+              {[...builtinTemplates, ...userTemplates(notes ?? [])].map((t, i) => (
+                <Fragment key={t.id}>
+                  {i === builtinTemplates.length && <hr className="b-pop-sep" />}
+                  <button
+                    type="button"
+                    className="b-pop-item"
+                    onClick={() => {
+                      setTemplateMenu(null);
+                      void onCreate(t.init());
+                    }}
+                  >
+                    <Icon name={t.icon} className="b-pop-icon" />
+                    <span className="side-tpl-text">
+                      {t.name}
+                      <small>{t.hint}</small>
+                    </span>
+                  </button>
+                </Fragment>
+              ))}
+              <p className="b-pop-empty">Eigene Vorlage: Notiz öffnen → Ablage → „Als Vorlage verwenden“.</p>
+            </div>
+          </Popover>
+        )}
 
         <button
           type="button"

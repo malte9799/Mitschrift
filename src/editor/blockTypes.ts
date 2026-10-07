@@ -29,6 +29,9 @@ export type BlockTypeId =
   | 'table'
   | 'collection'
   | 'linkedCollection'
+  | 'columns2'
+  | 'columns3'
+  | 'toc'
   | 'steps'
   | 'timeline'
   | 'bars'
@@ -129,6 +132,30 @@ export const blockTypes: BlockTypeDef[] = [
     category: 'rich',
     keywords: ['sammlung', 'datenbank', 'verknüpft', 'linked', 'ansicht', 'view', 'filter', 'board', 'kalender'],
     run: (editor) => editor.chain().focus().insertLinkedCollection().run(),
+  },
+  {
+    id: 'columns2',
+    label: '2 Spalten',
+    icon: 'layoutGrid',
+    category: 'rich',
+    keywords: ['spalten', 'columns', 'layout', 'nebeneinander', 'zweispaltig'],
+    run: (editor) => editor.chain().focus().insertColumns(2).run(),
+  },
+  {
+    id: 'columns3',
+    label: '3 Spalten',
+    icon: 'layoutGrid',
+    category: 'rich',
+    keywords: ['spalten', 'columns', 'layout', 'nebeneinander', 'dreispaltig'],
+    run: (editor) => editor.chain().focus().insertColumns(3).run(),
+  },
+  {
+    id: 'toc',
+    label: 'Inhaltsverzeichnis',
+    icon: 'list',
+    category: 'rich',
+    keywords: ['inhalt', 'inhaltsverzeichnis', 'toc', 'gliederung', 'überschriften', 'outline'],
+    run: (editor) => editor.chain().focus().insertToc().run(),
   },
   {
     id: 'code',

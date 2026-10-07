@@ -12,6 +12,8 @@ export interface ActiveNote {
   panelOpen: boolean;
   togglePanel: () => void;
   toggleStar: () => void;
+  /** Notiz als Vorlage für neue Notizen merken bzw. das wieder aufheben. */
+  toggleTemplate: () => void;
   remove: () => void;
   /** Präsentation starten – am Anfang oder auf der Folie mit der Schreibmarke. */
   present: (fromCursor?: boolean) => void;

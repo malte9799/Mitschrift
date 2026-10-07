@@ -81,6 +81,7 @@ function NoteScreen({ id }: { id: string }) {
       panelOpen,
       togglePanel,
       toggleStar: () => save({ starred: !note.starred }),
+      toggleTemplate: () => save({ template: !note.template }),
       remove: onDelete,
       present,
     });
