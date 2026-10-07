@@ -12,9 +12,20 @@ declare module '@tiptap/core' {
   }
 }
 
+export function collectionStopEvent({ event }: { event: Event }) {
+  const t = event.target;
+  // Tabelle und andere Ansichten verwalten Klicks, Tastatur, Zwischenablage und das Ziehen von Karten selbst.
+  if (t instanceof Element && t.closest('.b-coll-scroll, .b-coll-viewarea')) return true;
+  if (event.type.startsWith('drag') || event.type === 'drop') return false;
+  // Sonst wie der Tiptap-Standard: Eingabefelder für sich, Klicks und Zwischenablage an ProseMirror.
+  if (t instanceof HTMLElement && (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(t.tagName) || t.isContentEditable)) return true;
+  return !['mousedown', 'copy', 'paste', 'cut'].includes(event.type);
+}
+
 /**
  * Sammlung: erweiterte Tabelle mit mehreren Tabellenblättern und typisierten Feldern
- * (Text, Nummer, Checkbox, Datum, URL, E-Mail, Telefon, Einzel-/Mehrfachauswahl).
+ * (Text, Nummer, Checkbox, Datum, URL, E-Mail, Telefon, Auswahl, Verknüpfung, Rollup, Formel)
+ * und mehreren Ansichten je Blatt (Tabelle, Board, Galerie, Liste, Kalender).
  */
 export const CollectionNode = Node.create({
   name: 'collection',
@@ -37,17 +48,7 @@ export const CollectionNode = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(CollectionView, {
-      stopEvent: ({ event }) => {
-        const t = event.target;
-        if (event.type.startsWith('drag') || event.type === 'drop') return false;
-        // Die Tabelle verwaltet Klicks, Tastatur und Zwischenablage selbst (Zellauswahl).
-        if (t instanceof Element && t.closest('.b-coll-scroll')) return true;
-        // Sonst wie der Tiptap-Standard: Eingabefelder für sich, Klicks und Zwischenablage an ProseMirror.
-        if (t instanceof HTMLElement && (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(t.tagName) || t.isContentEditable)) return true;
-        return !['mousedown', 'copy', 'paste', 'cut'].includes(event.type);
-      },
-    });
+    return ReactNodeViewRenderer(CollectionView, { stopEvent: collectionStopEvent });
   },
 
   addCommands() {

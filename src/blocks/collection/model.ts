@@ -1,7 +1,18 @@
 import type { TagColor } from '@/storage';
 import type { IconName } from '@/ui/Icon';
 
-export type FieldType = 'text' | 'number' | 'checkbox' | 'date' | 'url' | 'email' | 'phone' | 'select' | 'multiselect' | 'relation';
+export type FieldType = 'text' | 'number' | 'checkbox' | 'date' | 'url' | 'email' | 'phone' | 'select' | 'multiselect' | 'relation' | 'formula' | 'rollup';
+
+/** Wie ein Rollup die Werte der verknüpften Zeilen zusammenfasst. */
+export type RollupFn = 'list' | 'count' | 'sum' | 'avg' | 'min' | 'max' | 'percentChecked';
+
+export interface RollupConfig {
+  /** Verknüpfungsfeld in diesem Blatt, dessen Zeilen zusammengefasst werden. */
+  relationFieldId: string;
+  /** Feld im Zielblatt, dessen Werte gelesen werden. */
+  targetFieldId: string;
+  fn: RollupFn;
+}
 
 export interface SelectOption {
   id: string;
@@ -26,6 +37,10 @@ export interface Field {
   /** Nur für Verknüpfung: Zielblatt und ob mehrere Zeilen wählbar sind. */
   relation?: RelationTarget;
   relationMulti?: boolean;
+  /** Nur für Formel: Ausdruck wie `{Punkte} / {Maximum} * 100`. */
+  formula?: string;
+  /** Nur für Rollup. */
+  rollup?: RollupConfig;
 }
 
 /** text/url/email/phone/date: string, number: number, checkbox: boolean, select: Options-ID, multiselect/relation: IDs. */
@@ -34,6 +49,35 @@ export type CellValue = string | number | boolean | string[] | null;
 export interface Row {
   id: string;
   cells: Record<string, CellValue>;
+  /** Eigene Notiz dieser Zeile („Zeile als Dokument“), sobald sie einmal geöffnet wurde. */
+  noteId?: string;
+}
+
+export type Sort = { fieldId: string; dir: 'asc' | 'desc' };
+
+export type ViewType = 'table' | 'board' | 'gallery' | 'list' | 'calendar';
+
+export type FilterOp = 'contains' | 'notContains' | 'is' | 'isNot' | 'gt' | 'lt' | 'gte' | 'lte' | 'before' | 'after' | 'checked' | 'unchecked' | 'empty' | 'notEmpty';
+
+export interface Filter {
+  id: string;
+  fieldId: string;
+  op: FilterOp;
+  /** Vergleichswert: Text, Zahl als Text, Datum „YYYY-MM-DD“ oder Options-ID. */
+  value?: string;
+}
+
+/** Eine Ansicht auf ein Blatt: dieselben Zeilen, anders dargestellt, gefiltert, sortiert und gruppiert. */
+export interface View {
+  id: string;
+  name: string;
+  type: ViewType;
+  sort?: Sort | null;
+  filters?: Filter[];
+  /** Feld, nach dem gruppiert wird (im Board: die Spalten). */
+  groupBy?: string | null;
+  /** Datumsfeld der Kalender-Ansicht. */
+  dateFieldId?: string | null;
 }
 
 export interface Sheet {
@@ -41,7 +85,9 @@ export interface Sheet {
   name: string;
   fields: Field[];
   rows: Row[];
-  sort?: { fieldId: string; dir: 'asc' | 'desc' } | null;
+  /** Ältere Sammlungen: Sortierung direkt am Blatt – wandert in die erste Ansicht. */
+  sort?: Sort | null;
+  views?: View[];
 }
 
 export interface CollectionData {
@@ -63,7 +109,35 @@ export const fieldTypes: { type: FieldType; label: string; icon: IconName; group
   { type: 'select', label: 'Einzelauswahl', icon: 'fieldSelect', group: true },
   { type: 'multiselect', label: 'Mehrfachauswahl', icon: 'fieldMulti' },
   { type: 'relation', label: 'Verknüpfung', icon: 'fieldRelation', group: true },
+  { type: 'rollup', label: 'Rollup', icon: 'bars' },
+  { type: 'formula', label: 'Formel', icon: 'formula' },
 ];
+
+/** Berechnete Felder haben keinen gespeicherten Zellwert und sind nicht editierbar. */
+export const isComputedType = (t: FieldType) => t === 'formula' || t === 'rollup';
+
+export const viewTypes: { type: ViewType; label: string; icon: IconName }[] = [
+  { type: 'table', label: 'Tabelle', icon: 'table' },
+  { type: 'board', label: 'Board', icon: 'cards' },
+  { type: 'gallery', label: 'Galerie', icon: 'layoutGrid' },
+  { type: 'list', label: 'Liste', icon: 'layoutList' },
+  { type: 'calendar', label: 'Kalender', icon: 'calendar' },
+];
+
+export const rollupFns: { fn: RollupFn; label: string }[] = [
+  { fn: 'list', label: 'Werte anzeigen' },
+  { fn: 'count', label: 'Anzahl' },
+  { fn: 'sum', label: 'Summe' },
+  { fn: 'avg', label: 'Durchschnitt' },
+  { fn: 'min', label: 'Minimum' },
+  { fn: 'max', label: 'Maximum' },
+  { fn: 'percentChecked', label: 'Prozent abgehakt' },
+];
+
+/** Ansichten eines Blatts; ältere Blätter ohne Ansichten bekommen eine Tabelle mit der bisherigen Sortierung. */
+export function sheetViews(sheet: Sheet): View[] {
+  return sheet.views?.length ? sheet.views : [{ id: 'default', name: 'Tabelle', type: 'table', sort: sheet.sort ?? null }];
+}
 
 export const fieldIcon = (type: FieldType): IconName => fieldTypes.find((f) => f.type === type)?.icon ?? 'fieldText';
 export const fieldIconOf = (field: Pick<Field, 'type' | 'icon'>): IconName => field.icon ?? fieldIcon(field.type);
@@ -164,6 +238,9 @@ export function convertValue(value: CellValue, from: Field, to: FieldType): Cell
       return null; // Optionen werden beim Typwechsel aus den Texten erzeugt (siehe changeFieldType).
     case 'relation':
       return null; // Verknüpfungen lassen sich nicht aus Text erzeugen – Zeile im Picker neu wählen.
+    case 'formula':
+    case 'rollup':
+      return null; // Berechnete Felder speichern keinen Wert.
     default:
       return asText() || null;
   }
@@ -204,7 +281,15 @@ export function changeFieldType(sheet: Sheet, fieldId: string, type: FieldType):
     ...sheet,
     fields: sheet.fields.map((f) =>
       f.id === fieldId
-        ? { ...f, type, options: isChoice(type) ? options : undefined, relation: type === 'relation' ? f.relation : undefined, relationMulti: type === 'relation' ? f.relationMulti : undefined }
+        ? {
+            ...f,
+            type,
+            options: isChoice(type) ? options : undefined,
+            relation: type === 'relation' ? f.relation : undefined,
+            relationMulti: type === 'relation' ? f.relationMulti : undefined,
+            formula: type === 'formula' ? f.formula : undefined,
+            rollup: type === 'rollup' ? f.rollup : undefined,
+          }
         : f,
     ),
     rows,
@@ -225,25 +310,33 @@ function sortKey(field: Field, value: CellValue): string | number | null {
       return (value as string[]).map((id) => field.options?.find((o) => o.id === id)?.label ?? '').join(', ');
     case 'relation':
       return null; // Titel der Zielzeile ist hier nicht bekannt – Sortierung nach Verknüpfung ergibt wenig Sinn.
+    case 'formula':
+    case 'rollup':
+      return typeof value === 'boolean' ? (value ? 1 : 0) : (value as string | number);
     default:
       return String(value);
   }
 }
 
-export function sortedRows(sheet: Sheet): Row[] {
-  const sort = sheet.sort;
+/** Zeilen sortieren. `valueOf` liefert den Zellwert (für berechnete Felder); ohne Angabe der gespeicherte. */
+export function sortRows(sheet: Sheet, rows: Row[], sort: Sort | null | undefined, valueOf: (field: Field, row: Row) => CellValue = (f, r) => r.cells[f.id] ?? null): Row[] {
   const field = sort && sheet.fields.find((f) => f.id === sort.fieldId);
-  if (!sort || !field) return sheet.rows;
+  if (!sort || !field) return rows;
   const dir = sort.dir === 'asc' ? 1 : -1;
-  return [...sheet.rows].sort((a, b) => {
-    const ka = sortKey(field, a.cells[field.id]);
-    const kb = sortKey(field, b.cells[field.id]);
+  return [...rows].sort((a, b) => {
+    const ka = sortKey(field, valueOf(field, a));
+    const kb = sortKey(field, valueOf(field, b));
     if (ka === null && kb === null) return 0;
     if (ka === null) return 1;
     if (kb === null) return -1;
     if (typeof ka === 'number' && typeof kb === 'number') return (ka - kb) * dir;
     return String(ka).localeCompare(String(kb), 'de', { numeric: true, sensitivity: 'base' }) * dir;
   });
+}
+
+/** Zeilen in der Reihenfolge der ersten Ansicht (z. B. für die Auswahl in Verknüpfungsfeldern). */
+export function sortedRows(sheet: Sheet): Row[] {
+  return sortRows(sheet, sheet.rows, sheetViews(sheet)[0].sort);
 }
 
 /** Link-Ziel für URL/E-Mail/Telefon-Zellen. */

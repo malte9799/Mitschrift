@@ -6,6 +6,7 @@ import { DiagramNode } from './diagram/DiagramNode';
 import { MermaidNode } from './mermaid/MermaidNode';
 import { WhiteboardNode } from './whiteboard/WhiteboardNode';
 import { CollectionNode } from './collection/CollectionNode';
+import { LinkedCollectionNode } from './collection/LinkedCollectionNode';
 import { tableExtensions } from './table/tableExtensions';
 import { PlotNode } from './plot/PlotNode';
 import { TimelineNode } from './timeline/TimelineNode';
@@ -24,6 +25,7 @@ export const learnExtensions = [
   MermaidNode,
   WhiteboardNode,
   CollectionNode,
+  LinkedCollectionNode,
   PlotNode,
   TimelineNode,
   GlossaryListNode,

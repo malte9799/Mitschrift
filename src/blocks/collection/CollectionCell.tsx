@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Editor } from '@tiptap/react';
 import { Icon } from '@/ui/Icon';
 import { Popover } from './Popover';
-import { findSheet } from './registry';
+import { resolveSheet, formatDate, type Collections } from './compute';
+import { formatNumber } from './formula';
 import { rowTitle, sortedRows, cellHref, nextOptionColor, uid, type CellValue, type Field, type SelectOption } from './model';
 
 interface CellProps {
@@ -14,18 +14,18 @@ interface CellProps {
   onChange: (value: CellValue) => void;
   /** Für neu angelegte Auswahl-Optionen. */
   onFieldChange: (field: Field) => void;
-  /** Nur für Verknüpfungsfelder: zum Auflösen des Zielblatts im Dokument. */
-  editor?: Editor;
+  /** Alle erreichbaren Sammlungen – zum Auflösen des Zielblatts von Verknüpfungsfeldern. */
+  all?: Collections;
 }
 
-const formatDate = (v: string) => {
-  const d = new Date(`${v}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
 /** Eine Tabellenzelle, je nach Feldtyp mit passendem Eingabeelement. */
-export function CollectionCell({ field, value, editable, primary, onChange, onFieldChange, editor }: CellProps) {
+export function CollectionCell({ field, value, editable, primary, onChange, onFieldChange, all }: CellProps) {
   switch (field.type) {
+    case 'formula':
+    case 'rollup':
+      // Berechnet: `value` ist bereits das Ergebnis.
+      if (typeof value === 'boolean') return <span className="b-cell-text is-computed">{value ? '✓' : '–'}</span>;
+      return <span className={`b-cell-text is-computed${typeof value === 'number' ? ' is-number' : ''}`}>{typeof value === 'number' ? formatNumber(value) : ((value as string) ?? '')}</span>;
     case 'checkbox':
       return (
         <label className="b-cell-check">
@@ -74,7 +74,7 @@ export function CollectionCell({ field, value, editable, primary, onChange, onFi
     case 'multiselect':
       return <ChoiceCell field={field} value={value} editable={editable} onChange={onChange} onFieldChange={onFieldChange} />;
     case 'relation':
-      return <RelationCell field={field} value={value} editable={editable} onChange={onChange} editor={editor} />;
+      return <RelationCell field={field} value={value} editable={editable} onChange={onChange} all={all} />;
     default:
       return editable ? (
         <input className={`b-cell-input${primary ? ' is-primary' : ''}`} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />
@@ -168,17 +168,17 @@ function RelationChip({ label }: { label: string }) {
   );
 }
 
-function RelationCell({ field, value, editable, onChange, editor }: Omit<CellProps, 'primary' | 'onFieldChange'>) {
+function RelationCell({ field, value, editable, onChange, all }: Omit<CellProps, 'primary' | 'onFieldChange'>) {
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLButtonElement>(null);
   const target = field.relation;
-  const targetSheet = editor && target ? findSheet(editor, target.collectionId, target.sheetId) : undefined;
+  const targetSheet = all && target ? resolveSheet(all, target.collectionId, target.sheetId) : undefined;
   const multi = !!field.relationMulti;
   const selectedIds = multi ? ((value as string[] | null) ?? []) : value ? [value as string] : [];
-  const targetRows = targetSheet ? sortedRows(targetSheet.sheet) : [];
+  const targetRows = targetSheet ? sortedRows(targetSheet) : [];
   const titleOf = (rowId: string) => {
     const row = targetRows.find((r) => r.id === rowId);
-    return row ? rowTitle(targetSheet!.sheet, row) : null;
+    return row ? rowTitle(targetSheet!, row) : null;
   };
   const chips = selectedIds.map((id) => titleOf(id)).filter((s): s is string => !!s);
 
@@ -201,7 +201,7 @@ function RelationCell({ field, value, editable, onChange, editor }: Omit<CellPro
       </button>
       {open && anchor.current && (
         <Popover anchor={anchor.current} onClose={() => setOpen(false)} className="b-optpick">
-          <RelationPicker rows={targetRows.map((r) => ({ id: r.id, label: rowTitle(targetSheet!.sheet, r) }))} selected={selectedIds} onToggle={toggle} />
+          <RelationPicker rows={targetRows.map((r) => ({ id: r.id, label: rowTitle(targetSheet!, r) }))} selected={selectedIds} onToggle={toggle} />
         </Popover>
       )}
     </>

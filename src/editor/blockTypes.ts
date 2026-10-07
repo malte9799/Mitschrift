@@ -28,6 +28,7 @@ export type BlockTypeId =
   | 'cloze'
   | 'table'
   | 'collection'
+  | 'linkedCollection'
   | 'steps'
   | 'timeline'
   | 'bars'
@@ -120,6 +121,14 @@ export const blockTypes: BlockTypeDef[] = [
     category: 'rich',
     keywords: ['sammlung', 'datenbank', 'collection', 'tabellenblatt', 'felder', 'erweiterte tabelle'],
     run: (editor) => editor.chain().focus().insertCollection().run(),
+  },
+  {
+    id: 'linkedCollection',
+    label: 'Verknüpfte Sammlung',
+    icon: 'link',
+    category: 'rich',
+    keywords: ['sammlung', 'datenbank', 'verknüpft', 'linked', 'ansicht', 'view', 'filter', 'board', 'kalender'],
+    run: (editor) => editor.chain().focus().insertLinkedCollection().run(),
   },
   {
     id: 'code',

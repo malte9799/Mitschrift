@@ -297,6 +297,7 @@ export function BlockThumbnail({ id }: { id: BlockTypeId }) {
           </text>
         </svg>
       );
+    case 'linkedCollection':
     case 'collection':
       return (
         <svg viewBox="0 0 36 36" aria-hidden="true">

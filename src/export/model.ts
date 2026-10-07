@@ -3,7 +3,8 @@ import { hasVisualEdit, imageKey, type ImageEdit } from '@/editor/image/model';
 import { renderEdited } from '@/editor/image/pixels';
 import { renderMermaid } from '@/blocks/mermaid/MermaidView';
 import { loadKatex, mathToMathml } from '@/editor/math/katex';
-import type { CellValue, CollectionData, Field } from '@/blocks/collection/model';
+import { isComputedType, type CellValue, type CollectionData, type Field } from '@/blocks/collection/model';
+import { displayText } from '@/blocks/collection/compute';
 import type { TermLike } from '@/glossary/match';
 
 /** Tiptap-JSON, so wie es in `Note.content` steht. */
@@ -230,7 +231,7 @@ export function collectionTables(data: CollectionData | undefined, all: Collecti
   if (!data?.sheets) return [];
   return data.sheets.map((s) => ({
     name: data.sheets.length > 1 ? `${data.title ? `${data.title} – ` : ''}${s.name}` : data.title || s.name,
-    rows: [s.fields.map((f) => f.name), ...s.rows.map((r) => s.fields.map((f) => formatCell(f, r.cells[f.id], all)))],
+    rows: [s.fields.map((f) => f.name), ...s.rows.map((r) => s.fields.map((f) => (isComputedType(f.type) ? displayText(f, r, s, all) : formatCell(f, r.cells[f.id], all))))],
   }));
 }
 

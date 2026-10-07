@@ -47,6 +47,7 @@ export function noteExcerpt(note: Note, max = 140): string {
 const blockLabels: Record<string, string> = {
   table: 'Tabelle',
   collection: 'Sammlung',
+  linkedCollection: 'Sammlung',
   quiz: 'Quiz',
   flashcards: 'Karteikarten',
   mermaid: 'Diagramm',

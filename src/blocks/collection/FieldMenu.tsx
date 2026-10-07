@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import type { Editor } from '@tiptap/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { tagColors } from '@/app/actions';
-import { fieldIcon, fieldIconOf, fieldTypes, isChoiceType, nextOptionColor, uid, type Field } from './model';
-import { findCollections } from './registry';
+import { fieldIcon, fieldIconOf, fieldTypes, isChoiceType, nextOptionColor, rollupFns, uid, type Field, type Sheet } from './model';
+import { resolveSheet, type Collections } from './compute';
+import { formulaError, formulaHelp } from './formula';
 import { Popover } from './Popover';
 import { confirmDialog } from '@/ui/Dialog';
 
@@ -20,13 +20,15 @@ interface FieldMenuProps {
   onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
   onClose: () => void;
-  /** Für Verknüpfungsfelder: um andere Sammlungen im Dokument als Ziel anzubieten. */
-  editor: Editor;
+  /** Für Verknüpfungsfelder: Sammlungen, die als Ziel angeboten werden. */
+  all: Collections;
+  /** Das Blatt des Feldes (Formeln und Rollups beziehen sich auf seine Felder). */
+  sheet: Sheet;
 }
 
 /** Menü am Spaltenkopf: Sortieren, Feld bearbeiten (Name, Typ, Optionen), verschieben, löschen. */
 export function FieldMenu(props: FieldMenuProps) {
-  const { field, sortDir, onSort, onClose, editor } = props;
+  const { field, sortDir, onSort, onClose, all, sheet } = props;
   const [editing, setEditing] = useState(!!props.startInEdit);
 
   if (editing)
@@ -34,7 +36,8 @@ export function FieldMenu(props: FieldMenuProps) {
       <FieldForm
         field={field}
         mode="edit"
-        editor={editor}
+        all={all}
+        sheet={sheet}
         onSubmit={(f) => {
           props.onSave(f);
           onClose();
@@ -96,12 +99,13 @@ interface FieldFormProps {
   mode: 'add' | 'edit';
   onSubmit: (field: Field) => void;
   onCancel: () => void;
-  /** Für Verknüpfungsfelder: um Zielblätter aus dem Dokument anzubieten. */
-  editor?: Editor;
+  /** Für Verknüpfungsfelder: Sammlungen, deren Blätter als Ziel angeboten werden. */
+  all: Collections;
+  sheet: Sheet;
 }
 
 /** Feld anlegen bzw. bearbeiten: Symbol, Name, Typ und Optionen. Übernommen wird erst beim Bestätigen. */
-export function FieldForm({ field, mode, onSubmit, onCancel, editor }: FieldFormProps) {
+export function FieldForm({ field, mode, onSubmit, onCancel, all, sheet }: FieldFormProps) {
   const [draft, setDraft] = useState(field);
   const [picker, setPicker] = useState<'icon' | 'type' | 'relationTarget' | null>(null);
   const iconRef = useRef<HTMLButtonElement>(null);
@@ -116,9 +120,32 @@ export function FieldForm({ field, mode, onSubmit, onCancel, editor }: FieldForm
   const options = draft.options ?? [];
   const setOptions = (next: typeof options) => setDraft((d) => ({ ...d, options: next }));
   const type = fieldTypes.find((t) => t.type === draft.type) ?? fieldTypes[0];
-  const targets = editor ? findCollections(editor).flatMap((c) => c.data.sheets.map((s) => ({ collectionId: c.data.id, sheetId: s.id, label: `${c.data.title || 'Sammlung'} · ${s.name}` }))) : [];
+  const targets = all.flatMap((c) => c.sheets.map((s) => ({ collectionId: c.id, sheetId: s.id, label: `${c.title || 'Sammlung'} · ${s.name}` })));
   const currentTarget = targets.find((t) => t.collectionId === draft.relation?.collectionId && t.sheetId === draft.relation?.sheetId);
-  const valid = draft.name.trim() !== '' && (draft.type !== 'relation' || !!draft.relation);
+  // Rollup: Verknüpfungsfelder dieses Blatts und die Felder des jeweiligen Zielblatts.
+  const relationFields = sheet.fields.filter((f) => f.type === 'relation' && f.relation && f.id !== draft.id);
+  const rollupRelation = relationFields.find((f) => f.id === draft.rollup?.relationFieldId);
+  const rollupTarget = rollupRelation?.relation && resolveSheet(all, rollupRelation.relation.collectionId, rollupRelation.relation.sheetId);
+  const formulaProblem = draft.type === 'formula' ? formulaError(draft.formula ?? '') : null;
+  const formulaRef = useRef<HTMLTextAreaElement>(null);
+  const valid =
+    draft.name.trim() !== '' &&
+    (draft.type !== 'relation' || !!draft.relation) &&
+    (draft.type !== 'rollup' || (!!rollupRelation && (draft.rollup?.fn === 'count' || !!rollupTarget?.fields.some((f) => f.id === draft.rollup?.targetFieldId)))) &&
+    !formulaProblem;
+
+  /** Feldnamen an der Schreibmarke in die Formel einsetzen. */
+  function insertFieldRef(name: string) {
+    const el = formulaRef.current;
+    const cur = draft.formula ?? '';
+    const at = el?.selectionStart ?? cur.length;
+    const end = el?.selectionEnd ?? at;
+    setDraft((d) => ({ ...d, formula: `${cur.slice(0, at)}{${name}}${cur.slice(end)}` }));
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(at + name.length + 2, at + name.length + 2);
+    });
+  }
 
   const submit = () => {
     if (!valid) return;
@@ -221,6 +248,81 @@ export function FieldForm({ field, mode, onSubmit, onCancel, editor }: FieldForm
                 ))}
               </div>
             </Popover>
+          )}
+        </>
+      )}
+
+      {draft.type === 'formula' && (
+        <>
+          <p className="b-field-edit-label">Formel</p>
+          <textarea
+            ref={formulaRef}
+            className={`b-field-formula${formulaProblem ? ' is-invalid' : ''}`}
+            rows={3}
+            spellCheck={false}
+            placeholder="{Punkte} / {Maximum} * 100"
+            value={draft.formula ?? ''}
+            onChange={(e) => setDraft((d) => ({ ...d, formula: e.target.value }))}
+          />
+          {formulaProblem && <p className="b-field-hint is-error">{formulaProblem}</p>}
+          <div className="b-field-refs">
+            {sheet.fields
+              .filter((f) => f.id !== draft.id)
+              .map((f) => (
+                <button key={f.id} type="button" className="b-field-ref" title="In die Formel einsetzen" onClick={() => insertFieldRef(f.name)}>
+                  <Icon name={fieldIconOf(f)} /> {f.name}
+                </button>
+              ))}
+          </div>
+          <p className="b-field-hint">{formulaHelp.join(' · ')}</p>
+        </>
+      )}
+
+      {draft.type === 'rollup' && (
+        <>
+          <p className="b-field-edit-label">Verknüpfung</p>
+          {relationFields.length === 0 ? (
+            <p className="b-field-hint">Ein Rollup fasst verknüpfte Zeilen zusammen – lege in diesem Blatt zuerst ein Feld vom Typ „Verknüpfung“ an.</p>
+          ) : (
+            <>
+              <select
+                className="b-field-native"
+                value={draft.rollup?.relationFieldId ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, rollup: { relationFieldId: e.target.value, targetFieldId: '', fn: d.rollup?.fn ?? 'list' } }))}
+              >
+                <option value="">Feld wählen …</option>
+                {relationFields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+              {rollupTarget && draft.rollup && (
+                <>
+                  <p className="b-field-edit-label">Berechnung</p>
+                  <select className="b-field-native" value={draft.rollup.fn} onChange={(e) => setDraft((d) => ({ ...d, rollup: { ...d.rollup!, fn: e.target.value as typeof rollupFns[number]['fn'] } }))}>
+                    {rollupFns.map((r) => (
+                      <option key={r.fn} value={r.fn}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                  {draft.rollup.fn !== 'count' && (
+                    <>
+                      <p className="b-field-edit-label">Feld aus „{rollupTarget.name}“</p>
+                      <select className="b-field-native" value={draft.rollup.targetFieldId} onChange={(e) => setDraft((d) => ({ ...d, rollup: { ...d.rollup!, targetFieldId: e.target.value } }))}>
+                        <option value="">Feld wählen …</option>
+                        {rollupTarget.fields.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.name}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </>
+              )}
+            </>
           )}
         </>
       )}
