@@ -432,15 +432,28 @@ body.is-dragging-blocks,body.is-dragging-blocks *{cursor:grabbing !important}
 
 /* ---------- Optionsleiste markierter Blöcke ---------- */
 .c-block-bar{
-  position:fixed;left:0;top:0;z-index:40;display:flex;align-items:center;gap:1px;padding:4px;max-width:calc(100vw - 16px);
+  position:fixed;left:50%;bottom:20px;z-index:40;display:flex;align-items:center;gap:1px;padding:4px;max-width:calc(100vw - 16px);
   overflow-x:auto;scrollbar-width:none;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);
   box-shadow:var(--shadow-lg);white-space:nowrap;animation:pop-in .14s var(--ease);font-size:13px;color:var(--ink);
 }
 .c-block-bar[hidden]{display:none}
+.c-block-bar-row{display:contents}
+.c-block-bar-row[hidden]{display:none}
 .c-block-bar-slot,.c-block-bar-group{display:contents}
 .c-block-bar-slot:empty + .c-bar-count{flex:none;padding:0 8px 0 6px;color:var(--accent);font-size:12px;font-weight:600}
 .c-bar-count + .c-block-bar-slot:empty + .c-bar-sep{display:block}
 .c-bar-sep{display:none}
+
+/* Dev: Bar fix am unteren Rand statt unter dem Block (s. src/debug/barMode.ts) */
+.c-block-bar.is-pinned{
+  left:50%;right:auto;bottom:16px;transform:translateX(-50%);max-width:min(720px,calc(100vw - 16px));
+}
+.c-block-bar.is-pinned.is-panel{flex-wrap:wrap;max-height:min(70vh,480px);overflow-y:auto;white-space:normal;align-items:stretch}
+.c-block-bar-panel{display:flex;flex-direction:column;flex:0 0 100%;min-width:240px;max-width:340px;gap:2px}
+.c-block-bar-panel[hidden]{display:none}
+.c-block-bar-panel .b-pop-list{width:100%}
+.c-bar-panel-head{display:flex;align-items:center;gap:2px;flex:0 0 100%;padding-bottom:2px;margin-bottom:2px;border-bottom:1px solid var(--line)}
+.c-bar-panel-title{padding:0 4px;font-size:13px;font-weight:600;color:var(--ink)}
 .c-bar-btn{
   display:flex;align-items:center;justify-content:center;gap:5px;flex:none;min-width:32px;height:30px;padding:0 6px;border:0;
   border-radius:var(--radius-xs);background:none;color:var(--ink-soft);font:500 13px var(--sans);cursor:pointer;

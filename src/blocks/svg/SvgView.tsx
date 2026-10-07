@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { useEditable } from '@/editor/useEditable';
-import { BarButton, BarSep, useBlockBar } from '@/editor/BlockBar';
+import { BarButton, BarSep, useBarSubmenu, useBlockBar } from '@/editor/BlockBar';
+import { getBlockSelection } from '@/editor/BlockSelection';
+import { convertToGallery } from '@/editor/convertToGallery';
 import { useDarkMode } from '@/hooks/useDarkMode';
-import { Popover } from '../collection/Popover';
 import { applyStyle, blankSvg, cleanSvg, contentStyleOf, paletteOf, plainStyle, sizeOf, svgDataUrl, toHex } from './model';
 import { svgAttrs, type SvgAlign } from './SvgNode';
 
@@ -49,7 +50,7 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
   const src = useMemo(() => (rendered ? svgDataUrl(rendered) : ''), [rendered]);
   const natural = useMemo(() => (rendered ? sizeOf(rendered) : { width: 0, height: 0 }), [rendered]);
 
-  const [styleAnchor, setStyleAnchor] = useState<HTMLElement | null>(null);
+  const styleMenu = useBarSubmenu(editor, { icon: 'palette', label: 'Stil', text: 'Stil', popoverClassName: 'b-svg-pop', popoverAlign: 'end' });
   const [editorOpen, setEditorOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -92,6 +93,14 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
     handle.addEventListener('pointercancel', up);
   }
 
+  function toGallery() {
+    const pos = getPos();
+    if (typeof pos !== 'number') return;
+    const sel = getBlockSelection(editor.state);
+    // Mehrere markierte Bild-/SVG-Blöcke: alle zusammen in eine Galerie, sonst nur dieser hier.
+    convertToGallery(editor, sel.includes(pos) ? sel : [pos]);
+  }
+
   const floating = align === 'floatLeft' || align === 'floatRight';
   const invert = dark && a.dark === 'invert';
   const bgStyle: CSSProperties = {
@@ -127,9 +136,15 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
             <BarButton key={al.id} icon={al.icon} label={al.label} active={align === al.id} onClick={() => updateAttributes({ align: al.id })} />
           ))}
           <BarSep />
-          <BarButton icon="palette" label="Stil: Farben, Linien, Hintergrund" text="Stil" active={!!styleAnchor} onClick={(e) => setStyleAnchor(styleAnchor ? null : e.currentTarget)} />
+          {styleMenu.button}
           <BarButton icon="caption" label="Beschriftung" active={caption !== null} onClick={() => updateAttributes({ caption: caption === null ? '' : null })} />
           <BarButton icon="pencil" label="Im SVG-Editor bearbeiten (Doppelklick)" text="Bearbeiten" onClick={() => setEditorOpen(true)} />
+          <BarSep />
+          <BarButton
+            icon="gallery"
+            label={getBlockSelection(editor.state).length > 1 ? 'Markierte in Galerie umwandeln' : 'In Galerie umwandeln'}
+            onClick={toGallery}
+          />
         </>,
       )}
       <figure contentEditable={false} className="b-svg-figure">
@@ -157,11 +172,7 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
           ))}
       </figure>
 
-      {styleAnchor && (
-        <Popover anchor={styleAnchor} onClose={() => setStyleAnchor(null)} className="b-svg-pop" align="end">
-          <SvgStylePanel attrs={a} source={source} rendered={rendered} update={updateAttributes} />
-        </Popover>
-      )}
+      {styleMenu.submenu(<SvgStylePanel attrs={a} source={source} rendered={rendered} update={updateAttributes} />)}
 
       {editorOpen &&
         createPortal(

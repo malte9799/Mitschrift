@@ -3,9 +3,8 @@ import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { useEditable } from '@/editor/useEditable';
-import { BarButton, BarSep, useBlockBar } from '@/editor/BlockBar';
+import { BarButton, BarSep, useBarSubmenu, useBlockBar } from '@/editor/BlockBar';
 import { useDarkMode } from '@/hooks/useDarkMode';
-import { Popover } from '../collection/Popover';
 import { EditedImage } from '@/editor/image/EditedImage';
 import { ImageEditor } from '@/editor/image/ImageEditor';
 import { Lightbox } from '@/editor/image/Lightbox';
@@ -44,7 +43,8 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
   const [ratios, setRatios] = useState<Ratios>({});
   const [viewing, setViewing] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{ kind: 'add' | 'options'; anchor: HTMLElement } | null>(null);
+  const addMenu = useBarSubmenu(editor, { icon: 'plus', label: 'Bilder', text: 'Bilder', popoverAlign: 'end' });
+  const optionsMenu = useBarSubmenu(editor, { icon: 'more', label: 'Optionen', popoverAlign: 'end' });
   const [dropping, setDropping] = useState(false);
   const dragFrom = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -137,8 +137,8 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
             </>
           )}
           <BarSep />
-          <BarButton icon="more" label="Optionen" active={menu?.kind === 'options'} onClick={(e) => setMenu(menu?.kind === 'options' ? null : { kind: 'options', anchor: e.currentTarget })} />
-          <BarButton icon="plus" label="Bilder hinzufügen" text="Bilder" active={menu?.kind === 'add'} onClick={(e) => setMenu(menu?.kind === 'add' ? null : { kind: 'add', anchor: e.currentTarget })} />
+          {optionsMenu.button}
+          {addMenu.button}
         </>,
       )}
       <div contentEditable={false}>
@@ -182,7 +182,7 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
               {editable ? (
                 <>
                   <p>Bilder hierher ziehen oder hinzufügen.</p>
-                  <button type="button" className="b-btn b-btn-primary" onClick={(e) => setMenu({ kind: 'add', anchor: e.currentTarget })}>
+                  <button type="button" className="b-btn b-btn-primary" onClick={(e) => addMenu.openAt(e.currentTarget)}>
                     <Icon name="plus" /> Bilder hinzufügen
                   </button>
                 </>
@@ -207,38 +207,35 @@ export function GalleryView({ node, editor, getPos, updateAttributes }: NodeView
         </div>
       </div>
 
-      {menu && (
-        <Popover anchor={menu.anchor} onClose={() => setMenu(null)} align="end">
-          {menu.kind === 'add' ? (
-            <SourceForm
-              multiple
-              onManyFiles={(files) => {
-                addFiles(files);
-                setMenu(null);
-              }}
-              onSrc={(src) => {
-                addSrcs([src]);
-                setMenu(null);
-              }}
-            />
-          ) : (
-            <div className="b-pop-list">
-              <p className="b-pop-label">Kacheln im Raster</p>
-              {(['cover', 'contain'] as const).map((f) => (
-                <button key={f} type="button" className={`b-pop-item${fit === f ? ' is-active' : ''}`} onClick={() => updateAttributes({ fit: f })}>
-                  <Icon name={f === 'cover' ? 'crop' : 'expand'} className="b-pop-icon" />
-                  {f === 'cover' ? 'Gleich groß zuschneiden' : 'Ganzes Bild zeigen'}
-                  {fit === f && <Icon name="check" className="b-pop-check" />}
-                </button>
-              ))}
-              <hr className="b-pop-sep" />
-              <button type="button" className={`b-pop-item${captions ? ' is-active' : ''}`} onClick={() => updateAttributes({ captions: !captions })}>
-                <Icon name="caption" className="b-pop-icon" /> Bildunterschriften
-                {captions && <Icon name="check" className="b-pop-check" />}
-              </button>
-            </div>
-          )}
-        </Popover>
+      {addMenu.submenu(
+        <SourceForm
+          multiple
+          onManyFiles={(files) => {
+            addFiles(files);
+            addMenu.close();
+          }}
+          onSrc={(src) => {
+            addSrcs([src]);
+            addMenu.close();
+          }}
+        />,
+      )}
+      {optionsMenu.submenu(
+        <div className="b-pop-list">
+          <p className="b-pop-label">Kacheln im Raster</p>
+          {(['cover', 'contain'] as const).map((f) => (
+            <button key={f} type="button" className={`b-pop-item${fit === f ? ' is-active' : ''}`} onClick={() => updateAttributes({ fit: f })}>
+              <Icon name={f === 'cover' ? 'crop' : 'expand'} className="b-pop-icon" />
+              {f === 'cover' ? 'Gleich groß zuschneiden' : 'Ganzes Bild zeigen'}
+              {fit === f && <Icon name="check" className="b-pop-check" />}
+            </button>
+          ))}
+          <hr className="b-pop-sep" />
+          <button type="button" className={`b-pop-item${captions ? ' is-active' : ''}`} onClick={() => updateAttributes({ captions: !captions })}>
+            <Icon name="caption" className="b-pop-icon" /> Bildunterschriften
+            {captions && <Icon name="check" className="b-pop-check" />}
+          </button>
+        </div>,
       )}
 
       {viewing !== null && (

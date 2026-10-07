@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Icon } from '@/ui/Icon';
-import { Popover } from '@/blocks/collection/Popover';
-import { BarButton, BarSep, useBlockBar } from '../BlockBar';
+import { BarButton, BarSep, useBarSubmenu, useBlockBar } from '../BlockBar';
 import { smartBlockToLink, type SmartLinkView_ } from './SmartLinkNode';
 import { SmartLinkOptions } from './SmartLinkOptions';
 import { analyzeUrl, faviconUrl } from './urlPatterns';
@@ -10,7 +9,7 @@ import { analyzeUrl, faviconUrl } from './urlPatterns';
 /** Externer Link als Block: Zeile mit Favicon/Domain, eingebettetes Bild, Video oder Audio. */
 export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const bar = useBlockBar(editor, getPos);
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const viewMenu = useBarSubmenu(editor, { icon: 'noteRow', label: 'Darstellung', text: 'Darstellung', popoverClassName: 'nv-pop', popoverAlign: 'end' });
   const [broken, setBroken] = useState(false);
   const { href, view, title } = node.attrs as { href: string; view: 'row' | 'image' | 'video' | 'audio'; title: string };
 
@@ -29,7 +28,7 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
   function setView(v: SmartLinkView_) {
     if (v === 'link') {
       const pos = getPos();
-      setAnchor(null);
+      viewMenu.close();
       if (typeof pos === 'number') smartBlockToLink(editor, pos);
       return;
     }
@@ -40,22 +39,20 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
     <>
       {bar.render(
         <>
-          <BarButton icon="noteRow" label="Darstellung anpassen" text="Darstellung" chevron active={!!anchor} onClick={(e) => setAnchor(anchor ? null : e.currentTarget)} />
+          {viewMenu.button}
           <BarSep />
           <BarButton icon="external" label="Link öffnen" text="Öffnen" onClick={() => window.open(href, '_blank', 'noopener,noreferrer')} />
         </>,
       )}
-      {anchor && (
-        <Popover anchor={anchor} onClose={() => setAnchor(null)} align="end" className="nv-pop">
-          <SmartLinkOptions
-            view={view}
-            embedView={embedView}
-            onView={setView}
-            title={title}
-            placeholder={info.domain}
-            onTitle={(t) => updateAttributes({ title: t })}
-          />
-        </Popover>
+      {viewMenu.submenu(
+        <SmartLinkOptions
+          view={view}
+          embedView={embedView}
+          onView={setView}
+          title={title}
+          placeholder={info.domain}
+          onTitle={(t) => updateAttributes({ title: t })}
+        />,
       )}
     </>
   );
@@ -82,10 +79,14 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
   }
 
   if ((view === 'video' || view === 'audio') && info.embedSrc) {
+    // Spotify legt seine Player-Höhe selbst fest (kompakt bei Track/Episode, hoch bei Album/Playlist) –
+    // die Karte bekommt exakt diese Höhe statt eines erzwungenen Seitenverhältnisses mit Rest-Fläche.
+    const style =
+      view === 'audio' ? ({ '--sl-audio-h': info.embedRatio === 1 ? '352px' : '152px' } as React.CSSProperties) : { aspectRatio: info.embedRatio ?? 16 / 9 };
     return (
       <NodeViewWrapper className={`sl sl--embed is-${view}${bar.active ? ' is-selected' : ''}`} contentEditable={false}>
         {menu}
-        <div className="sl-embed" style={{ aspectRatio: info.embedRatio ?? 16 / 9 }}>
+        <div className="sl-embed" style={style}>
           <iframe src={info.embedSrc} title={label} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" />
         </div>
       </NodeViewWrapper>

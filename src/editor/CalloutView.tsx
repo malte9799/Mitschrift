@@ -1,7 +1,6 @@
-import { useState, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
-import { Popover } from '@/blocks/collection/Popover';
-import { BarButton, useBlockBar } from './BlockBar';
+import { useBarSubmenu, useBlockBar } from './BlockBar';
 import {
   calloutColors,
   calloutIcons,
@@ -31,24 +30,22 @@ function CalloutSymbol({ icon }: { icon: CalloutIcon }) {
 
 export function CalloutView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const bar = useBlockBar(editor, getPos);
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const menu = useBarSubmenu(editor, { icon: 'palette', label: 'Stil', text: 'Stil', popoverClassName: 'c-callout-pop' });
   const c = resolveCallout(node.attrs);
   const tone = { '--tone': calloutColors[c.color].css } as CSSProperties;
   const custom = !!(node.attrs.title || node.attrs.icon || node.attrs.color);
 
   return (
     <NodeViewWrapper className={`callout callout-${c.variant} callout-style-${c.style}`} data-callout={c.variant} style={tone}>
-      {bar.render(
-        <BarButton icon="palette" label="Hervorhebung anpassen: Vorlage, Titel, Symbol, Farbe" text="Stil" chevron active={!!anchor} onClick={(e) => setAnchor(anchor ? null : e.currentTarget)} />,
-      )}
+      {bar.render(menu.button)}
       <div className="callout-title" contentEditable={false}>
         <CalloutSymbol icon={c.icon} />
         <span>{c.title}</span>
       </div>
       <NodeViewContent className="callout-body" />
 
-      {anchor && (
-        <Popover anchor={anchor} onClose={() => setAnchor(null)} className="c-callout-pop">
+      {menu.submenu(
+        <>
           <p className="b-pop-label">Vorlage</p>
           <div className="c-callout-presets">
             {calloutVariants.map((v) => (
@@ -71,7 +68,7 @@ export function CalloutView({ node, editor, getPos, updateAttributes }: NodeView
             value={node.attrs.title ?? ''}
             placeholder={calloutLabels[c.variant]}
             onChange={(e) => updateAttributes({ title: e.target.value || null })}
-            onKeyDown={(e) => e.key === 'Enter' && setAnchor(null)}
+            onKeyDown={(e) => e.key === 'Enter' && menu.close()}
           />
 
           <p className="b-pop-label">Symbol</p>
@@ -112,7 +109,7 @@ export function CalloutView({ node, editor, getPos, updateAttributes }: NodeView
               Fläche
             </button>
           </div>
-        </Popover>
+        </>,
       )}
     </NodeViewWrapper>
   );

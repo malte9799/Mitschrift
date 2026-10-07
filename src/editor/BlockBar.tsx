@@ -5,9 +5,12 @@ import { Mapping } from '@tiptap/pm/transform';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { Editor } from '@tiptap/react';
 import { Icon, type IconName } from '@/ui/Icon';
+import { Popover } from '@/blocks/collection/Popover';
 import { TableOptions } from '@/blocks/table/TableMenu';
+import { useBarMode } from '@/debug/barMode';
 import { getBlockSelection, setBlockSelection } from './BlockSelection';
 import { deleteUnits, outermost } from './blockUnits';
+import { convertToGallery, mergeGalleries } from './convertToGallery';
 import { DividerOptions } from './DividerOptions';
 
 /**
@@ -24,7 +27,10 @@ interface Reg {
   getPos: () => number | undefined;
 }
 
-type BuiltIn = 'table' | 'divider';
+type BuiltIn = 'table' | 'divider' | 'gallerySource';
+
+/** Blöcke, aus denen sich mehrere zusammen zu einer Galerie umwandeln lassen. */
+const GALLERY_SOURCE_TYPES = new Set(['image', 'svg']);
 
 type Target = {
   pos: number;
@@ -33,6 +39,8 @@ type Target = {
   via: 'selected' | 'inside';
   /** Alle markierten Blöcke (gleichen Typs), `pos` ist der erste davon. */
   group: number[];
+  /** Typname der Gruppe, wenn mehrere Blöcke gleichen Typs markiert sind. */
+  groupType: string | null;
 };
 
 class BarStore {
@@ -41,6 +49,9 @@ class BarStore {
   regs = new Set<Reg>();
   target: Target | null = null;
   slot: HTMLElement | null = null;
+  panelSlot: HTMLElement | null = null;
+  /** Titel der offenen Unteroption – ersetzt (im „pinned“-Modus) die Hauptleiste, bis „Zurück“. */
+  panel: { title: string; onClose: () => void } | null = null;
   recompute = () => {};
   private listeners = new Set<() => void>();
   subscribe = (fn: () => void) => {
@@ -98,6 +109,87 @@ export function useBlockBar(editor: Editor, getPos: () => number | undefined) {
   };
 }
 
+/**
+ * Unteroption eines Blocks: im gewohnten Modus ein Popover am Knopf, im „pinned“-Modus (Dev-Schalter,
+ * s. {@link useBarMode}) ersetzt der Inhalt stattdessen die Hauptleiste, mit Zurück-Pfeil davor. Blöcke
+ * schreiben ihre Unteroption einmal – welche Darstellung greift, entscheidet dieser Hook.
+ *
+ * `label` erscheint im „pinned“-Modus als Titel neben dem Zurück-Pfeil, im Popover-Modus als
+ * Tooltip/aria-label des öffnenden Knopfs (wie bisher).
+ */
+export function useBarSubmenu(
+  editor: Editor,
+  opts: {
+    icon: IconName;
+    label: string;
+    text?: string;
+    active?: boolean;
+    /** Zweite Ebene (z. B. „Mehr“ → „Bild ersetzen“): eigener Titel, Zurück geht eine Ebene hoch statt ganz zu schließen. */
+    sub?: { title: string; onBack: () => void } | null;
+    /** Nur im Popover-Modus: Klasse/Ausrichtung des Popovers (wie {@link Popover}). */
+    popoverClassName?: string;
+    popoverAlign?: 'start' | 'end';
+  },
+) {
+  const store = barStore(editor);
+  const mode = useBarMode();
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const panelSlot = useSyncExternalStore(store.subscribe, () => store.panelSlot);
+  const pinned = mode === 'pinned';
+  const title = opts.sub?.title ?? opts.label;
+  const onBack = opts.sub?.onBack;
+
+  // Im „pinned“-Modus übernimmt die Leiste selbst Titel und Zurück-Pfeil, solange offen.
+  useEffect(() => {
+    if (!pinned || !open) return;
+    const close = () => (onBack ? onBack() : setOpen(false));
+    store.panel = { title, onClose: close };
+    store.emit();
+    return () => {
+      if (store.panel?.onClose === close) {
+        store.panel = null;
+        store.emit();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinned, open, title, onBack]);
+
+  const close = () => {
+    setOpen(false);
+    setAnchor(null);
+  };
+
+  /** Öffnet die Unteroption an einem beliebigen Element – z. B. ein Knopf außerhalb der Leiste. */
+  const openAt = (el: HTMLElement) => {
+    setAnchor(el);
+    setOpen(true);
+  };
+
+  const button = (
+    <BarButton
+      icon={opts.icon}
+      label={opts.label}
+      text={opts.text}
+      chevron
+      active={opts.active || open}
+      onClick={(e) => (open ? close() : openAt(e.currentTarget))}
+    />
+  );
+
+  const submenu = (children: ReactNode) => {
+    if (!open) return null;
+    if (pinned) return panelSlot ? createPortal(children, panelSlot) : null;
+    return anchor ? (
+      <Popover anchor={anchor} onClose={close} className={opts.popoverClassName} align={opts.popoverAlign}>
+        {children}
+      </Popover>
+    ) : null;
+  };
+
+  return { open, close, openAt, button, submenu };
+}
+
 interface Candidate {
   pos: number;
   node: PMNode;
@@ -131,19 +223,26 @@ function resolve(editor: Editor, store: BarStore): Target | null {
   /** Innerster passender Block (verschachtelt: der mit der größten Position). */
   const pick = (pred: (c: Candidate) => boolean, via: Target['via']): Target | null => {
     const c = cands.filter(pred).sort((a, b) => b.pos - a.pos)[0];
-    return c ? { pos: c.pos, reg: c.reg, builtIn: c.builtIn, via, group: [c.pos] } : null;
+    return c ? { pos: c.pos, reg: c.reg, builtIn: c.builtIn, via, group: [c.pos], groupType: null } : null;
   };
 
   const sel = getBlockSelection(state);
   if (sel.length) {
     const units = outermost(state.doc, sel);
     if (units.length === 1) return pick((c) => contains(c, units[0].pos), 'selected');
+    // Mehrere Bild-/SVG-Blöcke gemischten Typs: keine eigenen Optionen, nur „In Galerie umwandeln“.
+    if (units.every((u) => GALLERY_SOURCE_TYPES.has(u.node.type.name))) {
+      const type = units[0].node.type;
+      if (units.some((u) => u.node.type !== type)) {
+        return { pos: units[0].pos, reg: null, builtIn: 'gallerySource', via: 'selected', group: units.map((u) => u.pos), groupType: null };
+      }
+    }
     // Mehrere: nur Blöcke gleichen Typs mit eigenen Optionen (Tabellen-Befehle wirken nur auf eine).
     const type = units[0].node.type;
     if (type.name === 'table' || units.some((u) => u.node.type !== type)) return null;
     if (!units.every((u) => cands.some((c) => c.pos === u.pos))) return null;
     const first = cands.find((c) => c.pos === units[0].pos)!;
-    return { pos: first.pos, reg: first.reg, builtIn: first.builtIn, via: 'selected', group: units.map((u) => u.pos) };
+    return { pos: first.pos, reg: first.reg, builtIn: first.builtIn, via: 'selected', group: units.map((u) => u.pos), groupType: type.name };
   }
 
   const ae = document.activeElement;
@@ -264,10 +363,20 @@ export function BarSep() {
 /** Die Leiste selbst – einmal pro Editor. */
 export function BlockBar({ editor }: { editor: Editor }) {
   const store = barStore(editor);
+  const mode = useBarMode();
+  const pinned = mode === 'pinned';
   const [target, setTarget] = useState<Target | null>(null);
+  const panel = useSyncExternalStore(store.subscribe, () => store.panel);
   const barRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef(target);
   targetRef.current = target;
+
+  // Modus gewechselt oder Ziel verloren: keine verwaiste Unteroption stehen lassen.
+  useEffect(() => {
+    if (!target || !pinned) {
+      store.panel?.onClose();
+    }
+  }, [target, pinned, store]);
 
   useEffect(() => {
     const plugin = groupEditPlugin(store);
@@ -323,7 +432,18 @@ export function BlockBar({ editor }: { editor: Editor }) {
   }, [editor, store]);
 
   // Position: mittig unter dem Block, bei hohen Blöcken am unteren Fensterrand festgehalten.
+  // Im „pinned“-Modus bleibt die Leiste fix am unteren Rand (siehe CSS), keine JS-Platzierung nötig.
   useEffect(() => {
+    if (pinned) {
+      // Von „floating“ gewechselt: inline gesetzte Position/Sichtbarkeit nicht mitschleppen.
+      const bar = barRef.current;
+      if (bar) {
+        bar.style.left = '';
+        bar.style.top = '';
+        bar.style.visibility = '';
+      }
+      return;
+    }
     if (!target) return;
     let raf = 0;
     const place = () => {
@@ -342,17 +462,22 @@ export function BlockBar({ editor }: { editor: Editor }) {
       const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8));
       const top = Math.min(r.bottom + 10, window.innerHeight - h - 14);
       bar.style.left = `${Math.round(left)}px`;
-      bar.style.top = `${Math.round(top)}px`;
+      // bar.style.top = `${Math.round(top)}px`;
       // Block ganz aus dem Bild gescrollt: Leiste ausblenden.
       bar.style.visibility = r.bottom < 0 || r.top > window.innerHeight - h ? 'hidden' : '';
     };
     place();
     return () => cancelAnimationFrame(raf);
-  }, [editor, target]);
+  }, [editor, target, pinned]);
 
   const setSlot = (el: HTMLDivElement | null) => {
     if (store.slot === el) return;
     store.slot = el;
+    store.emit();
+  };
+  const setPanelSlot = (el: HTMLDivElement | null) => {
+    if (store.panelSlot === el) return;
+    store.panelSlot = el;
     store.emit();
   };
 
@@ -382,10 +507,27 @@ export function BlockBar({ editor }: { editor: Editor }) {
     editor.view.dispatch(deleteUnits(editor.state.tr, t.group));
   }
 
+  function toGallery() {
+    const t = targetRef.current;
+    if (!t) return;
+    convertToGallery(editor, t.group);
+    setBarSticky(editor, null);
+    setBlockSelection(editor, []);
+  }
+
+  function mergeSelectedGalleries() {
+    const t = targetRef.current;
+    if (!t) return;
+    mergeGalleries(editor, t.group);
+    setBarSticky(editor, null);
+    setBlockSelection(editor, []);
+  }
+
+  const showPanel = pinned && !!panel;
   return createPortal(
     <div
       ref={barRef}
-      className="c-block-bar"
+      className={`c-block-bar${pinned ? ' is-pinned' : ''}${showPanel ? ' is-panel' : ''}`}
       hidden={!target}
       onMouseDown={(e) => {
         // Fokus bleibt, wo er war (Cursor in der Tabelle, Eingabefeld im Block) – außer bei Feldern in der Leiste.
@@ -395,13 +537,24 @@ export function BlockBar({ editor }: { editor: Editor }) {
         if (t && t.via === 'inside') setBarSticky(editor, t.pos);
       }}
     >
-      {target && target.group.length > 1 && <span className="c-bar-count">{target.group.length} Blöcke</span>}
-      <div ref={setSlot} className="c-block-bar-slot" />
-      {target?.builtIn === 'table' && <TableOptions editor={editor} pos={target.pos} inCell={target.via === 'inside'} />}
-      {target?.builtIn === 'divider' && <DividerOptions editor={editor} pos={target.pos} />}
-      <BarSep />
-      <BarButton icon="copy" label={target && target.group.length > 1 ? 'Alle duplizieren' : 'Duplizieren'} onClick={duplicate} />
-      <BarButton icon="trash" label={target && target.group.length > 1 ? 'Alle löschen' : 'Block löschen'} danger onClick={remove} />
+      {showPanel && (
+        <div className="c-bar-panel-head">
+          <BarButton icon="arrowLeft" label="Zurück" onClick={() => panel!.onClose()} />
+          <span className="c-bar-panel-title">{panel!.title}</span>
+        </div>
+      )}
+      <div className="c-block-bar-row" hidden={showPanel}>
+        {target && target.group.length > 1 && <span className="c-bar-count">{target.group.length} Blöcke</span>}
+        <div ref={setSlot} className="c-block-bar-slot" />
+        {target?.builtIn === 'table' && <TableOptions editor={editor} pos={target.pos} inCell={target.via === 'inside'} />}
+        {target?.builtIn === 'divider' && <DividerOptions editor={editor} pos={target.pos} />}
+        {target?.builtIn === 'gallerySource' && <BarButton icon="gallery" label="Markierte in Galerie umwandeln" onClick={toGallery} />}
+        {target?.groupType === 'gallery' && target.group.length > 1 && <BarButton icon="gallery" label="Galerien zusammenführen" onClick={mergeSelectedGalleries} />}
+        <BarSep />
+        <BarButton icon="copy" label={target && target.group.length > 1 ? 'Alle duplizieren' : 'Duplizieren'} onClick={duplicate} />
+        <BarButton icon="trash" label={target && target.group.length > 1 ? 'Alle löschen' : 'Block löschen'} danger onClick={remove} />
+      </div>
+      <div ref={setPanelSlot} className="c-block-bar-panel" hidden={!showPanel} />
     </div>,
     document.body,
   );

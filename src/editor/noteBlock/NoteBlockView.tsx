@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Icon } from '@/ui/Icon';
-import { Popover } from '@/blocks/collection/Popover';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
 import { childrenMap, navigateTo, noteHref } from '@/app/noteLinks';
 import { useEditable } from '../useEditable';
-import { BarButton, BarSep, useBlockBar } from '../BlockBar';
+import { BarButton, BarSep, useBarSubmenu, useBlockBar } from '../BlockBar';
 import { blockToLink, type NoteCardSize, type NoteView } from './NoteBlockNode';
 import { NotePreview, noteExcerpt } from './NotePreview';
 import { NoteViewOptions } from './NoteViewOptions';
@@ -17,8 +16,14 @@ export function NoteBlockView({ node, editor, getPos, updateAttributes }: NodeVi
   const tags = useTags();
   const editable = useEditable(editor);
   const bar = useBlockBar(editor, getPos);
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { id, view, size, subtitle } = node.attrs as { id: string; view: 'row' | 'card'; size: NoteCardSize; subtitle: string | null };
+  const viewMenu = useBarSubmenu(editor, {
+    icon: view === 'card' ? 'noteCard' : 'noteRow',
+    label: 'Darstellung',
+    text: 'Darstellung',
+    popoverClassName: 'nv-pop',
+    popoverAlign: 'end',
+  });
 
   const note = notes?.find((n) => n.id === id) ?? null;
   const childCount = useMemo(() => (notes ? childrenMap(notes).get(id)?.length ?? 0 : 0), [notes, id]);
@@ -45,7 +50,7 @@ export function NoteBlockView({ node, editor, getPos, updateAttributes }: NodeVi
   function setView(v: NoteView) {
     if (v === 'link') {
       const pos = getPos();
-      setAnchor(null);
+      viewMenu.close();
       if (typeof pos === 'number') blockToLink(editor, pos);
       return;
     }
@@ -68,7 +73,7 @@ export function NoteBlockView({ node, editor, getPos, updateAttributes }: NodeVi
     >
       {bar.render(
         <>
-          <BarButton icon={view === 'card' ? 'noteCard' : 'noteRow'} label="Darstellung anpassen" text="Darstellung" chevron active={!!anchor} onClick={(e) => setAnchor(anchor ? null : e.currentTarget)} />
+          {viewMenu.button}
           <BarSep />
           <BarButton icon="arrowRight" label="Notiz öffnen" text="Öffnen" disabled={missing} onClick={() => navigateTo(noteHref(id))} />
         </>,
@@ -98,18 +103,16 @@ export function NoteBlockView({ node, editor, getPos, updateAttributes }: NodeVi
         </a>
       )}
 
-      {anchor && (
-        <Popover anchor={anchor} onClose={() => setAnchor(null)} align="end" className="nv-pop">
-          <NoteViewOptions
-            view={view}
-            size={size}
-            subtitle={subtitle}
-            autoSubtitle={excerpt}
-            onView={setView}
-            onSize={(s) => updateAttributes({ size: s })}
-            onSubtitle={(s) => updateAttributes({ subtitle: s })}
-          />
-        </Popover>
+      {viewMenu.submenu(
+        <NoteViewOptions
+          view={view}
+          size={size}
+          subtitle={subtitle}
+          autoSubtitle={excerpt}
+          onView={setView}
+          onSize={(s) => updateAttributes({ size: s })}
+          onSubtitle={(s) => updateAttributes({ subtitle: s })}
+        />,
       )}
     </NodeViewWrapper>
   );

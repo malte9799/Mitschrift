@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { useEditable } from '@/editor/useEditable';
-import { BarButton, BarSep, useBlockBar } from '@/editor/BlockBar';
-import { setBlockSelection } from '@/editor/BlockSelection';
+import { BarButton, BarSep, useBarSubmenu, useBlockBar } from '@/editor/BlockBar';
+import { getBlockSelection, setBlockSelection } from '@/editor/BlockSelection';
+import { convertToGallery } from '@/editor/convertToGallery';
 import { useDarkMode } from '@/hooks/useDarkMode';
-import { Popover } from '@/blocks/collection/Popover';
 import { alertDialog } from '@/ui/Dialog';
 import { EditedImage, type NaturalSize } from './EditedImage';
 import { ImageEditor } from './ImageEditor';
@@ -27,8 +27,6 @@ function contentWidth(dom: HTMLElement): number {
   return dom.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
 }
 
-type Menu = 'layout' | 'size' | 'frame' | 'replace' | 'more' | null;
-
 export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }: NodeViewProps) {
   const editable = useEditable(editor);
   const bar = useBlockBar(editor, getPos);
@@ -49,18 +47,30 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
   const [broken, setBroken] = useState(false);
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState(false);
-  const [menu, setMenu] = useState<Menu>(null);
-  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [replacing, setReplacing] = useState(false);
   // Während Ziehen/Skalieren lokal, erst beim Loslassen ins Dokument.
   const [live, setLive] = useState<{ width?: number; x?: number; y?: number } | null>(null);
   const figureRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const layoutMenu = useBarSubmenu(editor, { icon: layoutIcons[layout], label: 'Textumbruch' });
+  const sizeMenu = useBarSubmenu(editor, { icon: 'resize', label: 'Größe' });
+  const frameMenu = useBarSubmenu(editor, { icon: 'frame', label: 'Rahmen' });
+  const moreMenu = useBarSubmenu(editor, {
+    icon: 'more',
+    label: 'Mehr',
+    sub: replacing ? { title: 'Bild ersetzen', onBack: () => setReplacing(false) } : null,
+  });
 
   useEffect(() => setBroken(false), [src]);
   // Der Notiz-Editor darf den Fokus nicht behalten, solange das Bearbeitungsfenster offen ist.
   useEffect(() => {
     if (editing) (editor.view.dom as HTMLElement).blur();
   }, [editing, editor]);
+  // „Mehr“ geschlossen: auch dessen Unterseite „Bild ersetzen“ zurücksetzen.
+  useEffect(() => {
+    if (!moreMenu.open) setReplacing(false);
+  }, [moreMenu.open]);
 
   const showTools = editable && bar.active && !!src;
   const w = live?.width ?? width;
@@ -73,12 +83,6 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
     if (typeof pos === 'number') setBlockSelection(editor, [pos]);
   }
 
-  function openMenu(m: Menu, e: ReactPointerEvent | ReactMouseEvent) {
-    setMenuAnchor(e.currentTarget as HTMLElement);
-    setMenu((cur) => (cur === m ? null : m));
-  }
-  const closeMenu = () => setMenu(null);
-
   function setLayout(next: ImageLayout) {
     const patch: Record<string, unknown> = { layout: next };
     // Umfließen und freie Position brauchen eine feste Breite – sonst wäre das Bild meist seitenbreit.
@@ -88,7 +92,7 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
       patch.y = 0;
     }
     updateAttributes(patch);
-    closeMenu();
+    layoutMenu.close();
   }
 
   // ---------- Skalieren ----------
@@ -151,6 +155,15 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
     window.addEventListener('pointerup', up);
   }
 
+  function toGallery() {
+    const pos = getPos();
+    if (typeof pos !== 'number') return;
+    const sel = getBlockSelection(editor.state);
+    // Mehrere markierte Bild-/SVG-Blöcke: alle zusammen in eine Galerie, sonst nur dieser hier.
+    convertToGallery(editor, sel.includes(pos) ? sel : [pos]);
+    moreMenu.close();
+  }
+
   async function saveLocally() {
     try {
       const res = await fetch(src);
@@ -159,11 +172,11 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
     } catch {
       await alertDialog('Das Bild konnte nicht heruntergeladen werden – die Seite erlaubt das nicht. Speichere es über den Browser und füge es als Datei ein.');
     }
-    closeMenu();
+    moreMenu.close();
   }
 
   async function download() {
-    closeMenu();
+    moreMenu.close();
     try {
       const canvas = renderEdited(await loadPixels(src), edit ?? {}, 8000);
       const url = URL.createObjectURL(await canvasToBlob(canvas));
@@ -216,7 +229,7 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
       {showTools &&
         bar.render(
           <>
-            <BarButton icon={layoutIcons[layout]} label="Textumbruch" chevron active={menu === 'layout'} onClick={(e) => openMenu('layout', e)} />
+            {layoutMenu.button}
             {layout === 'inline' && (
               <>
                 <BarSep />
@@ -232,12 +245,12 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
               </>
             )}
             <BarSep />
-            <BarButton icon="resize" label="Größe" chevron active={menu === 'size'} onClick={(e) => openMenu('size', e)} />
+            {sizeMenu.button}
             <BarButton icon="crop" label="Bearbeiten" text="Bearbeiten" onClick={() => setEditing(true)} />
-            <BarButton icon="frame" label="Rahmen" chevron active={menu === 'frame'} onClick={(e) => openMenu('frame', e)} />
+            {frameMenu.button}
             <BarButton icon="caption" label="Bildunterschrift" active={caption !== null} onClick={() => updateAttributes({ title: caption === null ? '' : null })} />
             <BarSep />
-            <BarButton icon="more" label="Mehr" active={menu === 'more'} onClick={(e) => openMenu('more', e)} />
+            {moreMenu.button}
           </>,
         )}
       {isFree(layout) && editable && (
@@ -300,111 +313,112 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
 
       </div>
 
-      {menu && menuAnchor && (
-        <Popover anchor={menuAnchor} onClose={closeMenu}>
-          {menu === 'layout' && (
-            <div className="b-pop-list">
-              <p className="b-pop-label">Textumbruch</p>
-              {(Object.keys(layoutLabels) as ImageLayout[]).map((l) => (
-                <button key={l} type="button" className={`b-pop-item${l === layout ? ' is-active' : ''}`} onClick={() => setLayout(l)}>
-                  <Icon name={layoutIcons[l]} className="b-pop-icon" />
-                  {layoutLabels[l]}
-                  {l === layout && <Icon name="check" className="b-pop-check" />}
-                </button>
-              ))}
-              {isFree(layout) && (
-                <>
-                  <hr className="b-pop-sep" />
-                  <p className="b-pop-empty">Bild ziehen, um es frei zu platzieren.</p>
-                </>
-              )}
-            </div>
-          )}
-          {menu === 'size' && (
-            <div className="b-pop-list">
-              <p className="b-pop-label">Breite</p>
-              {sizes.map((s) => (
-                <button key={s} type="button" className={`b-pop-item${Math.round(width ?? -1) === s ? ' is-active' : ''}`} onClick={() => (updateAttributes({ width: s }), closeMenu())}>
-                  {s} %{Math.round(width ?? -1) === s && <Icon name="check" className="b-pop-check" />}
-                </button>
-              ))}
-              {layout === 'inline' && (
-                <button type="button" className={`b-pop-item${width === null ? ' is-active' : ''}`} onClick={() => (updateAttributes({ width: null }), closeMenu())}>
-                  Originalgröße{out ? ` (${Math.round(out.w)} px)` : ''}
-                  {width === null && <Icon name="check" className="b-pop-check" />}
-                </button>
-              )}
+      {layoutMenu.submenu(
+        <div className="b-pop-list">
+          <p className="b-pop-label">Textumbruch</p>
+          {(Object.keys(layoutLabels) as ImageLayout[]).map((l) => (
+            <button key={l} type="button" className={`b-pop-item${l === layout ? ' is-active' : ''}`} onClick={() => setLayout(l)}>
+              <Icon name={layoutIcons[l]} className="b-pop-icon" />
+              {layoutLabels[l]}
+              {l === layout && <Icon name="check" className="b-pop-check" />}
+            </button>
+          ))}
+          {isFree(layout) && (
+            <>
               <hr className="b-pop-sep" />
-              <p className="b-pop-empty">Oder an den Ecken ziehen · ⇧ ohne Einrasten</p>
-            </div>
+              <p className="b-pop-empty">Bild ziehen, um es frei zu platzieren.</p>
+            </>
           )}
-          {menu === 'frame' && (
-            <div className="b-pop-list">
-              <p className="b-pop-label">Rahmen</p>
-              {(Object.keys(frameLabels) as ImageFrame[]).map((f) => (
-                <button key={f} type="button" className={`b-pop-item${f === frame ? ' is-active' : ''}`} onClick={() => (updateAttributes({ frame: f }), closeMenu())}>
-                  <span className={`c-img-frame-swatch frame-${f}`} />
-                  {frameLabels[f]}
-                  {f === frame && <Icon name="check" className="b-pop-check" />}
+        </div>,
+      )}
+      {sizeMenu.submenu(
+        <div className="b-pop-list">
+          <p className="b-pop-label">Breite</p>
+          {sizes.map((s) => (
+            <button key={s} type="button" className={`b-pop-item${Math.round(width ?? -1) === s ? ' is-active' : ''}`} onClick={() => (updateAttributes({ width: s }), sizeMenu.close())}>
+              {s} %{Math.round(width ?? -1) === s && <Icon name="check" className="b-pop-check" />}
+            </button>
+          ))}
+          {layout === 'inline' && (
+            <button type="button" className={`b-pop-item${width === null ? ' is-active' : ''}`} onClick={() => (updateAttributes({ width: null }), sizeMenu.close())}>
+              Originalgröße{out ? ` (${Math.round(out.w)} px)` : ''}
+              {width === null && <Icon name="check" className="b-pop-check" />}
+            </button>
+          )}
+          <hr className="b-pop-sep" />
+          <p className="b-pop-empty">Oder an den Ecken ziehen · ⇧ ohne Einrasten</p>
+        </div>,
+      )}
+      {frameMenu.submenu(
+        <div className="b-pop-list">
+          <p className="b-pop-label">Rahmen</p>
+          {(Object.keys(frameLabels) as ImageFrame[]).map((f) => (
+            <button key={f} type="button" className={`b-pop-item${f === frame ? ' is-active' : ''}`} onClick={() => (updateAttributes({ frame: f }), frameMenu.close())}>
+              <span className={`c-img-frame-swatch frame-${f}`} />
+              {frameLabels[f]}
+              {f === frame && <Icon name="check" className="b-pop-check" />}
+            </button>
+          ))}
+        </div>,
+      )}
+      {moreMenu.submenu(
+        replacing ? (
+          <SourceForm
+            onSrc={(s) => {
+              updateAttributes({ src: s, edit: null, filename: null });
+              moreMenu.close();
+            }}
+            onFile={(f) => {
+              updateAttributes({ src: f.src, edit: null, filename: f.filename });
+              moreMenu.close();
+            }}
+          />
+        ) : (
+          <div className="b-pop-list">
+            <button type="button" className="b-pop-item" onClick={() => (setViewing(true), moreMenu.close())}>
+              <Icon name="expand" className="b-pop-icon" /> Großansicht
+            </button>
+            <button type="button" className="b-pop-item" onClick={() => (setEditing(true), moreMenu.close())}>
+              <Icon name="wand" className="b-pop-icon" /> Hintergrund entfernen …
+            </button>
+            <button
+              type="button"
+              className="b-pop-item"
+              onClick={() => {
+                updateAttributes({ edit: { ...(edit ?? {}), invert: (edit?.invert ?? 0) === 100 ? 0 : 100 } });
+                moreMenu.close();
+              }}
+            >
+              <Icon name="invert" className="b-pop-icon" /> Farben umkehren
+              {edit?.invert === 100 && <Icon name="check" className="b-pop-check" />}
+            </button>
+            <button type="button" className="b-pop-item" onClick={() => (updateAttributes({ edit: { ...(edit ?? {}), darkInvert: !edit?.darkInvert } }), moreMenu.close())}>
+              <Icon name="moon" className="b-pop-icon" /> Im Dunkelmodus umkehren
+              {edit?.darkInvert && <Icon name="check" className="b-pop-check" />}
+            </button>
+            <hr className="b-pop-sep" />
+            <button type="button" className="b-pop-item" onClick={() => setReplacing(true)}>
+              <Icon name="swap" className="b-pop-icon" /> Bild ersetzen …
+            </button>
+            <button type="button" className="b-pop-item" onClick={toGallery}>
+              <Icon name="gallery" className="b-pop-icon" />
+              {getBlockSelection(editor.state).length > 1 ? 'Markierte in Galerie umwandeln' : 'In Galerie umwandeln'}
+            </button>
+            {isRemote(src) && (
+              <>
+                <a className="b-pop-item" href={src} target="_blank" rel="noreferrer noopener" onClick={() => moreMenu.close()}>
+                  <Icon name="external" className="b-pop-icon" /> Quelle öffnen
+                </a>
+                <button type="button" className="b-pop-item" onClick={() => void saveLocally()}>
+                  <Icon name="file" className="b-pop-icon" /> In der Notiz speichern
                 </button>
-              ))}
-            </div>
-          )}
-          {menu === 'more' && (
-            <div className="b-pop-list">
-              <button type="button" className="b-pop-item" onClick={() => (setViewing(true), closeMenu())}>
-                <Icon name="expand" className="b-pop-icon" /> Großansicht
-              </button>
-              <button type="button" className="b-pop-item" onClick={() => (setEditing(true), closeMenu())}>
-                <Icon name="wand" className="b-pop-icon" /> Hintergrund entfernen …
-              </button>
-              <button
-                type="button"
-                className="b-pop-item"
-                onClick={() => {
-                  updateAttributes({ edit: { ...(edit ?? {}), invert: (edit?.invert ?? 0) === 100 ? 0 : 100 } });
-                  closeMenu();
-                }}
-              >
-                <Icon name="invert" className="b-pop-icon" /> Farben umkehren
-                {edit?.invert === 100 && <Icon name="check" className="b-pop-check" />}
-              </button>
-              <button type="button" className="b-pop-item" onClick={() => (updateAttributes({ edit: { ...(edit ?? {}), darkInvert: !edit?.darkInvert } }), closeMenu())}>
-                <Icon name="moon" className="b-pop-icon" /> Im Dunkelmodus umkehren
-                {edit?.darkInvert && <Icon name="check" className="b-pop-check" />}
-              </button>
-              <hr className="b-pop-sep" />
-              <button type="button" className="b-pop-item" onClick={() => setMenu('replace')}>
-                <Icon name="swap" className="b-pop-icon" /> Bild ersetzen …
-              </button>
-              {isRemote(src) && (
-                <>
-                  <a className="b-pop-item" href={src} target="_blank" rel="noreferrer noopener" onClick={closeMenu}>
-                    <Icon name="external" className="b-pop-icon" /> Quelle öffnen
-                  </a>
-                  <button type="button" className="b-pop-item" onClick={() => void saveLocally()}>
-                    <Icon name="file" className="b-pop-icon" /> In der Notiz speichern
-                  </button>
-                </>
-              )}
-              <button type="button" className="b-pop-item" onClick={() => void download()}>
-                <Icon name="download" className="b-pop-icon" /> Als PNG sichern
-              </button>
-            </div>
-          )}
-          {menu === 'replace' && (
-            <SourceForm
-              onSrc={(s) => {
-                updateAttributes({ src: s, edit: null, filename: null });
-                closeMenu();
-              }}
-              onFile={(f) => {
-                updateAttributes({ src: f.src, edit: null, filename: f.filename });
-                closeMenu();
-              }}
-            />
-          )}
-        </Popover>
+              </>
+            )}
+            <button type="button" className="b-pop-item" onClick={() => void download()}>
+              <Icon name="download" className="b-pop-icon" /> Als PNG sichern
+            </button>
+          </div>
+        ),
       )}
 
       {editing && (
