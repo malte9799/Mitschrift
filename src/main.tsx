@@ -23,21 +23,25 @@ import './styles/images.css';
 
 void requestPersistence();
 
-const router = createBrowserRouter([
-  {
-    element: <AppLayout />,
-    children: [
-      { path: '/', element: <HomePage /> },
-      { path: '/n/:id', element: <NotePage /> },
-      { path: '/graph', element: <GraphPage /> },
-      { path: '/showcase', element: <ShowcasePage /> },
-      { path: '/handbuch', element: <HandbuchPage /> },
-      { path: '/handbuch/:key', element: <HandbuchPage /> },
-      { path: '/glossar', element: <GlossaryPage /> },
-      { path: '/kalender', element: <CalendarPage /> },
-    ],
-  },
-]);
+const router = createBrowserRouter(
+  [
+    {
+      element: <AppLayout />,
+      children: [
+        { path: '/', element: <HomePage /> },
+        { path: '/n/:id', element: <NotePage /> },
+        { path: '/graph', element: <GraphPage /> },
+        { path: '/showcase', element: <ShowcasePage /> },
+        { path: '/handbuch', element: <HandbuchPage /> },
+        { path: '/handbuch/:key', element: <HandbuchPage /> },
+        { path: '/glossar', element: <GlossaryPage /> },
+        { path: '/kalender', element: <CalendarPage /> },
+      ],
+    },
+  ],
+  // BASE_URL folgt dem Vite-`base` (auf GitHub Pages: /Mitschrift/)
+  { basename: import.meta.env.BASE_URL },
+);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

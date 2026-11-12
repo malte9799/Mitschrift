@@ -19,7 +19,9 @@ const viewIcons: Record<SmartLinkView_, IconName> = { link: 'link', row: 'noteRo
  * oder Video/Audio, wenn eine Einbettung erkannt wurde (dann ergibt eine separate Bild-Option keinen Sinn,
  * das Thumbnail zeigt schon die Video-/Audio-Darstellung selbst) – und der Anzeigetitel. */
 export function SmartLinkOptions({ view, embedView, onView, title, placeholder, onTitle }: SmartLinkOptionsProps) {
-  const views: SmartLinkView_[] = ['link', 'row', ...(embedView && embedView !== 'image' ? [embedView] : ['image'])];
+  const views: SmartLinkView_[] = ['link', 'row'];
+  if (embedView && embedView !== 'image') views.push(embedView);
+  else views.push('image');
   return (
     <div className="nv-options">
       <p className="b-pop-label">Darstellung</p>

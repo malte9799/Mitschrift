@@ -7,7 +7,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { noteHref, navigateTo } from '@/app/noteLinks';
 import { syncDueDate, clearDueDate } from '@/editor/taskDueDate';
 import { Popover } from '../collection/Popover';
-import { moveCard, newCardId, newColumn, reorderColumn, type KanbanCard, type KanbanColumn, type KanbanData } from './model';
+import { moveCard, newCardId, newColumn, reorderColumn, type KanbanCard, type KanbanData } from './model';
 
 /** „Fr., 02. Okt.“ – kurz genug für ein Karten-Badge. */
 function formatDue(date: string, time: string): string {

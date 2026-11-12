@@ -450,8 +450,9 @@ export function BlockBar({ editor }: { editor: Editor }) {
       raf = requestAnimationFrame(place);
       const bar = barRef.current;
       const t = targetRef.current;
-      const el = t && editor.view.nodeDOM(t.pos);
-      if (!bar || !(el instanceof HTMLElement)) return;
+      if (!bar || !t) return;
+      const el = editor.view.nodeDOM(t.pos);
+      if (!(el instanceof HTMLElement)) return;
       // Mehrere markiert: unter dem letzten, damit die Leiste keinen davon verdeckt.
       const lastEl = t.group.length > 1 ? editor.view.nodeDOM(t.group[t.group.length - 1]) : el;
       const first = el.getBoundingClientRect();
@@ -460,9 +461,8 @@ export function BlockBar({ editor }: { editor: Editor }) {
       const w = bar.offsetWidth;
       const h = bar.offsetHeight;
       const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8));
-      const top = Math.min(r.bottom + 10, window.innerHeight - h - 14);
       bar.style.left = `${Math.round(left)}px`;
-      // bar.style.top = `${Math.round(top)}px`;
+      // bar.style.top = `${Math.round(Math.min(r.bottom + 10, window.innerHeight - h - 14))}px`;
       // Block ganz aus dem Bild gescrollt: Leiste ausblenden.
       bar.style.visibility = r.bottom < 0 || r.top > window.innerHeight - h ? 'hidden' : '';
     };
