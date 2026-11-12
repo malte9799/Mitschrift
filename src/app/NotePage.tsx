@@ -11,6 +11,7 @@ import { NoteTags } from './NoteTags';
 import { NoteBreadcrumbs, NoteRelations } from './NoteRelations';
 import type { LayoutContext } from './AppLayout';
 import { setActiveNote } from './activeNote';
+import { leaveNote } from './draftNotes';
 import { markViewed } from './recentViews';
 import { confirmDialog } from '@/ui/Dialog';
 import type { PMNode } from '@/export/model';
@@ -88,6 +89,7 @@ function NoteScreen({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Funktionen ändern sich nur mit diesen Werten
   }, [note, editor, saved, learning, panelOpen]);
   useEffect(() => () => setActiveNote(null), []);
+  useEffect(() => () => leaveNote(id), [id]);
 
   // Für „Zuletzt angesehen“ auf der Startseite.
   const found = !!note;

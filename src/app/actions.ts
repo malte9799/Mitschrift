@@ -5,9 +5,12 @@ import { welcomeNote } from './welcome';
 import { DEBUG_TAG } from '@/debug/debugDocs';
 import { canMoveUnder } from './noteLinks';
 import { reloadTerms } from '@/glossary/store';
+import { markDraft } from './draftNotes';
 
 export async function createNote(init?: NotePatch) {
   const note = await storage.createNote(init);
+  // Ohne Titel angelegt („Neue Notiz“, auch aus Vorlage): wieder weg, wenn man sie unberührt verlässt.
+  if (!init?.title) markDraft(note.id);
   notifyNotesChanged();
   return note;
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { storage, type Note, type NotePatch } from '@/storage';
 import { notifyNotesChanged } from './useNotes';
+import { touchDraft } from '@/app/draftNotes';
 
 /** Lädt eine Notiz und speichert Änderungen debounced – Port von useArticleAutosave. */
 export function useNote(id: string, delay = 400) {
@@ -33,13 +34,14 @@ export function useNote(id: string, delay = 400) {
 
   const save = useCallback(
     (patch: NotePatch) => {
+      touchDraft(id);
       setNote((prev) => (prev ? { ...prev, ...patch } : prev));
       pending.current = { ...pending.current, ...patch };
       setSaved(false);
       clearTimeout(timer.current);
       timer.current = setTimeout(flush, delay);
     },
-    [flush, delay],
+    [id, flush, delay],
   );
 
   // Beim Wechsel der Notiz/Unmount ausstehende Änderungen sofort schreiben – ebenso, wenn der

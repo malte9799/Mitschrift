@@ -14,6 +14,7 @@ import { useTheme } from './theme';
 import { FOCUS_SEARCH_EVENT } from './activeNote';
 import { confirmDialog } from '@/ui/Dialog';
 import { ownsKeys } from '@/ui/ownKeys';
+import { cleanupDrafts } from './draftNotes';
 
 interface SidebarProps {
   open: boolean;
@@ -119,6 +120,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   }, [activeId, notes]);
 
   const children = useMemo(() => childrenMap(notes ?? []), [notes]);
+
+  // Unberührte „Neue Notiz“-Entwürfe der letzten Sitzung wegräumen.
+  useEffect(cleanupDrafts, []);
   const { theme, next } = useTheme();
 
   const counts = useMemo(() => {
