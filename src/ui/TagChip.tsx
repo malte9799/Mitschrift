@@ -6,12 +6,10 @@ interface TagChipProps {
   active?: boolean;
   onClick?: () => void;
   onRemove?: () => void;
-  /** Tag komplett löschen (aus allen Notizen) – z. B. im Filter, per Papierkorb. */
-  onDelete?: () => void;
 }
 
-/** Farbiges Tag-Etikett, optional klickbar, entfernbar (von der Notiz) und/oder löschbar (überall). */
-export function TagChip({ tag, active, onClick, onRemove, onDelete }: TagChipProps) {
+/** Farbiges Tag-Etikett, optional klickbar und/oder entfernbar. */
+export function TagChip({ tag, active, onClick, onRemove }: TagChipProps) {
   const body = (
     <>
       <span className="tag-dot" aria-hidden="true" />
@@ -26,11 +24,6 @@ export function TagChip({ tag, active, onClick, onRemove, onDelete }: TagChipPro
         </button>
       ) : (
         <span className="tag-main">{body}</span>
-      )}
-      {onDelete && (
-        <button type="button" className="tag-delete" aria-label={`Tag „${tag.name}“ löschen`} title="Tag löschen" onClick={onDelete}>
-          <Icon name="trash" />
-        </button>
       )}
       {onRemove && (
         <button type="button" className="tag-remove" aria-label={`${tag.name} entfernen`} onClick={onRemove}>

@@ -294,15 +294,6 @@ button.tag-main{cursor:pointer}
 .tag-remove:hover{opacity:1;background:color-mix(in srgb,var(--tag) 16%,transparent)}
 .tag-remove svg{width:12px;height:12px}
 .tag.is-active{box-shadow:inset 0 0 0 1.5px var(--tag)}
-/* Papierkorb an Filter-Chips (Seitenleiste/Bibliothek): erst beim Hover sichtbar. */
-.tag-delete{
-  display:flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:3px;border:0;border-radius:50%;
-  background:none;color:inherit;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;
-}
-.tag:hover .tag-delete{opacity:.45}
-.tag:hover .tag-delete:hover{opacity:1;background:color-mix(in srgb,var(--tag) 16%,transparent)}
-.tag-delete svg{width:12px;height:12px}
-.side-tags .tag,.lib-tags .tag{padding-right:2px}
 
 .note-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-6px 0 24px}
 .note-tags-add-wrap{position:relative}

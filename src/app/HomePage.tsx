@@ -7,8 +7,7 @@ import { Popover } from '@/blocks/collection/Popover';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
 import type { Note, Tag } from '@/storage';
-import { createNote, deleteTag, seedIfFirstRun, toggleStar } from './actions';
-import { confirmDialog } from '@/ui/Dialog';
+import { createNote, seedIfFirstRun, toggleStar } from './actions';
 import { noteHref } from './noteLinks';
 import { useViewed } from './recentViews';
 import { NotePreview } from './NotePreview';
@@ -454,17 +453,7 @@ export function HomePage() {
         {tagList.length > 0 && (
           <div className="lib-tags" role="group" aria-label="Nach Tag filtern">
             {tagList.map((t) => (
-              <TagChip
-                key={t.id}
-                tag={t}
-                active={activeTag === t.id}
-                onClick={() => update({ tag: activeTag === t.id ? null : t.id })}
-                onDelete={async () => {
-                  if (!(await confirmDialog(`Tag „${t.name}“ löschen? Es wird aus allen Notizen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
-                  await deleteTag(t.id);
-                  if (activeTag === t.id) update({ tag: null });
-                }}
-              />
+              <TagChip key={t.id} tag={t} active={activeTag === t.id} onClick={() => update({ tag: activeTag === t.id ? null : t.id })} />
             ))}
           </div>
         )}

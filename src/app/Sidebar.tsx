@@ -8,7 +8,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
 import type { Note, NotePatch } from '@/storage';
 import { TagChip } from '@/ui/TagChip';
-import { createNote, deleteNote, deleteTag, moveNote } from './actions';
+import { createNote, deleteNote, moveNote } from './actions';
 import { NOTE_DRAG_TYPE } from '@/editor/NoteLink';
 import { ancestorsOf, canMoveUnder, childrenMap, noteHref } from './noteLinks';
 import { useTheme } from './theme';
@@ -423,17 +423,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {tags && tags.length > 0 && (
           <div className="side-tags" role="group" aria-label="Nach Tag filtern">
             {tags.map((t) => (
-              <TagChip
-                key={t.id}
-                tag={t}
-                active={activeFilter === t.id}
-                onClick={() => toggleFilter(t.id)}
-                onDelete={async () => {
-                  if (!(await confirmDialog(`Tag „${t.name}“ löschen? Es wird aus allen Notizen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
-                  await deleteTag(t.id);
-                  if (activeFilter === t.id) toggleFilter(t.id);
-                }}
-              />
+              <TagChip key={t.id} tag={t} active={activeFilter === t.id} onClick={() => toggleFilter(t.id)} />
             ))}
           </div>
         )}
