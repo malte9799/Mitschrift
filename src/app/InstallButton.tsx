@@ -9,8 +9,6 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const DISMISS_KEY = 'mitschrift-install-dismissed';
-
 // Schon beim Laden des Moduls lauschen – das Ereignis kommt oft, bevor die Seitenleiste steht.
 let deferred: BeforeInstallPromptEvent | null = null;
 let installed = typeof window !== 'undefined' && (matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true);
@@ -49,21 +47,18 @@ function safariHint(): string | null {
   return ios ? 'Tippe auf „Teilen“ und dann „Zum Home-Bildschirm“.' : 'Wähle in Safari „Ablage“ → „Zum Dock hinzufügen“.';
 }
 
-/** Schmaler „App installieren“-Knopf für die Fußzeile der Seitenleiste; `null`, wenn es nichts anzubieten gibt. */
+/** Schmaler „App installieren“-Knopf für die Fußzeile der Seitenleiste; `null` nur in der installierten App. */
 export function InstallButton() {
   const state = useInstallState();
-  // Im Dev-Server gibt es keinen Service Worker und damit kein Install-Ereignis – Knopf trotzdem zeigen.
+  // Im Web immer sichtbar: Ohne Install-Ereignis (Dev-Server, Firefox, Prompt schon abgelehnt) zeigt ein Klick eine Anleitung.
   const [hint] = useState(
-    () => safariHint() ?? (import.meta.env.DEV ? 'Im Dev-Server nicht installierbar (kein Service Worker). Zum Testen: npm run build && npm run preview' : null),
+    () =>
+      safariHint() ??
+      (import.meta.env.DEV
+        ? 'Im Dev-Server nicht installierbar (kein Service Worker). Zum Testen: npm run build && npm run preview'
+        : 'Installieren über das Browser-Menü: „App installieren“ bzw. „Zum Startbildschirm hinzufügen“. Firefox unterstützt das am Desktop nicht – dann Chrome, Edge oder Safari nutzen.'),
   );
   const [showHint, setShowHint] = useState(false);
-  const [dismissed, setDismissed] = useState(() => {
-    try {
-      return localStorage.getItem(DISMISS_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
 
   useEffect(() => {
     if (!showHint) return;
@@ -71,7 +66,7 @@ export function InstallButton() {
     return () => clearTimeout(t);
   }, [showHint]);
 
-  if (dismissed || state === 'installed' || (state === 'none' && !hint)) return null;
+  if (state === 'installed') return null;
 
   async function install() {
     if (deferred) {
@@ -87,15 +82,6 @@ export function InstallButton() {
     } else {
       setShowHint((s) => !s);
     }
-  }
-
-  function dismiss() {
-    try {
-      localStorage.setItem(DISMISS_KEY, '1');
-    } catch {
-      /* nur Komfort */
-    }
-    setDismissed(true);
   }
 
   return (
@@ -117,9 +103,6 @@ export function InstallButton() {
       <button type="button" className="install-btn" onClick={() => void install()} aria-describedby="install-pop">
         <Icon name="download" className="install-ico" />
         <span>App installieren</span>
-      </button>
-      <button type="button" className="install-x" onClick={dismiss} aria-label="Hinweis ausblenden" title="Ausblenden">
-        <Icon name="x" />
       </button>
     </div>
   );

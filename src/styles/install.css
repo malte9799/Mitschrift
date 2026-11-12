@@ -1,7 +1,7 @@
 /* „App installieren“ in der Fußzeile der Seitenleiste (InstallButton). Gold als Akzent. */
 .install{
   --gold:var(--tag-amber,#C9952B); --gold-bg:var(--tag-amber-bg,#FFF7E0);
-  position:relative;display:flex;align-items:center;gap:2px;
+  position:relative;display:flex;align-items:center;
 }
 .install-btn{
   flex:1;min-width:0;display:flex;align-items:center;gap:8px;
@@ -14,13 +14,6 @@
 .install-btn:hover,.install-btn:focus-visible{background:color-mix(in srgb,var(--gold) 20%,var(--paper-2));border-color:var(--gold)}
 .install-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
 .install-ico{width:15px;height:15px;flex:none}
-.install-x{
-  flex:none;display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;
-  background:transparent;color:var(--ink-faint);cursor:pointer;opacity:0;transition:opacity .15s,background .15s;
-}
-.install-x svg{width:12px;height:12px}
-.install:hover .install-x,.install-x:focus-visible{opacity:1}
-.install-x:hover{background:var(--hover);color:var(--ink-soft)}
 
 /* Stichpunkte nur bei Hover/Fokus – schweben über dem Knopf, nicht im Layout-Fluss. */
 .install-pop{
@@ -34,4 +27,4 @@
 .install-pop .install-pop-title{font-weight:600;color:var(--gold);margin-bottom:4px}
 .install-pop ul{margin:0;padding:0 0 0 16px;font-size:12.5px;line-height:1.5;color:var(--ink-soft)}
 .install-pop li::marker{color:var(--gold)}
-@media (hover:none){.install-x{opacity:1}}
+
