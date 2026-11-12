@@ -8,7 +8,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
 import type { Note, NotePatch } from '@/storage';
 import { TagChip } from '@/ui/TagChip';
-import { createNote, deleteNote, moveNote } from './actions';
+import { createNote, deleteNote, deleteTag, moveNote } from './actions';
 import { NOTE_DRAG_TYPE } from '@/editor/NoteLink';
 import { ancestorsOf, canMoveUnder, childrenMap, noteHref } from './noteLinks';
 import { useTheme } from './theme';
@@ -158,7 +158,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const roots = children.get(null) ?? [];
 
   async function onCreate(init: NotePatch = {}) {
-    // Neue Notiz bekommt direkt das gefilterte Fach (eine Vorlage mit eigenen Fächern behält ihre).
+    // Neue Notiz bekommt direkt das gefilterte Tag (eine Vorlage mit eigenen Tags behält ihre).
     const note = await createNote({ ...(activeFilter ? { tags: [activeFilter] } : {}), ...init });
     navigate(`/n/${note.id}`);
     if (window.innerWidth <= 860) onClose();
@@ -421,9 +421,19 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </button>
 
         {tags && tags.length > 0 && (
-          <div className="side-tags" role="group" aria-label="Nach Fach filtern">
+          <div className="side-tags" role="group" aria-label="Nach Tag filtern">
             {tags.map((t) => (
-              <TagChip key={t.id} tag={t} active={activeFilter === t.id} onClick={() => toggleFilter(t.id)} />
+              <TagChip
+                key={t.id}
+                tag={t}
+                active={activeFilter === t.id}
+                onClick={() => toggleFilter(t.id)}
+                onDelete={async () => {
+                  if (!(await confirmDialog(`Tag „${t.name}“ löschen? Es wird aus allen Notizen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
+                  await deleteTag(t.id);
+                  if (activeFilter === t.id) toggleFilter(t.id);
+                }}
+              />
             ))}
           </div>
         )}
@@ -448,7 +458,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <ul className={asTree ? 'side-tree' : undefined}>
             <AnimatePresence initial={false}>{asTree ? roots.map((n) => renderItem(n, 0)) : rest.map((n) => renderItem(n))}</AnimatePresence>
           </ul>
-          {notes && filtered.length === 0 && <p className="side-empty">{query ? 'Nichts gefunden.' : activeFilter ? 'Keine Notizen in diesem Fach.' : 'Noch keine Notizen.'}</p>}
+          {notes && filtered.length === 0 && <p className="side-empty">{query ? 'Nichts gefunden.' : activeFilter ? 'Keine Notizen in diesem Tag.' : 'Noch keine Notizen.'}</p>}
         </nav>
       </aside>
     </>

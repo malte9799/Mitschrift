@@ -1,4 +1,4 @@
-import { storage, type Note, type NotePatch, type TagColor, type TagPatch } from '@/storage';
+import { storage, type Note, type NotePatch, type Tag, type TagColor, type TagPatch } from '@/storage';
 import { notifyNotesChanged } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 import { welcomeNote } from './welcome';
@@ -66,6 +66,29 @@ export async function deleteTag(id: string) {
   await reloadTerms();
 }
 
+/** Vereint zwei Tags: Alle Notizen/Glossarbegriffe/Termine des einen gehen aufs andere über. */
+export async function mergeTag(sourceId: string, targetId: string) {
+  await storage.mergeTag(sourceId, targetId);
+  notifyTagsChanged();
+  notifyNotesChanged();
+  await reloadTerms();
+}
+
+/**
+ * Führt Tags mit gleichem Namen (case-insensitive) einmalig zusammen – ältestes Tag bleibt.
+ * Sonst würde die Gruppierung nach Namen Doppelteinträge zeigen.
+ */
+export async function dedupeTags() {
+  const tags = await storage.listTags();
+  const byName = new Map<string, Tag>();
+  for (const t of tags) {
+    const key = t.name.trim().toLowerCase();
+    const kept = byName.get(key);
+    if (kept) await storage.mergeTag(t.id, kept.id);
+    else byName.set(key, t);
+  }
+}
+
 /** Farbwahl für Tags, in der Reihenfolge der Auswahl-Palette. */
 export const tagColors: { value: TagColor; label: string }[] = [
   { value: 'teal', label: 'Petrol' },
@@ -79,7 +102,7 @@ export const tagColors: { value: TagColor; label: string }[] = [
   { value: 'graphite', label: 'Grafit' },
 ];
 
-/** Die Fächer aus dem Schule-Projekt, mit denselben Akzentfarben. */
+/** Die Start-Tags aus dem Schule-Projekt, mit denselben Akzentfarben. */
 const defaultTags: { name: string; color: TagColor }[] = [
   { name: 'Lernfeld 3', color: 'teal' },
   { name: 'Lernfeld 5', color: 'blue' },
@@ -91,7 +114,7 @@ const defaultTags: { name: string; color: TagColor }[] = [
 
 const TAGS_SEEDED_KEY = 'mitschrift-tags-seeded';
 
-/** Legt einmalig die Schulfächer als Tags an, solange noch keine Tags existieren. */
+/** Legt einmalig die Start-Tags an, solange noch keine Tags existieren. */
 export async function seedDefaultTags() {
   try {
     if (localStorage.getItem(TAGS_SEEDED_KEY)) return;

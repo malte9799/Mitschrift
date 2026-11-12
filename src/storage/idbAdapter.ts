@@ -120,7 +120,7 @@ export const idbAdapter: StorageAdapter = {
 
   async deleteTag(id) {
     const db = await dbPromise;
-    const tx = db.transaction(['tags', 'notes', 'terms'], 'readwrite');
+    const tx = db.transaction(['tags', 'notes', 'terms', 'events'], 'readwrite');
     await tx.objectStore('tags').delete(id);
     const terms = tx.objectStore('terms');
     for (const t of await terms.getAll()) {
@@ -131,6 +131,35 @@ export const idbAdapter: StorageAdapter = {
     for (const note of await notes.getAll()) {
       if (note.tags.includes(id)) await notes.put({ ...note, tags: note.tags.filter((t) => t !== id) });
     }
+    const events = tx.objectStore('events');
+    for (const e of await events.getAll()) {
+      if (e.tags.includes(id)) await events.put({ ...e, tags: e.tags.filter((t) => t !== id) });
+    }
+    await tx.done;
+  },
+
+  async mergeTag(sourceId, targetId) {
+    if (sourceId === targetId) return;
+    const db = await dbPromise;
+    const tx = db.transaction(['tags', 'notes', 'terms', 'events'], 'readwrite');
+    const target = await tx.objectStore('tags').get(targetId);
+    if (!target) return;
+    // Ohne updatedAt zu ändern – das Zusammenführen soll die Sortierung nicht verschieben.
+    const swap = (tags: string[]) =>
+      tags.includes(sourceId) ? tags.map((t) => (t === sourceId ? targetId : t)).filter((t, i, a) => a.indexOf(t) === i) : tags;
+    const notes = tx.objectStore('notes');
+    for (const note of await notes.getAll()) {
+      if (note.tags.includes(sourceId)) await notes.put({ ...note, tags: swap(note.tags) });
+    }
+    const terms = tx.objectStore('terms');
+    for (const t of await terms.getAll()) {
+      if (t.tags.includes(sourceId)) await terms.put({ ...t, tags: swap(t.tags) });
+    }
+    const events = tx.objectStore('events');
+    for (const e of await events.getAll()) {
+      if (e.tags.includes(sourceId)) await events.put({ ...e, tags: swap(e.tags) });
+    }
+    await tx.objectStore('tags').delete(sourceId);
     await tx.done;
   },
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { MenuBar } from './MenuBar';
-import { seedDefaultTags } from './actions';
+import { seedDefaultTags, dedupeTags } from './actions';
 import { seedDebugDocs } from '@/debug/debugDocs';
 import { DialogHost } from '@/ui/Dialog';
 import { TermDialogHost } from '@/glossary/TermDialog';
@@ -30,8 +30,10 @@ export function AppLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Debug-Notizen erst danach: Ein vorhandenes „debug“-Tag würde sonst die Schulfach-Tags verhindern.
+    // Debug-Notizen erst danach: Ein vorhandenes „debug“-Tag würde sonst die Start-Tags verhindern.
     void seedDefaultTags().then(seedDebugDocs);
+    // Einmalige Pflege: Tags mit gleichem Namen zusammenführen (sonst doppelt in der Gruppierung).
+    void dedupeTags();
   }, []);
 
   // Rückweg von libraries.excalidraw.com („Zu Excalidraw hinzufügen“) – beim Laden und bei weiteren Klicks.

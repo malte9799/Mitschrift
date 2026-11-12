@@ -294,6 +294,15 @@ button.tag-main{cursor:pointer}
 .tag-remove:hover{opacity:1;background:color-mix(in srgb,var(--tag) 16%,transparent)}
 .tag-remove svg{width:12px;height:12px}
 .tag.is-active{box-shadow:inset 0 0 0 1.5px var(--tag)}
+/* Papierkorb an Filter-Chips (Seitenleiste/Bibliothek): erst beim Hover sichtbar. */
+.tag-delete{
+  display:flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:3px;border:0;border-radius:50%;
+  background:none;color:inherit;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;
+}
+.tag:hover .tag-delete{opacity:.45}
+.tag:hover .tag-delete:hover{opacity:1;background:color-mix(in srgb,var(--tag) 16%,transparent)}
+.tag-delete svg{width:12px;height:12px}
+.side-tags .tag,.lib-tags .tag{padding-right:2px}
 
 .note-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-6px 0 24px}
 .note-tags-add-wrap{position:relative}
@@ -327,6 +336,8 @@ button.tag-main{cursor:pointer}
   position:absolute;right:4px;display:flex;padding:5px;border:0;border-radius:6px;background:none;color:var(--ink-faint);
   cursor:pointer;opacity:0;transition:opacity .12s,background .12s;
 }
+/* Zwei Buttons (Bearbeiten + Löschen): der Papierkorb sitzt links neben dem Stift. */
+.tag-picker-row > .tag-picker-edit:last-child{right:27px}
 .tag-picker-row:hover .tag-picker-edit,.tag-picker-edit:focus-visible{opacity:1}
 .tag-picker-row:hover .tag-picker-check{visibility:hidden}
 .tag-picker-edit:hover{background:var(--card);color:var(--ink)}

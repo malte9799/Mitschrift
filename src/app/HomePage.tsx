@@ -7,7 +7,8 @@ import { Popover } from '@/blocks/collection/Popover';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
 import type { Note, Tag } from '@/storage';
-import { createNote, seedIfFirstRun, toggleStar } from './actions';
+import { createNote, deleteTag, seedIfFirstRun, toggleStar } from './actions';
+import { confirmDialog } from '@/ui/Dialog';
 import { noteHref } from './noteLinks';
 import { useViewed } from './recentViews';
 import { NotePreview } from './NotePreview';
@@ -45,7 +46,7 @@ const layouts: { value: Layout; label: string; icon: IconName }[] = [
 ];
 const groups: { value: Group; label: string }[] = [
   { value: 'none', label: 'Keine' },
-  { value: 'tag', label: 'Fach' },
+  { value: 'tag', label: 'Tags' },
   { value: 'date', label: 'Datum' },
 ];
 const sorts: { value: Sort; label: string; asc: [string, string] }[] = [
@@ -195,11 +196,11 @@ export function HomePage() {
   const sections = useMemo<Section[]>(() => {
     if (prefs.group === 'none') return [{ key: 'all', label: '', notes: sorted }];
     if (prefs.group === 'tag') {
-      // Eine Notiz mit mehreren Fächern erscheint in jedem davon.
+      // Eine Notiz mit mehreren Tags erscheint in jedem davon.
       const out: Section[] = tagList
         .filter((t) => !activeTag || t.id === activeTag)
         .map((t) => ({ key: t.id, label: t.name, tag: t, notes: sorted.filter((n) => n.tags.includes(t.id)) }));
-      out.push({ key: 'untagged', label: 'Ohne Fach', notes: sorted.filter((n) => !n.tags.some((id) => tagById.has(id))) });
+      out.push({ key: 'untagged', label: 'Ohne Tags', notes: sorted.filter((n) => !n.tags.some((id) => tagById.has(id))) });
       return out.filter((s) => s.notes.length > 0);
     }
     const map = new Map<string, Section>();
@@ -382,7 +383,7 @@ export function HomePage() {
             <h1>Übersicht</h1>
             <p className="lib-sub">
               {count === notes.length ? `${notes.length} Notizen` : `${count} von ${notes.length} Notizen`}
-              {tagList.length > 0 && ` · ${tagList.length} Fächer`}
+              {tagList.length > 0 && ` · ${tagList.length} Tags`}
             </p>
           </div>
           <button type="button" className="b-btn b-btn-primary" onClick={onCreate}>
@@ -451,15 +452,25 @@ export function HomePage() {
         </div>
 
         {tagList.length > 0 && (
-          <div className="lib-tags" role="group" aria-label="Nach Fach filtern">
+          <div className="lib-tags" role="group" aria-label="Nach Tag filtern">
             {tagList.map((t) => (
-              <TagChip key={t.id} tag={t} active={activeTag === t.id} onClick={() => update({ tag: activeTag === t.id ? null : t.id })} />
+              <TagChip
+                key={t.id}
+                tag={t}
+                active={activeTag === t.id}
+                onClick={() => update({ tag: activeTag === t.id ? null : t.id })}
+                onDelete={async () => {
+                  if (!(await confirmDialog(`Tag „${t.name}“ löschen? Es wird aus allen Notizen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
+                  await deleteTag(t.id);
+                  if (activeTag === t.id) update({ tag: null });
+                }}
+              />
             ))}
           </div>
         )}
 
         {count === 0 ? (
-          <p className="lib-empty">{query ? `Nichts gefunden für „${query}“.` : 'Keine Notizen in diesem Fach.'}</p>
+          <p className="lib-empty">{query ? `Nichts gefunden für „${query}“.` : 'Keine Notizen in diesem Tag.'}</p>
         ) : (
           sections.map((s) => {
             const isCollapsed = collapsed.has(s.key);

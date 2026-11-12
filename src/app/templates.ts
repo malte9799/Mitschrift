@@ -131,7 +131,7 @@ export const builtinTemplates: NoteTemplate[] = [
   },
 ];
 
-/** Eigene Vorlagen: Notizen mit gesetztem Vorlagen-Schalter. Neue Notizen übernehmen Inhalt und Fächer. */
+/** Eigene Vorlagen: Notizen mit gesetztem Vorlagen-Schalter. Neue Notizen übernehmen Inhalt und Tags. */
 export function userTemplates(notes: Note[]): NoteTemplate[] {
   return notes
     .filter((n) => n.template)

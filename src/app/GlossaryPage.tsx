@@ -37,7 +37,7 @@ const letterOf = (t: Term) => {
 
 type Panel = null | 'import' | 'suggest';
 
-/** Glossar: alle Begriffe und Abkürzungen, mit Suche, Fach-Filter, Import, Vorschlägen und Abfrage. */
+/** Glossar: alle Begriffe und Abkürzungen, mit Suche, Tag-Filter, Import, Vorschlägen und Abfrage. */
 export function GlossaryPage() {
   const terms = useTerms();
   const tags = useTags();
@@ -141,7 +141,7 @@ export function GlossaryPage() {
 
         <div className="gl-filters">
           {tags && tags.length > 0 && (
-            <div className="gl-tagfilter" role="group" aria-label="Nach Fach filtern">
+            <div className="gl-tagfilter" role="group" aria-label="Nach Tag filtern">
               {tags.map((t) => (
                 <TagChip key={t.id} tag={t} active={tagFilter === t.id} onClick={() => setTagFilter(tagFilter === t.id ? null : t.id)} />
               ))}
@@ -287,7 +287,7 @@ function ImportPanel({ existing, tagFilter, onDone }: { existing: Term[]; tagFil
         </ul>
       )}
       <div className="gl-import-actions">
-        <span>{tagFilter ? 'Neue Begriffe bekommen das gewählte Fach.' : ''}</span>
+        <span>{tagFilter ? 'Neue Begriffe bekommen das gewählte Tag.' : ''}</span>
         <button type="button" className="b-btn b-btn-primary" disabled={busy || (!fresh.length && !updates.length)} onClick={() => void run()}>
           {fresh.length} neu{updates.length ? ` · ${updates.length} ergänzen` : ''} – importieren
         </button>

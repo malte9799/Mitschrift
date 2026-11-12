@@ -22,7 +22,7 @@ export function welcomeNote(): NotePatch {
       },
       h2('Alle Blöcke im Handbuch'),
       p(t('Jeder Blocktyp – mit Erklärung und echtem Beispiel – steht im '), t('Handbuch', ['bold']), t(' (Buch-Symbol in der Seitenleiste, oder direkt unter '), t('/handbuch', ['code']), t(').')),
-      tip(t('Fächer, Kalender und Glossar findest du ebenfalls in der Seitenleiste. Diese Notiz hier darfst du bedenkenlos verändern oder löschen – sie ist nur zum Ausprobieren da.')),
+      tip(t('Tags, Kalender und Glossar findest du ebenfalls in der Seitenleiste. Diese Notiz hier darfst du bedenkenlos verändern oder löschen – sie ist nur zum Ausprobieren da.')),
     ],
   };
   return { title: 'Willkommen bei Mitschrift', content: JSON.stringify(doc) };

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import type { Tag, TagColor } from '@/storage';
 import { Icon } from '@/ui/Icon';
-import { createTag, deleteTag, tagColors, updateTag } from './actions';
+import { createTag, deleteTag, mergeTag, tagColors, updateTag } from './actions';
 import { confirmDialog } from '@/ui/Dialog';
 
 interface TagPickerProps {
@@ -87,7 +87,7 @@ export function TagPicker({ tags, selected, onToggle, onClose }: TagPickerProps)
         ref={inputRef}
         className="tag-picker-input"
         value={query}
-        placeholder="Fach suchen oder anlegen …"
+        placeholder="Tag suchen oder anlegen …"
         onChange={(e) => {
           setQuery(e.target.value);
           setCursor(0);
@@ -97,7 +97,7 @@ export function TagPicker({ tags, selected, onToggle, onClose }: TagPickerProps)
       <ul className="tag-picker-list" role="listbox" aria-label="Tags">
         {filtered.map((t, i) =>
           editing === t.id ? (
-            <TagEditor key={t.id} tag={t} onDone={() => setEditing(null)} />
+            <TagEditor key={t.id} tag={t} tags={tags} onDone={() => setEditing(null)} />
           ) : (
             <li key={t.id} className={`tag-picker-row${i === cursor ? ' is-cursor' : ''}`} data-color={t.color}>
               <button type="button" role="option" aria-selected={selected.includes(t.id)} className="tag-picker-option" onMouseDown={keepFocus} onClick={() => onToggle(t.id)} onMouseEnter={() => setCursor(i)}>
@@ -107,6 +107,18 @@ export function TagPicker({ tags, selected, onToggle, onClose }: TagPickerProps)
               </button>
               <button type="button" className="tag-picker-edit" aria-label={`${t.name} bearbeiten`} onClick={() => setEditing(t.id)}>
                 <Icon name="pencil" />
+              </button>
+              <button
+                type="button"
+                className="tag-picker-edit"
+                aria-label={`${t.name} löschen`}
+                title="Tag löschen"
+                onClick={async () => {
+                  if (!(await confirmDialog(`Tag „${t.name}“ löschen? Es wird aus allen Notizen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
+                  await deleteTag(t.id);
+                }}
+              >
+                <Icon name="trash" />
               </button>
             </li>
           ),
@@ -127,12 +139,26 @@ export function TagPicker({ tags, selected, onToggle, onClose }: TagPickerProps)
   );
 }
 
-function TagEditor({ tag, onDone }: { tag: Tag; onDone: () => void }) {
+function TagEditor({ tag, tags, onDone }: { tag: Tag; tags: Tag[]; onDone: () => void }) {
   const [name, setName] = useState(tag.name);
 
-  function save() {
+  async function save() {
     const n = name.trim();
-    if (n && n !== tag.name) void updateTag(tag.id, { name: n });
+    if (!n || n === tag.name) return onDone();
+    // Gleicher Name wie ein anderes Tag? Dann zusammenführen statt Doppeltag zu erzeugen.
+    const other = tags.find((t) => t.id !== tag.id && t.name.trim().toLowerCase() === n.toLowerCase());
+    if (other) {
+      if (
+        await confirmDialog(
+          `„${tag.name}“ und „${other.name}“ zusammenführen? Alle Notizen mit „${tag.name}“ bekommen danach „${other.name}“.`,
+          { confirmLabel: 'Zusammenführen' },
+        )
+      ) {
+        await mergeTag(tag.id, other.id);
+      }
+    } else {
+      await updateTag(tag.id, { name: n });
+    }
     onDone();
   }
 

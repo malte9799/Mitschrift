@@ -23,7 +23,7 @@ const isEmptyBlock = (n: PMNode) => n.type === 'paragraph' && !n.content?.length
 
 /**
  * Teilt die Notiz in Folien: Jede H1/H2 beginnt eine neue Folie, ebenso ein Seitenumbruch.
- * Davor steht immer eine Titelfolie mit Notiztitel und Fächern.
+ * Davor steht immer eine Titelfolie mit Notiztitel und Tags.
  */
 export function buildSlides(doc: PMNode): Slide[] {
   const slides: Slide[] = [{ content: [], start: -1 }];

@@ -114,7 +114,7 @@ function NoteScreen({ id }: { id: string }) {
   const showPanel = panelOpen && !learning && editor;
 
   /**
-   * Klick in den Spalt zwischen Titel/Fächern und der ersten Zeile fügt ganz oben eine
+   * Klick in den Spalt zwischen Titel/Tags und der ersten Zeile fügt ganz oben eine
    * leere Zeile ein – außer die erste Zeile ist schon leer, dann wird sie nur fokussiert.
    */
   function insertLineAtTop(e: React.MouseEvent, dom: HTMLElement): boolean {

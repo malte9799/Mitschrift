@@ -171,7 +171,7 @@ export function EventDialogHost() {
             )}
             {tags && tags.length > 0 && !readOnly && (
               <div className="gl-field">
-                <span>Fächer</span>
+                <span>Tags</span>
                 <div className="gl-dialog-tags">
                   {tags.map((t) => (
                     <TagChip

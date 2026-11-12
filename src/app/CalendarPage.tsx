@@ -120,7 +120,7 @@ export function CalendarPage() {
         </div>
 
         {tags && tags.length > 0 && (
-          <div className="gl-tagfilter cal-tagfilter" role="group" aria-label="Nach Fach filtern">
+          <div className="gl-tagfilter cal-tagfilter" role="group" aria-label="Nach Tag filtern">
             {tags.map((t) => (
               <TagChip key={t.id} tag={t} active={tagFilter === t.id} onClick={() => setTagFilter(tagFilter === t.id ? null : t.id)} />
             ))}

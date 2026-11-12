@@ -106,6 +106,8 @@ export interface StorageAdapter {
   updateTag(id: string, patch: TagPatch): Promise<Tag | undefined>;
   /** Löscht das Tag und entfernt es aus allen Notizen. */
   deleteTag(id: string): Promise<void>;
+  /** Vereint zwei Tags zu einem: Alle Verweise auf `sourceId` (Notizen, Glossar, Termine) gehen auf `targetId` über, `sourceId` verschwindet. */
+  mergeTag(sourceId: string, targetId: string): Promise<void>;
 
   listSnippets(): Promise<Snippet[]>;
   createSnippet(name: string, content: string): Promise<Snippet>;

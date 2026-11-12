@@ -11,7 +11,7 @@ interface NoteTagsProps {
   readOnly?: boolean;
 }
 
-/** Tag-Zeile unter dem Notiztitel: gewählte Fächer + Button zum Hinzufügen. */
+/** Tag-Zeile unter dem Notiztitel: gewählte Tags + Button zum Hinzufügen. */
 export function NoteTags({ value, onChange, readOnly }: NoteTagsProps) {
   const tags = useTags();
   const [open, setOpen] = useState(false);
@@ -32,7 +32,7 @@ export function NoteTags({ value, onChange, readOnly }: NoteTagsProps) {
         <div className="note-tags-add-wrap">
           <button type="button" className={`note-tags-add${open ? ' active' : ''}`} onClick={() => setOpen((o) => !o)}>
             <Icon name="plus" />
-            {chosen.length === 0 && <span>Fach</span>}
+            {chosen.length === 0 && <span>Tag</span>}
           </button>
           <AnimatePresence>{open && <TagPicker tags={tags} selected={value} onToggle={toggle} onClose={() => setOpen(false)} />}</AnimatePresence>
         </div>
