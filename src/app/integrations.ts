@@ -12,7 +12,6 @@ export interface IntegrationMeta {
 }
 
 export const INTEGRATIONS: IntegrationMeta[] = [
-  { source: 'untis', label: 'Untis', hint: 'Stundenplan aus WebUntis.' },
   { source: 'itslearning', label: 'itslearning', hint: 'Noch nicht angebunden – itslearning bietet keinen einfachen API-Zugang für Schüler-Konten.', comingSoon: true },
 ];
 
@@ -25,7 +24,7 @@ function loadVisible(): Set<CalendarSource> {
   } catch {
     /* ignorieren */
   }
-  return new Set(['manual', 'untis', 'itslearning']);
+  return new Set(['manual', 'itslearning']);
 }
 
 let visible = loadVisible();

@@ -9,7 +9,6 @@ import type { LayoutContext } from './AppLayout';
 import { useEvents, openEventDialog } from './eventStore';
 import { noteHref } from './noteLinks';
 import { INTEGRATIONS, isSourceVisible, toggleSource, useVisibleSources } from './integrations';
-import { syncUntis } from './untisSync';
 
 const SOURCE_LABEL: Record<string, string> = { untis: 'Untis', itslearning: 'itslearning' };
 
@@ -40,24 +39,10 @@ export function CalendarPage() {
   const [selected, setSelected] = useState(() => toISO(today));
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const visibleSources = useVisibleSources();
-  const [untisBusy, setUntisBusy] = useState(false);
-  const [untisMessage, setUntisMessage] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Kalender – Mitschrift';
   }, []);
-
-  async function runUntisSync() {
-    setUntisBusy(true);
-    setUntisMessage(null);
-    const rangeStart = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
-    const rangeEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 2, 0);
-    const result = await syncUntis(rangeStart, rangeEnd);
-    setUntisBusy(false);
-    if (!result.configured) setUntisMessage('Untis ist noch nicht eingerichtet – siehe .env.example.');
-    else if (result.error) setUntisMessage(result.error);
-    else setUntisMessage(`${result.count} Stunden aktualisiert.`);
-  }
 
   const byDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -132,10 +117,6 @@ export function CalendarPage() {
               {i.comingSoon && <span className="cal-integration-soon">bald</span>}
             </button>
           ))}
-          <button type="button" className="b-btn cal-sync" disabled={untisBusy} onClick={() => void runUntisSync()}>
-            <Icon name="cycle" /> {untisBusy ? 'Synchronisiere …' : 'Untis abgleichen'}
-          </button>
-          {untisMessage && <span className="cal-sync-msg">{untisMessage}</span>}
         </div>
 
         {tags && tags.length > 0 && (

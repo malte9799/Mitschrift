@@ -5,12 +5,13 @@ Entstanden aus dem Artikel-Editor des Schule-Projekts.
 
 ```bash
 npm install
-npm run dev      # Web http://localhost:5190 + lokale API http://localhost:8779
+npm run dev      # Web http://localhost:5190
 npm run build
 ```
 
-`npm run dev` startet Vite und die kleine Untis-API zusammen (`dev:web`/`dev:server` einzeln möglich).
-Für den Kalender-Import aus WebUntis `.env.example` nach `.env` kopieren und ausfüllen – siehe dort.
+Die Web-App läuft komplett statisch (local-first, IndexedDB im Browser) und wird bei jedem Push
+auf `main` per GitHub-Action automatisch auf **GitHub Pages** deployt:
+https://malte9799.github.io/Mitschrift/
 
 ## Aufbau
 
@@ -21,17 +22,14 @@ Für den Kalender-Import aus WebUntis `.env.example` nach `.env` kopieren und au
 | `src/editor/blockTypes.ts` | **Zentrale Block-Registry** – jeder einfügbare Block steht hier |
 | `src/blocks/` | Interaktive Lern-Blöcke, je Ordner Node + React-View |
 | `src/storage/` | `StorageAdapter`-Schnittstelle + IndexedDB-Umsetzung (local-first) |
-| `server/` | Schlanke Express-API nur für den Untis-Abruf (Zugangsdaten dürfen nicht in den Browser) |
 
 ## Kalender-Integrationen
 
 Der Kalender (`/kalender`) kann Termine aus externen Quellen einblenden, je mit eigenem
 Ein/Aus-Schalter (`src/app/integrations.ts`):
 
-- **Untis** – Stundenplan über die lokale API in `server/` (Code aus dem Schule-Projekt übernommen).
-  „Untis abgleichen“ im Kalender holt den Plan und speichert ihn als Termine mit `source: 'untis'`;
-  von Hand angelegte Termine bleiben davon unberührt. Zugangsdaten stehen nur serverseitig in `.env`,
-  nie im Browser.
+- **Untis** – vorerst entfernt (war eine kleine lokale Express-API in `server/`, Zugangsdaten
+  durften nicht in den Browser). Der Quell-Typ `untis` bleibt für alte Termine im Datenschema.
 - **itslearning** – nur als Platzhalter vorbereitet (Toggle + Typ vorhanden). itslearning verlangt für
   die offizielle REST-API meist eine Registrierung auf Schul-/Organisationsebene; ohne eigenen Zugang
   bliebe hier nur ein persönlicher iCal-Kalender-Export als Alternative.
