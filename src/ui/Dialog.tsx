@@ -28,8 +28,8 @@ function close(ok: boolean) {
   req?.resolve(ok);
 }
 
-export function confirmDialog(message: string, opts: { confirmLabel?: string; danger?: boolean } = {}) {
-  return show({ message, confirmLabel: opts.confirmLabel ?? 'OK', cancelLabel: 'Abbrechen', danger: opts.danger ?? false });
+export function confirmDialog(message: string, opts: { confirmLabel?: string; cancelLabel?: string; danger?: boolean } = {}) {
+  return show({ message, confirmLabel: opts.confirmLabel ?? 'OK', cancelLabel: opts.cancelLabel ?? 'Abbrechen', danger: opts.danger ?? false });
 }
 
 export function alertDialog(message: string) {

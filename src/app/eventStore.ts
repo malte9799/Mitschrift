@@ -70,6 +70,13 @@ export async function syncEvents(source: Exclude<CalendarSource, 'manual'>, fres
   emit();
 }
 
+/** Termine neu aus dem Speicher lesen, z. B. nach einer Änderung von außen im Notiz-Ordner. */
+export async function reloadEvents() {
+  events = await storage.listEvents();
+  loaded = true;
+  emit();
+}
+
 // ---------- Bearbeiten-Dialog ----------
 
 /** Öffnet den Termin-Dialog (EventDialogHost): neuer Termin mit Vorschlag oder vorhandener Termin. */

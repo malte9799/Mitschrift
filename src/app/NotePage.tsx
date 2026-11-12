@@ -14,6 +14,7 @@ import { setActiveNote } from './activeNote';
 import { leaveNote } from './draftNotes';
 import { markViewed } from './recentViews';
 import { confirmDialog } from '@/ui/Dialog';
+import { onExternalChange } from '@/storage/changes';
 import type { PMNode } from '@/export/model';
 import { Presentation, buildSlides, slideAt } from './Presentation';
 
@@ -22,7 +23,10 @@ const PANEL_KEY = 'mitschrift-panel-open';
 /** Eine Notiz: Kopfleiste (Modus-Umschalter), großer Titel, Editor, rechte Block-Leiste. */
 export function NotePage() {
   const { id = '' } = useParams<{ id: string }>();
-  return <NoteScreen key={id} id={id} />;
+  // Wurde die offene Notiz im Ordner von außen geändert, Editor mit dem neuen Stand neu aufbauen.
+  const [revision, setRevision] = useState(0);
+  useEffect(() => onExternalChange((c) => c.notes.includes(id) && setRevision((r) => r + 1)), [id]);
+  return <NoteScreen key={`${id}:${revision}`} id={id} />;
 }
 
 function NoteScreen({ id }: { id: string }) {

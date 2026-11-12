@@ -4,11 +4,16 @@ import { Sidebar } from './Sidebar';
 import { MenuBar } from './MenuBar';
 import { seedDefaultTags, dedupeTags } from './actions';
 import { seedDebugDocs } from '@/debug/debugDocs';
-import { DialogHost } from '@/ui/Dialog';
+import { DialogHost, alertDialog } from '@/ui/Dialog';
 import { TermDialogHost } from '@/glossary/TermDialog';
 import { EventDialogHost } from './EventDialog';
 import { NAVIGATE_EVENT } from './noteLinks';
 import { importLibraryFromHash } from '@/blocks/whiteboard/library';
+import { onExternalChange, onStorageError } from '@/storage/changes';
+import { notifyNotesChanged } from '@/hooks/useNotes';
+import { notifyTagsChanged } from '@/hooks/useTags';
+import { reloadTerms } from '@/glossary/store';
+import { reloadEvents } from './eventStore';
 
 const COLLAPSED_KEY = 'mitschrift-sidebar-collapsed';
 
@@ -34,6 +39,33 @@ export function AppLayout() {
     void seedDefaultTags().then(seedDebugDocs);
     // Einmalige Pflege: Tags mit gleichem Namen zusammenführen (sonst doppelt in der Gruppierung).
     void dedupeTags();
+  }, []);
+
+  // Notiz-Ordner von außen geändert (anderes Programm, anderer Tab, Sync-Dienst): Ansichten neu laden.
+  useEffect(
+    () =>
+      onExternalChange((c) => {
+        if (c.notes.length) notifyNotesChanged();
+        if (c.tags) notifyTagsChanged();
+        if (c.terms) void reloadTerms();
+        if (c.events) void reloadEvents();
+      }),
+    [],
+  );
+
+  // Schreiben in den Ordner fehlgeschlagen – einmal melden, nicht bei jedem Tastendruck.
+  useEffect(() => {
+    let shown = false;
+    return onStorageError(() => {
+      if (shown) return;
+      shown = true;
+      void alertDialog(
+        'Mitschrift konnte nicht in den Notiz-Ordner schreiben. Vielleicht wurde er verschoben oder der Zugriff entzogen. ' +
+          'Lade die Seite neu, um den Zugriff wieder zu erlauben – bis dahin werden Änderungen nicht gespeichert.',
+      ).then(() => {
+        shown = false;
+      });
+    });
   }, []);
 
   // Rückweg von libraries.excalidraw.com („Zu Excalidraw hinzufügen“) – beim Laden und bei weiteren Klicks.

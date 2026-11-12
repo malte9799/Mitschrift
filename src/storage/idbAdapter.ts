@@ -271,20 +271,22 @@ export const idbAdapter: StorageAdapter = {
   },
   async dumpAll() {
     const db = await dbPromise;
-    const tx = db.transaction(['notes', 'tags', 'snippets', 'files']);
-    const [notes, tags, snippets, files] = await Promise.all([
+    const tx = db.transaction(['notes', 'tags', 'snippets', 'files', 'terms', 'events']);
+    const [notes, tags, snippets, files, terms, events] = await Promise.all([
       tx.objectStore('notes').getAll(),
       tx.objectStore('tags').getAll(),
       tx.objectStore('snippets').getAll(),
       tx.objectStore('files').getAll(),
+      tx.objectStore('terms').getAll(),
+      tx.objectStore('events').getAll(),
     ]);
     await tx.done;
-    return { notes, tags, snippets, files };
+    return { notes, tags, snippets, files, terms, events };
   },
 
   async mergeAll(dump: StorageDump) {
     const db = await dbPromise;
-    const tx = db.transaction(['notes', 'tags', 'snippets', 'files'], 'readwrite');
+    const tx = db.transaction(['notes', 'tags', 'snippets', 'files', 'terms', 'events'], 'readwrite');
     const result = { added: 0, updated: 0, skipped: 0 };
     const notes = tx.objectStore('notes');
     for (const note of dump.notes) {
@@ -305,6 +307,16 @@ export const idbAdapter: StorageAdapter = {
     await addMissing('tags', dump.tags);
     await addMissing('snippets', dump.snippets);
     await addMissing('files', dump.files);
+    // Glossar und Termine: bei gleicher ID gewinnt die jüngere Fassung.
+    const putNewer = async <S extends 'terms' | 'events'>(name: S, items: MitschriftDB[S]['value'][] | undefined) => {
+      const store = tx.objectStore(name);
+      for (const item of items ?? []) {
+        const prev = await store.get(item.id);
+        if (!prev || item.updatedAt > prev.updatedAt) await store.put(item);
+      }
+    };
+    await putNewer('terms', dump.terms);
+    await putNewer('events', dump.events);
     await tx.done;
     return result;
   },

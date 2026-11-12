@@ -90,8 +90,8 @@ export interface StoredFile {
 }
 
 /**
- * Speicher-Grenze der App. V1 nutzt IndexedDB, später kann ein Tauri-Adapter
- * (Markdown-Dateien auf Disk) dieselbe Schnittstelle implementieren.
+ * Speicher-Grenze der App: IndexedDB (`idbAdapter`) oder ein vom Nutzer gewählter Ordner
+ * (`vault/folderAdapter`, File System Access API) implementieren dieselbe Schnittstelle.
  */
 export interface StorageAdapter {
   listNotes(): Promise<Note[]>;
@@ -147,6 +147,9 @@ export interface StorageDump {
   tags: Tag[];
   snippets: Snippet[];
   files: StoredFile[];
+  /** Fehlen in älteren Backups. */
+  terms?: Term[];
+  events?: CalendarEvent[];
 }
 
 export interface MergeResult {

@@ -11,6 +11,8 @@ import { HandbuchPage } from './app/HandbuchPage';
 import { GlossaryPage } from './app/GlossaryPage';
 import { CalendarPage } from './app/CalendarPage';
 import { requestPersistence } from './storage/persist';
+import { initStorage } from './storage/vault';
+import { VaultGate } from './app/VaultGate';
 import './styles/tokens.css';
 import './styles/app.css';
 import './styles/editor.css';
@@ -43,10 +45,18 @@ const router = createBrowserRouter(
   { basename: import.meta.env.BASE_URL },
 );
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <MotionConfig reducedMotion="user">
-      <RouterProvider router={router} />
-    </MotionConfig>
-  </React.StrictMode>,
-);
+const root = ReactDOM.createRoot(document.getElementById('root')!);
+const renderApp = () =>
+  root.render(
+    <React.StrictMode>
+      <MotionConfig reducedMotion="user">
+        <RouterProvider router={router} />
+      </MotionConfig>
+    </React.StrictMode>,
+  );
+
+// Erst klären, wo die Notizen liegen (Browser-Speicher oder gewählter Ordner), dann die App zeigen.
+void initStorage().then((state) => {
+  if (state.kind === 'needs-permission' || state.kind === 'error') root.render(<VaultGate onReady={renderApp} />);
+  else renderApp();
+});

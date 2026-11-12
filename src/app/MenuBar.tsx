@@ -16,6 +16,7 @@ import { setHighlight, useHighlight } from '@/glossary/store';
 import { termFromSelection } from '@/editor/Toolbar';
 import { downloadBackup, lastBackupAt, readBackup, restoreBackup } from '@/storage/backup';
 import { storageStatus, type StorageStatus } from '@/storage/persist';
+import { chooseFolder, disconnectFolder, folderSupported, useVaultState } from '@/storage/vault';
 import { notifyNotesChanged, useNotes } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 
@@ -132,6 +133,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   /** Hervorgehobener Eintrag je Ebene: [Index im Menü, Index im Untermenü …]. */
   const [path, setPath] = useState<number[]>([]);
   const [about, setAbout] = useState(false);
+  const vault = useVaultState();
   const [fullscreen, setFullscreen] = useState(() => !!document.fullscreenElement);
   const barRef = useRef<HTMLElement>(null);
   const titleRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -195,6 +197,40 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
     input.click();
   }
 
+  async function pickFolder() {
+    try {
+      await chooseFolder({
+        confirmMigration: ({ folderName, folderHasData, count, fromFolder }) => {
+          const from = fromFolder ? 'dem bisherigen Ordner' : 'dem Browser-Speicher';
+          const what = count === 1 ? 'Die Notiz' : `Die ${count} Notizen`;
+          return confirmDialog(
+            folderHasData
+              ? `„${folderName}“ enthält schon Mitschrift-Notizen. ${what} aus ${from} dazunehmen? Bei gleichen Notizen gewinnt die neuere Fassung.`
+              : `${what} aus ${from} nach „${folderName}“ übernehmen? Sie liegen dann als Dateien in diesem Ordner.`,
+            { confirmLabel: 'Übernehmen', cancelLabel: 'Nicht übernehmen' },
+          );
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      await alertDialog('Der Ordner konnte nicht geöffnet werden.');
+    }
+  }
+
+  async function unlinkFolder() {
+    if (vault.kind !== 'folder') return;
+    const ok = await confirmDialog(
+      `Ordner „${vault.name}“ trennen? Die Dateien bleiben dort liegen; Mitschrift nutzt danach wieder den Browser-Speicher.`,
+      { confirmLabel: 'Trennen' },
+    );
+    if (!ok) return;
+    const copy = await confirmDialog('Die Notizen aus dem Ordner auch in den Browser-Speicher übernehmen?', {
+      confirmLabel: 'Übernehmen',
+      cancelLabel: 'Nicht übernehmen',
+    });
+    await disconnectFolder(copy);
+  }
+
   function focusSearch() {
     if (!sidebarOpen) toggleSidebar();
     window.dispatchEvent(new Event(FOCUS_SEARCH_EVENT));
@@ -226,6 +262,18 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
       app: true,
       items: [
         { label: 'Über Mitschrift', action: () => setAbout(true) },
+        SEP,
+        {
+          label: 'Speicherort',
+          submenu: [
+            { label: 'Browser-Speicher', checked: vault.kind === 'browser', action: () => void unlinkFolder() },
+            ...(vault.kind === 'folder' ? [{ label: `Ordner „${vault.name}“`, checked: true, action: () => undefined }] : []),
+            SEP,
+            folderSupported
+              ? { label: vault.kind === 'folder' ? 'Anderen Ordner wählen …' : 'Ordner wählen …', action: () => void pickFolder() }
+              : { label: 'Ordner wählen (nur Chrome/Edge)', disabled: true },
+          ],
+        },
         SEP,
         {
           label: 'Erscheinungsbild',
@@ -657,6 +705,7 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
     if (open) void storageStatus().then(setStatus);
   }, [open]);
   const lastBackup = open ? lastBackupAt() : null;
+  const vault = useVaultState();
 
   return (
     <AnimatePresence>
@@ -679,7 +728,9 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
             <p>Notizen mit Lern-Blöcken – Karteikarten, Quiz und Lückentext direkt im Text.</p>
             {status && (
               <p className="mb-about-storage">
-                {status.persisted
+                {vault.kind === 'folder'
+                  ? `Speicher: Ordner „${vault.name}“ – jede Notiz liegt dort als Datei.`
+                  : status.persisted
                   ? 'Speicher: dauerhaft – der Browser löscht die Notizen nicht von selbst.'
                   : 'Speicher: nicht geschützt – der Browser darf die Notizen bei Platzmangel oder Inaktivität löschen.'}
                 {status.usage != null && ` Belegt: ${formatBytes(status.usage)}.`}

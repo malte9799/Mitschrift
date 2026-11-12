@@ -15,6 +15,7 @@ import { FOCUS_SEARCH_EVENT } from './activeNote';
 import { confirmDialog } from '@/ui/Dialog';
 import { ownsKeys } from '@/ui/ownKeys';
 import { cleanupDrafts } from './draftNotes';
+import { InstallButton } from './InstallButton';
 
 interface SidebarProps {
   open: boolean;
@@ -545,6 +546,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </ul>
           {notes && filtered.length === 0 && <p className="side-empty">{query ? 'Nichts gefunden.' : activeFilter ? 'Keine Notizen in diesem Tag.' : 'Noch keine Notizen.'}</p>}
         </nav>
+
+        <div className="side-foot">
+          <InstallButton />
+        </div>
       </aside>
     </>
   );
