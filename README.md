@@ -10,8 +10,7 @@ npm run build
 ```
 
 Die Web-App läuft komplett statisch (local-first, IndexedDB im Browser) und wird bei jedem Push
-auf `main` per GitHub-Action automatisch auf **GitHub Pages** deployt:
-https://malte9799.github.io/Mitschrift/
+auf `main` per GitHub-Action automatisch auf **GitHub Pages** deployt: https://notes.maltee.dev
 
 ## Aufbau
 
