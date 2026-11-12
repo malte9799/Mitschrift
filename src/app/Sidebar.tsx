@@ -7,7 +7,6 @@ import { Icon } from '@/ui/Icon';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
 import type { Note, NotePatch } from '@/storage';
-import { TagChip } from '@/ui/TagChip';
 import { createNote, deleteNote, moveNote } from './actions';
 import { NOTE_DRAG_TYPE } from '@/editor/NoteLink';
 import { ancestorsOf, canMoveUnder, childrenMap, noteHref } from './noteLinks';
@@ -72,8 +71,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   // Gelöschtes Tag als Filter ignorieren.
   const activeFilter = tagFilter && tagById.has(tagFilter) ? tagFilter : null;
 
-  function toggleFilter(id: string) {
-    const next = activeFilter === id ? null : id;
+  const activeTag = activeFilter ? tagById.get(activeFilter) : undefined;
+  const [tagMenu, setTagMenu] = useState<HTMLElement | null>(null);
+  const [moreMenu, setMoreMenu] = useState<HTMLElement | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [compact, setCompact] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  function setFilter(next: string | null) {
     setTagFilter(next);
     try {
       if (next) localStorage.setItem(TAG_FILTER_KEY, next);
@@ -114,6 +120,24 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
   const children = useMemo(() => childrenMap(notes ?? []), [notes]);
   const { theme, next } = useTheme();
+
+  const counts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const n of notes ?? []) for (const id of n.tags) m.set(id, (m.get(id) ?? 0) + 1);
+    return m;
+  }, [notes]);
+
+  function go(path: string) {
+    navigate(path);
+    if (window.innerWidth <= 860) onClose();
+  }
+
+  const moreItems = [
+    { path: '/', label: 'Übersicht', icon: 'home', active: location.pathname === '/' },
+    { path: '/handbuch', label: 'Handbuch', icon: 'sparkle', active: location.pathname.startsWith('/handbuch') },
+    { path: '/glossar', label: 'Glossar', icon: 'book', active: location.pathname === '/glossar' },
+  ] as const;
+  const moreActive = moreItems.some((m) => m.active && m.path !== '/');
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -289,51 +313,103 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     );
   };
 
+  /** Neue Notiz (+ Vorlagen), Graph, Kalender, Mehr – oben mit Text untereinander, beim Scrollen als Icon-Zeile im Kopf. */
+  const navButtons = (iconOnly: boolean) => {
+    const tab = iconOnly === compact ? undefined : -1;
+    const item = (label: string, icon: Parameters<typeof Icon>[0]['name'], active: boolean, onClick: (e: React.MouseEvent<HTMLButtonElement>) => void, extra?: object) => (
+      <button
+        type="button"
+        className={`side-ico${active ? ' active' : ''}`}
+        onClick={onClick}
+        aria-label={iconOnly ? label : undefined}
+        title={iconOnly ? label : undefined}
+        tabIndex={tab}
+        {...extra}
+      >
+        <Icon name={icon} />
+        {!iconOnly && <span className="side-ico-label">{label}</span>}
+      </button>
+    );
+    return (
+      <>
+        <span className="side-ico-split">
+          {item('Neue Notiz', 'plus', false, () => void onCreate())}
+          <button
+            type="button"
+            className={`side-ico side-ico-caret${templateMenu ? ' active' : ''}`}
+            aria-label="Neue Notiz aus Vorlage"
+            title="Neue Notiz aus Vorlage"
+            tabIndex={tab}
+            onClick={(e) => setTemplateMenu(templateMenu ? null : e.currentTarget)}
+          >
+            <Icon name="chevron" />
+          </button>
+        </span>
+        {item('Graph-Ansicht', 'graph', location.pathname === '/graph', () => go('/graph'))}
+        {item('Kalender', 'calendar', location.pathname === '/kalender', () => go('/kalender'))}
+        {item('Mehr', 'more', !!moreMenu || moreActive, (e) => setMoreMenu(moreMenu ? null : e.currentTarget), {
+          'aria-haspopup': 'menu',
+          'aria-expanded': !!moreMenu,
+        })}
+      </>
+    );
+  };
+
   return (
     <>
       <AnimatePresence>
         {open && <motion.div className="side-backdrop" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}
       </AnimatePresence>
-      <aside className={`side${open ? ' is-open' : ''}`} aria-label="Notizen" aria-hidden={!open}>
-        <div className="side-head">
-          <span className="side-brand">
-            <span className="side-logo" aria-hidden="true" />
-            Mitschrift
-          </span>
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={next}
-            aria-label={`Farbschema: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
-            title={`Farbschema: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
-          >
-            <span className={`theme-dot theme-${theme}`} />
-          </button>
+      <aside
+        className={`side${open ? ' is-open' : ''}${scrolled ? ' is-scrolled' : ''}${compact ? ' is-compact' : ''}`}
+        aria-label="Notizen"
+        aria-hidden={!open}
+        onScroll={(e) => {
+          // Hysterese, damit das Schrumpfen des Kopfs nicht hin- und herspringt.
+          const y = e.currentTarget.scrollTop;
+          setScrolled((s) => (s ? y > 4 : y > 24));
+          // Kompakte Icon-Zeile, sobald die Navigation mit Text unter dem Kopf verschwunden ist.
+          const nav = navRef.current;
+          const top = topRef.current;
+          if (nav && top) setCompact(nav.getBoundingClientRect().bottom - 8 < top.getBoundingClientRect().bottom - (compact ? 40 : 0));
+        }}
+      >
+        <div className="side-top" ref={topRef}>
+          <div className="side-head">
+            <button type="button" className="side-brand" onClick={() => go('/')} title="Zur Übersicht">
+              <span className="side-logo" aria-hidden="true" />
+              Mitschrift
+            </button>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={next}
+              aria-label={`Farbschema: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
+              title={`Farbschema: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
+            >
+              <span className={`theme-dot theme-${theme}`} />
+            </button>
+          </div>
+
+          <label className="side-search">
+            <Icon name="search" />
+            <input ref={searchRef} value={query} placeholder="Suchen" onChange={(e) => setQuery(e.target.value)} />
+            <kbd>⌘K</kbd>
+          </label>
+
+          <div className="side-icons-wrap" aria-hidden={!compact}>
+            <div className="side-icons" role="toolbar" aria-label="Navigation">
+              {navButtons(true)}
+            </div>
+          </div>
         </div>
 
-        <label className="side-search">
-          <Icon name="search" />
-          <input ref={searchRef} value={query} placeholder="Suchen" onChange={(e) => setQuery(e.target.value)} />
-          <kbd>⌘K</kbd>
-        </label>
-
-        <div className="side-new-row">
-          <button type="button" className="side-new" onClick={() => void onCreate()}>
-            <Icon name="plus" />
-            Neue Notiz
-          </button>
-          <button
-            type="button"
-            className={`side-new side-new-tpl${templateMenu ? ' active' : ''}`}
-            aria-label="Neue Notiz aus Vorlage"
-            title="Neue Notiz aus Vorlage"
-            onClick={(e) => setTemplateMenu(templateMenu ? null : e.currentTarget)}
-          >
-            <Icon name="chevron" />
-          </button>
+        <div className="side-nav" ref={navRef} aria-hidden={compact}>
+          {navButtons(false)}
         </div>
+
         {templateMenu && (
-          <Popover anchor={templateMenu} onClose={() => setTemplateMenu(null)} className="side-tpl-pop" align="end">
+          <Popover anchor={templateMenu} onClose={() => setTemplateMenu(null)} className="side-tpl-pop">
             <div className="b-pop-list">
               <p className="b-pop-label">Neue Notiz aus Vorlage</p>
               {[...builtinTemplates, ...userTemplates(notes ?? [])].map((t, i) => (
@@ -360,72 +436,64 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </Popover>
         )}
 
-        <button
-          type="button"
-          className={`side-new side-graph${location.pathname === '/' ? ' active' : ''}`}
-          onClick={() => {
-            navigate('/');
-            if (window.innerWidth <= 860) onClose();
-          }}
-        >
-          <Icon name="home" />
-          Übersicht
-        </button>
+        {moreMenu && (
+          <Popover anchor={moreMenu} onClose={() => setMoreMenu(null)} align="end">
+            <div className="b-pop-list">
+              {moreItems.map((m) => (
+                <button
+                  key={m.path}
+                  type="button"
+                  className={`b-pop-item${m.active ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setMoreMenu(null);
+                    go(m.path);
+                  }}
+                >
+                  <Icon name={m.icon} className="b-pop-icon" />
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </Popover>
+        )}
 
-        <button
-          type="button"
-          className={`side-new side-graph${location.pathname === '/graph' ? ' active' : ''}`}
-          onClick={() => {
-            navigate('/graph');
-            if (window.innerWidth <= 860) onClose();
-          }}
-        >
-          <Icon name="graph" />
-          Graph-Ansicht
-        </button>
-
-        <button
-          type="button"
-          className={`side-new side-graph${location.pathname.startsWith('/handbuch') ? ' active' : ''}`}
-          onClick={() => {
-            navigate('/handbuch');
-            if (window.innerWidth <= 860) onClose();
-          }}
-        >
-          <Icon name="sparkle" />
-          Handbuch
-        </button>
-
-        <button
-          type="button"
-          className={`side-new side-graph${location.pathname === '/glossar' ? ' active' : ''}`}
-          onClick={() => {
-            navigate('/glossar');
-            if (window.innerWidth <= 860) onClose();
-          }}
-        >
-          <Icon name="book" />
-          Glossar
-        </button>
-
-        <button
-          type="button"
-          className={`side-new side-graph${location.pathname === '/kalender' ? ' active' : ''}`}
-          onClick={() => {
-            navigate('/kalender');
-            if (window.innerWidth <= 860) onClose();
-          }}
-        >
-          <Icon name="calendar" />
-          Kalender
-        </button>
-
-        {tags && tags.length > 0 && (
-          <div className="side-tags" role="group" aria-label="Nach Tag filtern">
-            {tags.map((t) => (
-              <TagChip key={t.id} tag={t} active={activeFilter === t.id} onClick={() => toggleFilter(t.id)} />
-            ))}
-          </div>
+        {tagMenu && tags && (
+          <Popover anchor={tagMenu} onClose={() => setTagMenu(null)} align="end" className="side-tag-pop">
+            <div className="b-pop-list">
+              <p className="b-pop-label">Nach Tag filtern</p>
+              <button
+                type="button"
+                className={`b-pop-item${!activeFilter ? ' is-active' : ''}`}
+                onClick={() => {
+                  setTagMenu(null);
+                  setFilter(null);
+                }}
+              >
+                <Icon name="note" className="b-pop-icon" />
+                Alle Notizen
+                {!activeFilter && <Icon name="check" className="side-tag-check" />}
+              </button>
+              <hr className="b-pop-sep" />
+              {tags.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`b-pop-item${activeFilter === t.id ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setTagMenu(null);
+                    setFilter(activeFilter === t.id ? null : t.id);
+                  }}
+                >
+                  <span className="side-tag-dot-wrap">
+                    <span className="tag-dot" data-color={t.color} />
+                  </span>
+                  {t.name}
+                  <span className="side-tag-count">{counts.get(t.id) ?? 0}</span>
+                  {activeFilter === t.id && <Icon name="check" className="side-tag-check" />}
+                </button>
+              ))}
+            </div>
+          </Popover>
         )}
 
         <nav
@@ -444,7 +512,30 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               </ul>
             </>
           )}
-          <h3>{query ? 'Treffer' : activeFilter ? tagById.get(activeFilter)?.name : 'Alle Notizen'}</h3>
+          <div className="side-list-head">
+            <h3>{query ? 'Treffer' : 'Alle Notizen'}</h3>
+            {tags && tags.length > 0 && (
+              <span className={`side-tag-filter${activeTag ? ' is-set' : ''}`} data-color={activeTag?.color}>
+                <button
+                  type="button"
+                  className="side-tag-btn"
+                  onClick={(e) => setTagMenu(tagMenu ? null : e.currentTarget)}
+                  aria-haspopup="menu"
+                  aria-expanded={!!tagMenu}
+                  title="Nach Tag filtern"
+                >
+                  {activeTag ? <span className="tag-dot" data-color={activeTag.color} /> : <Icon name="hash" />}
+                  <span className="side-tag-btn-label">{activeTag ? activeTag.name : 'Tags'}</span>
+                  {!activeTag && <Icon name="chevron" className="side-tag-caret" />}
+                </button>
+                {activeTag && (
+                  <button type="button" className="side-tag-clear" aria-label="Filter aufheben" title="Filter aufheben" onClick={() => setFilter(null)}>
+                    <Icon name="x" />
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
           <ul className={asTree ? 'side-tree' : undefined}>
             <AnimatePresence initial={false}>{asTree ? roots.map((n) => renderItem(n, 0)) : rest.map((n) => renderItem(n))}</AnimatePresence>
           </ul>

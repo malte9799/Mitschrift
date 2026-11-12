@@ -33,9 +33,17 @@ svg{flex:none}
 /* ---------- Linke Leiste ---------- */
 .side{
   position:fixed;inset:var(--menubar-h) auto 0 0;width:var(--side-w);z-index:30;display:flex;flex-direction:column;gap:6px;
-  padding:14px 12px;background:var(--paper-2);border-right:1px solid var(--line);
+  padding:0 12px 14px;background:var(--paper-2);border-right:1px solid var(--line);
+  overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none;scrollbar-width:thin;
   transform:translateX(-100%);transition:transform .35s var(--ease);
 }
+/* Kopf (Marke, Suche) bleibt beim Scrollen der ganzen Leiste oben; darunter blendet dann die Icon-Zeile ein. */
+.side-top{
+  position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:6px;flex:none;
+  margin:0 -12px;padding:14px 12px 6px;background:var(--paper-2);
+  transition:box-shadow .25s var(--ease);
+}
+.side.is-scrolled .side-top{box-shadow:0 1px 0 var(--line),0 8px 14px -12px rgba(0,0,0,.35)}
 .side.is-open{transform:none}
 .side-backdrop{display:none}
 @media (max-width:860px){
@@ -43,9 +51,14 @@ svg{flex:none}
   .side-backdrop{display:block;position:fixed;inset:var(--menubar-h) 0 0 0;z-index:29;background:rgba(0,0,0,.25)}
 }
 .side-head{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px}
-.side-brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.side-brand{
+  display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px;letter-spacing:-.01em;
+  margin:-4px -8px;padding:4px 8px;border:0;border-radius:var(--radius-xs);background:none;color:inherit;font-family:inherit;cursor:pointer;
+  transition:background .15s;
+}
+.side-brand:hover{background:var(--hover)}
 .side-logo{
-  width:22px;height:22px;
+  width:22px;height:22px;flex:none;
   background:var(--accent);
   mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'%3E%3Cpath d='M539.3 64.1C549.2 63.3 558.9 67.1 565.9 74.1C572.9 81.1 576.7 90.8 575.9 100.7C571.9 150 558.5 226.9 529.6 300.4C527.8 304.9 524.1 308.3 519.4 309.7L438.5 334C434.6 335.2 432 338.7 432 342.8C432 347.9 436.1 352 441.2 352L479.8 352C491.8 352 499.5 364.8 493.3 375.1C489.3 381.8 485 388.3 480.6 394.7C478.6 397.6 475.6 399.7 472.2 400.8L374.5 430C370.6 431.2 368 434.7 368 438.8C368 443.9 372.1 448 377.2 448L393.2 448C407.8 448 414.2 465.4 402 473.4C334 518.4 264.3 516.7 219.6 504.7C206.9 501.3 195.6 494.8 185.2 486.8L112 560C103.2 568.8 88.8 568.8 80 560C71.2 551.2 71.2 536.8 80 528L160 448L160.5 448.5C161.2 447.2 162.1 446 163.2 444.9L320 288C328.8 279.2 328.8 264.8 320 256C311.2 247.2 296.8 247.2 288 256L153.7 390.2C144.8 399.1 129.7 394.6 128.7 382C124.4 328.8 138 258.9 201.3 195.6C292.4 104.5 455.5 70.9 539.2 64.1z'/%3E%3C/svg%3E") no-repeat center/contain;
   -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'%3E%3Cpath d='M539.3 64.1C549.2 63.3 558.9 67.1 565.9 74.1C572.9 81.1 576.7 90.8 575.9 100.7C571.9 150 558.5 226.9 529.6 300.4C527.8 304.9 524.1 308.3 519.4 309.7L438.5 334C434.6 335.2 432 338.7 432 342.8C432 347.9 436.1 352 441.2 352L479.8 352C491.8 352 499.5 364.8 493.3 375.1C489.3 381.8 485 388.3 480.6 394.7C478.6 397.6 475.6 399.7 472.2 400.8L374.5 430C370.6 431.2 368 434.7 368 438.8C368 443.9 372.1 448 377.2 448L393.2 448C407.8 448 414.2 465.4 402 473.4C334 518.4 264.3 516.7 219.6 504.7C206.9 501.3 195.6 494.8 185.2 486.8L112 560C103.2 568.8 88.8 568.8 80 560C71.2 551.2 71.2 536.8 80 528L160 448L160.5 448.5C161.2 447.2 162.1 446 163.2 444.9L320 288C328.8 279.2 328.8 264.8 320 256C311.2 247.2 296.8 247.2 288 256L153.7 390.2C144.8 399.1 129.7 394.6 128.7 382C124.4 328.8 138 258.9 201.3 195.6C292.4 104.5 455.5 70.9 539.2 64.1z'/%3E%3C/svg%3E") no-repeat center/contain;
@@ -57,13 +70,13 @@ svg{flex:none}
 .theme-dot.theme-system::after{transform:translateX(50%)}
 
 .side-search{
-  display:flex;align-items:center;gap:8px;padding:0 10px;height:34px;border-radius:var(--radius-xs);
+  display:flex;align-items:center;gap:8px;padding:0 10px;height:34px;flex:none;border-radius:var(--radius-xs);
   background:var(--card);border:1px solid var(--line);color:var(--ink-soft);
 }
 .side-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
 .side-search svg{width:15px;height:15px}
 .side-search input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:14px;color:var(--ink)}
-.side-search kbd{font-family:var(--sans);font-size:11px;color:var(--ink-faint);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.side-search kbd{transition:opacity .2s;font-family:var(--sans);font-size:11px;color:var(--ink-faint);border:1px solid var(--line);border-radius:4px;padding:0 4px}
 .side-new{
   display:flex;align-items:center;gap:8px;flex:none;height:34px;padding:0 10px;border:0;border-radius:var(--radius-xs);
   background:none;color:var(--ink-soft);cursor:pointer;font-size:14px;font-weight:500;transition:background .15s,color .15s;
@@ -71,7 +84,7 @@ svg{flex:none}
 .side-new:hover{background:var(--hover);color:var(--ink)}
 .side-new svg{width:16px;height:16px}
 
-.side-list{flex:1;overflow-y:auto;margin:6px -4px 0;padding:0 4px}
+.side-list{flex:1 0 auto;margin:0 -4px;padding:0 4px}
 .side-list h3{font-size:11.5px;font-weight:600;color:var(--ink-faint);margin:14px 10px 4px;letter-spacing:.02em}
 .side-list ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
 .side-list li{position:relative}
@@ -356,9 +369,6 @@ button.tag-main{cursor:pointer}
 .tag-editor-done{color:var(--accent)}
 .tag-editor-done:hover{background:var(--accent-bg)}
 
-.side-tags{display:flex;flex-wrap:wrap;gap:5px;margin:10px 2px 0}
-.side-tags .tag{height:24px;font-size:12px}
-.side-tags .tag-main{padding:0 9px 0 8px;gap:5px}
 .side-note-tags{display:inline-flex;align-items:center;gap:3px;flex:none}
 .side-note-tags .tag-dot{width:6px;height:6px}
 
@@ -594,11 +604,57 @@ button.tag-main{cursor:pointer}
 @media (max-width:640px){.handbuch-page{padding:16px 16px 30vh}}
 .handbuch-title{margin-bottom:24px}
 
-/* Neue Notiz + Vorlagen-Auswahl */
-.side-new-row{display:flex;gap:2px}
-.side-new-row .side-new:first-child{flex:1;min-width:0}
-.side-new.side-new-tpl{flex:none;width:30px;padding:0;justify-content:center;color:var(--ink-faint)}
-.side-new.side-new-tpl svg{width:14px;height:14px}
+/* Navigation: oben mit Text untereinander (.side-nav), beim Scrollen als Icon-Zeile im Kopf (.side-icons). */
+.side-nav{display:flex;flex-direction:column;gap:1px;flex:none}
+.side-ico{
+  display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:0;border-radius:var(--radius-xs);
+  background:none;color:var(--ink-soft);cursor:pointer;font:inherit;font-size:14px;font-weight:500;transition:background .15s,color .15s;
+}
+.side-ico:hover{background:var(--hover);color:var(--ink)}
+.side-ico svg{width:16px;height:16px;flex:none}
+.side-ico.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm),inset 0 0 0 1px var(--line)}
+.side-ico-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-ico-split{display:flex;gap:2px}
+.side-ico-split > .side-ico:first-child{flex:1;min-width:0}
+.side-ico.side-ico-caret{flex:none;width:30px;padding:0;justify-content:center;color:var(--ink-faint)}
+.side-ico.side-ico-caret svg{width:14px;height:14px}
+
+.side-icons-wrap{
+  position:absolute;left:0;right:0;top:100%;padding:0 12px 6px;background:var(--paper-2);
+  opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .2s,transform .25s var(--ease);
+}
+.side.is-compact .side-icons-wrap{opacity:1;transform:none;pointer-events:auto;box-shadow:0 1px 0 var(--line),0 8px 14px -12px rgba(0,0,0,.35)}
+.side.is-compact .side-top{box-shadow:none}
+.side-icons{display:flex;gap:2px}
+.side-icons .side-ico{flex:1;justify-content:center;height:28px;padding:0}
+.side-icons .side-ico svg{width:17px;height:17px}
+.side-icons .side-ico-split{flex:1.5;gap:0}
+.side-icons .side-ico-split > .side-ico:first-child{color:var(--accent)}
+.side-icons .side-ico.side-ico-caret{flex:none;width:20px}
+.side-icons .side-ico.side-ico-caret svg{width:13px;height:13px}
+
+/* Kopf der Notizliste mit Tag-Filter */
+.side-list-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 4px 4px 10px;min-height:24px}
+.side-list .side-list-head h3{margin:0}
+.side-tag-filter{display:inline-flex;align-items:center;min-width:0;border-radius:999px;transition:background .15s,box-shadow .15s}
+.side-tag-filter.is-set{background:var(--tag-bg);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tag) 35%,transparent)}
+.side-tag-btn{
+  display:inline-flex;align-items:center;gap:5px;min-width:0;height:24px;padding:0 8px;border:0;border-radius:999px;
+  background:none;color:var(--ink-faint);font:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;
+}
+.side-tag-btn:hover,.side-tag-btn[aria-expanded="true"]{background:var(--hover);color:var(--ink)}
+.side-tag-btn svg{width:13px;height:13px;flex:none}
+.side-tag-btn .side-tag-caret{width:11px;height:11px}
+.side-tag-btn-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+.side-tag-filter.is-set .side-tag-btn{color:var(--tag);padding-right:4px}
+.side-tag-filter.is-set .side-tag-btn:hover,.side-tag-filter.is-set .side-tag-btn[aria-expanded="true"]{background:none;color:var(--tag)}
+.side-tag-clear{display:grid;place-items:center;width:20px;height:20px;margin-right:2px;padding:0;border:0;border-radius:50%;background:none;color:var(--tag);cursor:pointer;opacity:.7}
+.side-tag-clear:hover{opacity:1;background:color-mix(in srgb,var(--tag) 16%,transparent)}
+.side-tag-clear svg{width:12px;height:12px}
+.side-tag-dot-wrap{display:grid;place-items:center;width:15px;flex:none}
+.side-tag-count{margin-left:auto;font-size:12px;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+.side-tag-check{width:14px;height:14px;flex:none;color:var(--accent)}
+.b-pop.side-tag-pop{min-width:220px}
 .b-pop.side-tpl-pop{width:280px;max-width:280px}
 .side-tpl-pop .b-pop-item{min-height:44px}
 .side-tpl-text{display:flex;flex-direction:column;min-width:0;line-height:1.3}
