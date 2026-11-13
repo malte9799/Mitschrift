@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { useEditable } from '@/editor/useEditable';
@@ -6,10 +7,12 @@ import { BarButton, BarSep, useBarSubmenu, useBlockBar } from '@/editor/BlockBar
 import { getBlockSelection } from '@/editor/BlockSelection';
 import { convertToGallery } from '@/editor/convertToGallery';
 import { useDarkMode } from '@/hooks/useDarkMode';
-import { applyStyle, cleanSvg, contentStyleOf, paletteOf, sizeOf, svgDataUrl, toHex } from './model';
+import { applyStyle, blankSvg, cleanSvg, contentStyleOf, paletteOf, plainStyle, sizeOf, svgDataUrl, toHex } from './model';
 import { svgAttrs, type SvgAlign } from './SvgNode';
 import { convertSvgToWhiteboard } from './toWhiteboard';
 
+// Der Editor wird erst beim Öffnen geladen.
+const SvgEditor = lazy(() => import('./SvgEditor'));
 
 const aligns: { id: SvgAlign; icon: IconName; label: string }[] = [
   { id: 'floatLeft', icon: 'floatLeft', label: 'Links, Text umfließt' },
@@ -49,12 +52,17 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
   const natural = useMemo(() => (rendered ? sizeOf(rendered) : { width: 0, height: 0 }), [rendered]);
 
   const styleMenu = useBarSubmenu(editor, { icon: 'palette', label: 'Stil', text: 'Stil', popoverClassName: 'b-svg-pop', popoverAlign: 'end' });
-  /** „Bearbeiten“ = in ein Whiteboard umwandeln (Excalidraw), mit dem SVG so, wie es gerade aussieht. */
-  const toWhiteboard = (svg = rendered) => void convertSvgToWhiteboard(editor, getPos, svg);
+  const convertMenu = useBarSubmenu(editor, { icon: 'cycle', label: 'Umwandeln in', text: 'Umwandeln', popoverAlign: 'end' });
+  const [editorOpen, setEditorOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const [liveWidth, setLiveWidth] = useState<number | null>(null);
   const shownWidth = liveWidth ?? width;
+
+  // Der Notiz-Editor darf den Fokus nicht behalten, solange das Vollbild offen ist.
+  useEffect(() => {
+    if (editorOpen) (editor.view.dom as HTMLElement).blur();
+  }, [editorOpen, editor]);
 
   /** Breite per Ziehen am Griff – in % der Spalte, bei Zentriert symmetrisch. */
   function startResize(e: React.PointerEvent, side: 'left' | 'right') {
@@ -112,7 +120,7 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
   if (!source) {
     return (
       <NodeViewWrapper className="b-svg b-svg-is-empty" data-interactive="">
-        <SvgEmpty editable={editable} onSvg={(svg) => updateAttributes(svgAttrs(svg))} onBlank={() => toWhiteboard('')} />
+        <SvgEmpty editable={editable} onSvg={(svg) => updateAttributes(svgAttrs(svg))} onBlank={() => (updateAttributes({ svg: blankSvg }), setEditorOpen(true))} />
       </NodeViewWrapper>
     );
   }
@@ -132,13 +140,9 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
           <BarSep />
           {styleMenu.button}
           <BarButton icon="caption" label="Beschriftung" active={caption !== null} onClick={() => updateAttributes({ caption: caption === null ? '' : null })} />
-          <BarButton icon="pencil" label="Im Whiteboard bearbeiten (Doppelklick) – wird dabei zum Whiteboard" text="Bearbeiten" onClick={() => toWhiteboard()} />
+          <BarButton icon="pencil" label="Im SVG-Editor bearbeiten (Doppelklick)" text="Bearbeiten" onClick={() => setEditorOpen(true)} />
           <BarSep />
-          <BarButton
-            icon="gallery"
-            label={getBlockSelection(editor.state).length > 1 ? 'Markierte in Galerie umwandeln' : 'In Galerie umwandeln'}
-            onClick={toGallery}
-          />
+          {convertMenu.button}
         </>,
       )}
       <figure contentEditable={false} className="b-svg-figure">
@@ -146,7 +150,7 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
           ref={frameRef}
           className={`b-svg-frame${background && !isColor(background) ? ` bg-${background}` : ''}${a.border ? ' has-border' : ''}${invert ? (isColor(background) ? ' invert-all' : ' invert-img') : ''}`}
           style={frameStyle}
-          onDoubleClick={() => editable && toWhiteboard()}
+          onDoubleClick={() => editable && setEditorOpen(true)}
         >
           <img src={src} alt={(a.alt as string) || caption || 'SVG-Grafik'} draggable={false} style={imgStyle} />
           {editable && (
@@ -166,8 +170,53 @@ export function SvgView({ node, editor, getPos, updateAttributes }: NodeViewProp
           ))}
       </figure>
 
+      {convertMenu.submenu(
+        <div className="b-pop-list">
+          <button
+            type="button"
+            className="b-pop-item"
+            onClick={() => {
+              convertMenu.close();
+              void convertSvgToWhiteboard(editor, getPos, rendered);
+            }}
+          >
+            <Icon name="whiteboard" className="b-pop-icon" /> Whiteboard
+          </button>
+          <button
+            type="button"
+            className="b-pop-item"
+            onClick={() => {
+              convertMenu.close();
+              toGallery();
+            }}
+          >
+            <Icon name="gallery" className="b-pop-icon" /> {getBlockSelection(editor.state).length > 1 ? 'Galerie (alle markierten)' : 'Galerie'}
+          </button>
+        </div>,
+      )}
+
       {styleMenu.submenu(<SvgStylePanel attrs={a} source={source} rendered={rendered} update={updateAttributes} />)}
 
+      {editorOpen &&
+        createPortal(
+          <div className="b-svg-window" data-own-keys="">
+            <Suspense fallback={<p className="b-whiteboard-loading">Editor wird geladen …</p>}>
+              <SvgEditor
+                // Farben, Linien und Drehung gehen beim Bearbeiten ins SVG selbst über.
+                initial={applyStyle(source, style)}
+                onSave={(svg) => {
+                  try {
+                    updateAttributes({ svg, ...plainStyle });
+                  } catch {
+                    // Block inzwischen entfernt.
+                  }
+                }}
+                onClose={() => setEditorOpen(false)}
+              />
+            </Suspense>
+          </div>,
+          document.body,
+        )}
     </NodeViewWrapper>
   );
 }

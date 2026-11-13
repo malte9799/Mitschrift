@@ -86,7 +86,7 @@ const SvgPaste = Extension.create({
 
 /**
  * SVG-Grafik: eingefügter SVG-Code, dargestellt als Bild, mit Stil-Optionen (Farben, Linien,
- * Hintergrund, Größe, Position, Drehung). „Bearbeiten“ wandelt ihn in ein Whiteboard um (siehe toWhiteboard.ts).
+ * Hintergrund, Größe, Position, Drehung) und eigenem Vollbild-Editor.
  */
 export const SvgNode = Node.create({
   name: 'svg',

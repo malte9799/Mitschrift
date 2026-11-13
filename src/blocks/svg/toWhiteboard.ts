@@ -17,34 +17,38 @@ function svgToDataUrl(svg: string): DataURL {
 }
 
 /**
- * „Bearbeiten“ eines SVG-Blocks: Er wird durch ein Whiteboard ersetzt, das das SVG – so wie es gerade
- * aussieht, also mit Farben/Linien/Drehung aus dem Stil-Menü – als Bild enthält. Excalidraw kann die
- * Pfade eines SVGs nicht selbst bearbeiten; gezeichnet wird darüber und daneben. Das Whiteboard öffnet sich sofort.
+ * Excalidraw-Szene mit dem SVG als Bild darin. Excalidraw kann die Pfade eines SVGs nicht selbst
+ * bearbeiten – gezeichnet wird darüber und daneben. Leeres SVG → leere Zeichenfläche.
  */
-export async function convertSvgToWhiteboard(editor: Editor, getPos: () => number | undefined, svg: string) {
-  // Excalidraw nur laden, wenn wirklich umgewandelt wird – das Whiteboard braucht es gleich ohnehin.
+async function sceneFromSvg(svg: string): Promise<WhiteboardScene> {
+  if (!svg) return { elements: [], files: {} };
+  // Excalidraw nur laden, wenn wirklich gezeichnet wird.
   const { convertToExcalidrawElements } = await import('@excalidraw/excalidraw');
-  const pos = getPos();
-  if (typeof pos !== 'number') return;
-  const node = editor.state.doc.nodeAt(pos);
+  const natural = sizeOf(svg);
+  const scale = Math.min(1, MAX_SIZE / Math.max(natural.width, natural.height, 1));
+  const fileId = crypto.randomUUID() as FileId;
+  const file: BinaryFileData = { id: fileId, mimeType: 'image/svg+xml', dataURL: svgToDataUrl(svg), created: Date.now() };
+  const elements = convertToExcalidrawElements([
+    { type: 'image', x: 0, y: 0, width: natural.width * scale, height: natural.height * scale, fileId, status: 'saved' },
+  ]);
+  return { elements, files: { [fileId]: file } };
+}
+
+/**
+ * „Umwandeln in → Whiteboard“: Der SVG-Block wird durch einen Whiteboard-Block ersetzt, in dem das SVG
+ * (so, wie es gerade aussieht, also mit dem Stil aus dem Stil-Menü) als Bild liegt. Das Whiteboard öffnet sich sofort.
+ */
+export async function convertSvgToWhiteboard(editor: Editor, getPos: () => number | undefined, rendered: string) {
   const type = editor.schema.nodes.whiteboard;
-  if (!node || !type) return;
+  if (!type) return;
+  const scene = await sceneFromSvg(rendered);
 
-  let scene: WhiteboardScene = { elements: [], files: {} };
-  if (svg) {
-    const natural = sizeOf(svg);
-    const scale = Math.min(1, MAX_SIZE / Math.max(natural.width, natural.height, 1));
-    const fileId = crypto.randomUUID() as FileId;
-    const file: BinaryFileData = { id: fileId, mimeType: 'image/svg+xml', dataURL: svgToDataUrl(svg), created: Date.now() };
-    const elements = convertToExcalidrawElements([
-      { type: 'image', x: 0, y: 0, width: natural.width * scale, height: natural.height * scale, fileId, status: 'saved' },
-    ]);
-    scene = { elements, files: { [fileId]: file } };
-  }
-
+  // Zwischendurch könnte sich das Dokument geändert haben – Position frisch holen.
+  const at = getPos();
+  const current = typeof at === 'number' ? editor.state.doc.nodeAt(at) : null;
+  if (typeof at !== 'number' || current?.type.name !== 'svg') return;
   openNextWhiteboard();
-  // Vorschau sofort mit dem bisherigen Bild; Excalidraw erzeugt beim Schließen eine neue.
   // Kein Löschen im Sinne der Lösch-Rückfrage: Der Inhalt lebt im Whiteboard weiter.
-  const tr = editor.state.tr.replaceWith(pos, pos + node.nodeSize, type.create({ scene, svg })).setMeta(CONFIRMED, true);
+  const tr = editor.state.tr.replaceWith(at, at + current.nodeSize, type.create({ scene, svg: rendered })).setMeta(CONFIRMED, true);
   editor.view.dispatch(tr);
 }
