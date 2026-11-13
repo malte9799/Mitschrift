@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { MenuBar } from './MenuBar';
-import { seedDefaultTags, dedupeTags } from './actions';
+import { seedDefaultTags, dedupeTags, purgeOldTrash } from './actions';
 import { seedDebugDocs } from '@/debug/debugDocs';
 import { DialogHost, alertDialog } from '@/ui/Dialog';
 import { TermDialogHost } from '@/glossary/TermDialog';
@@ -40,6 +40,7 @@ export function AppLayout() {
     void seedDefaultTags().then(seedDebugDocs);
     // Einmalige Pflege: Tags mit gleichem Namen zusammenführen (sonst doppelt in der Gruppierung).
     void dedupeTags();
+    void purgeOldTrash();
   }, []);
 
   // Notiz-Ordner von außen geändert (anderes Programm, anderer Tab, Sync-Dienst): Ansichten neu laden.

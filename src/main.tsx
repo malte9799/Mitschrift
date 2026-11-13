@@ -14,6 +14,7 @@ import { requestPersistence } from './storage/persist';
 import { initStorage } from './storage/vault';
 import { VaultGate } from './app/VaultGate';
 import { ErrorPage } from './app/ErrorPage';
+import { TrashPage } from './app/TrashPage';
 import './styles/tokens.css';
 import './styles/app.css';
 import './styles/editor.css';
@@ -45,6 +46,7 @@ const router = createBrowserRouter(
             { path: '/handbuch/:key', element: <HandbuchPage /> },
             { path: '/glossar', element: <GlossaryPage /> },
             { path: '/kalender', element: <CalendarPage /> },
+            { path: '/papierkorb', element: <TrashPage /> },
             { path: '*', element: <ErrorPage /> },
           ],
         },

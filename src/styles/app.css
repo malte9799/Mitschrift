@@ -679,3 +679,20 @@ button.tag-main{cursor:pointer}
 .error-detail summary{cursor:pointer;text-align:center}
 .error-detail code{display:block;margin-top:8px;padding:8px 10px;border-radius:var(--radius-xs);background:var(--paper-2);color:var(--ink-soft);white-space:pre-wrap;word-break:break-word}
 .vault-gate-card .vault-gate-hint{font-size:12.5px;color:var(--ink-faint)}
+
+/* ---------- Papierkorb ---------- */
+.trash-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.trash-hint{margin:0;font-size:13.5px;color:var(--ink-soft)}
+.trash-head .b-btn svg{width:15px;height:15px}
+.trash-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:64px 16px;color:var(--ink-faint)}
+.trash-empty svg{width:28px;height:28px}
+.trash-empty p{margin:0;font-size:14px}
+.trash-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.trash-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-xs);background:var(--card)}
+.trash-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.trash-title{font-size:14.5px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trash-meta{font-size:12.5px;color:var(--ink-faint)}
+.trash-preview{font-size:13px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trash-actions{display:flex;align-items:center;gap:4px;flex:none}
+.trash-purge:hover{color:var(--red);background:var(--red-bg)}
+@media (max-width:560px){.trash-item{flex-direction:column;align-items:stretch}.trash-actions{justify-content:flex-end}}

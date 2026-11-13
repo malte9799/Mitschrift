@@ -1,4 +1,4 @@
-import type { CalendarEvent, Note, NotePatch, Snippet, StorageAdapter, StorageDump, StoredFile, Tag, Term } from '../types';
+import type { CalendarEvent, Note, NotePatch, Snippet, StorageAdapter, StorageDump, StoredFile, Tag, Term, TrashedNote } from '../types';
 import { emitExternalChange, emitStorageError, type ExternalChange } from '../changes';
 import { buildMirror } from './mirror';
 
@@ -26,6 +26,7 @@ const META = {
   terms: 'glossar.json',
   events: 'termine.json',
   files: 'anhaenge.json',
+  trash: 'papierkorb.json',
 } as const;
 type MetaKey = keyof typeof META;
 
@@ -122,6 +123,8 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
   let terms: Term[] = [];
   let events: CalendarEvent[] = [];
   let files: FileEntry[] = [];
+  /** Gelöschte Notizen (samt Inhalt) – liegen in `.mitschrift/papierkorb.json`, nicht mehr als eigene Datei im Ordner. */
+  let trash: TrashedNote[] = [];
   /** Alle Dateinamen im Wurzelordner (klein geschrieben – macOS unterscheidet nicht). */
   const rootNames = new Set<string>();
   /** Dateinamen, die beim letzten Einlesen tatsächlich im Wurzelordner lagen. */
@@ -294,7 +297,7 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
   // ---------- Metadaten (.mitschrift/*.json) ----------
   const metaPath = (key: MetaKey) => `${META_DIR}/${META[key]}`;
   function saveMeta(key: MetaKey) {
-    const data = { tags, snippets, terms, events, files }[key];
+    const data = { tags, snippets, terms, events, files, trash }[key];
     return write(metaPath(key), json(data));
   }
 
@@ -319,6 +322,7 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
     else if (key === 'snippets') snippets = data as Snippet[];
     else if (key === 'terms') terms = data as Term[];
     else if (key === 'events') events = data as CalendarEvent[];
+    else if (key === 'trash') trash = data as TrashedNote[];
     else files = data as FileEntry[];
     return true;
   }
@@ -398,7 +402,7 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
     }
 
     for (const key of Object.keys(META) as MetaKey[]) {
-      if ((await loadMeta(key, initial)) && key !== 'files') change[key] = true;
+      if ((await loadMeta(key, initial)) && key !== 'files' && key !== 'trash') change[key] = true;
     }
 
     const any = change.notes.length || change.tags || change.snippets || change.terms || change.events;
@@ -563,7 +567,17 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
     async deleteNote(id) {
       const note = notes.get(id);
       const jobs: Promise<unknown>[] = [];
-      if (note) jobs.push(dropNote(id) ?? Promise.resolve());
+      if (note) {
+        // Erst sicher im Papierkorb ablegen, dann die Datei entfernen – scheitert das Schreiben, bleibt die Notiz.
+        trash = [...trash.filter((t) => t.id !== id), { ...note, trashedAt: Date.now() }];
+        try {
+          await saveMeta('trash');
+        } catch (err) {
+          trash = trash.filter((t) => t.id !== id);
+          throw err;
+        }
+        jobs.push(dropNote(id) ?? Promise.resolve());
+      }
       // Unterseiten nicht mitlöschen, sondern an die Eltern-Notiz hängen (ohne updatedAt zu ändern).
       for (const child of notes.values()) {
         if (child.parentId === id) {
@@ -573,6 +587,28 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
         }
       }
       await Promise.all(jobs);
+    },
+
+    async listTrash() {
+      return [...trash].sort((a, b) => b.trashedAt - a.trashedAt);
+    },
+
+    async restoreNote(id) {
+      const trashed = trash.find((t) => t.id === id);
+      if (!trashed) return undefined;
+      const { trashedAt: _, ...rest } = trashed;
+      const note: Note = { ...rest, parentId: rest.parentId && notes.has(rest.parentId) ? rest.parentId : null };
+      notes.set(id, note);
+      // Erst die Datei schreiben, dann aus dem Papierkorb nehmen.
+      await persistNote(note);
+      trash = trash.filter((t) => t.id !== id);
+      await saveMeta('trash');
+      return note;
+    },
+
+    async purgeNote(id) {
+      trash = trash.filter((t) => t.id !== id);
+      await saveMeta('trash');
     },
 
     async listTags() {

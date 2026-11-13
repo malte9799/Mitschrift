@@ -16,6 +16,7 @@ export type {
   TagPatch,
   Term,
   TermPatch,
+  TrashedNote,
 } from './types';
 
 let active: StorageAdapter = idbAdapter;

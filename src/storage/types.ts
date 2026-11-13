@@ -14,6 +14,9 @@ export interface Note {
   updatedAt: number;
 }
 
+/** Notiz im Papierkorb – mit Zeitpunkt des Löschens. */
+export type TrashedNote = Note & { trashedAt: number };
+
 export type NotePatch = Partial<Pick<Note, 'title' | 'content' | 'folder' | 'parentId' | 'tags' | 'starred' | 'template'>>;
 
 /** Farbton eines Tags; die konkreten Werte (hell/dunkel) stehen in tokens.css. */
@@ -98,8 +101,14 @@ export interface StorageAdapter {
   getNote(id: string): Promise<Note | undefined>;
   createNote(init?: NotePatch): Promise<Note>;
   updateNote(id: string, patch: NotePatch): Promise<Note | undefined>;
-  /** Löscht die Notiz; ihre Unterseiten rücken eine Ebene nach oben. */
+  /** Verschiebt die Notiz in den Papierkorb; ihre Unterseiten rücken eine Ebene nach oben. */
   deleteNote(id: string): Promise<void>;
+  /** Notizen im Papierkorb, zuletzt gelöschte zuerst. */
+  listTrash(): Promise<TrashedNote[]>;
+  /** Holt eine Notiz aus dem Papierkorb zurück (ohne Eltern-Notiz, falls diese nicht mehr existiert). */
+  restoreNote(id: string): Promise<Note | undefined>;
+  /** Löscht eine Notiz aus dem Papierkorb endgültig. */
+  purgeNote(id: string): Promise<void>;
 
   listTags(): Promise<Tag[]>;
   createTag(name: string, color: TagColor): Promise<Tag>;

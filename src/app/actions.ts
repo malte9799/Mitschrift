@@ -15,9 +15,37 @@ export async function createNote(init?: NotePatch) {
   return note;
 }
 
+/** Rückfrage vor dem Löschen – überall gleich formuliert. */
+export function trashMessage(title: string, hasChildren: boolean) {
+  return (
+    `„${title || 'Ohne Titel'}“ in den Papierkorb verschieben? Dort kannst du sie ${TRASH_DAYS} Tage lang wiederherstellen.` +
+    (hasChildren ? ' Die Unterseiten bleiben erhalten und rücken eine Ebene nach oben.' : '')
+  );
+}
+
+/** Verschiebt die Notiz in den Papierkorb. */
 export async function deleteNote(id: string) {
   await storage.deleteNote(id);
   notifyNotesChanged();
+}
+
+export async function restoreNote(id: string) {
+  const note = await storage.restoreNote(id);
+  notifyNotesChanged();
+  return note;
+}
+
+export async function purgeNote(id: string) {
+  await storage.purgeNote(id);
+}
+
+/** Tage, nach denen Notizen im Papierkorb von selbst endgültig gelöscht werden. */
+export const TRASH_DAYS = 30;
+
+/** Beim Start: Notizen, die länger als {@link TRASH_DAYS} Tage im Papierkorb liegen, endgültig löschen. */
+export async function purgeOldTrash() {
+  const limit = Date.now() - TRASH_DAYS * 86_400_000;
+  for (const n of await storage.listTrash()) if (n.trashedAt < limit) await storage.purgeNote(n.id);
 }
 
 /** Hängt `id` unter `parentId` (`null` = oberste Ebene). Verhindert Zyklen. */

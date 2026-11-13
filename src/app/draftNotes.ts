@@ -49,7 +49,9 @@ async function discard(ids: string[]) {
     // Hat sie inzwischen Unterseiten, wurde offensichtlich doch etwas damit gemacht.
     if (notes.some((n) => n.parentId === id)) continue;
     if (!notes.some((n) => n.id === id)) continue;
+    // Leerer Entwurf: nicht im Papierkorb ablegen, sondern ganz weg.
     await storage.deleteNote(id);
+    await storage.purgeNote(id);
     removed = true;
   }
   persist();

@@ -7,7 +7,7 @@ import { Icon } from '@/ui/Icon';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
 import type { Note, NotePatch } from '@/storage';
-import { createNote, deleteNote, moveNote } from './actions';
+import { createNote, deleteNote, moveNote, trashMessage } from './actions';
 import { NOTE_DRAG_TYPE } from '@/editor/NoteLink';
 import { ancestorsOf, canMoveUnder, childrenMap, noteHref } from './noteLinks';
 import { useTheme } from './theme';
@@ -16,27 +16,12 @@ import { confirmDialog } from '@/ui/Dialog';
 import { ownsKeys } from '@/ui/ownKeys';
 import { formatShortcut } from '@/ui/shortcut';
 import { cleanupDrafts } from './draftNotes';
+import { noteText } from './noteText';
 import { InstallButton } from './InstallButton';
 
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
-}
-
-function plainText(content: string): string {
-  if (!content) return '';
-  const out: string[] = [];
-  const walk = (n: { text?: string; content?: unknown[] }) => {
-    if (out.join(' ').length > 160) return;
-    if (n.text) out.push(n.text);
-    n.content?.forEach((c) => walk(c as typeof n));
-  };
-  try {
-    walk(JSON.parse(content));
-  } catch {
-    return '';
-  }
-  return out.join(' ');
 }
 
 const TAG_FILTER_KEY = 'mitschrift-tag-filter';
@@ -142,6 +127,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     { path: '/', label: 'Übersicht', icon: 'home', active: location.pathname === '/' },
     { path: '/handbuch', label: 'Handbuch', icon: 'sparkle', active: location.pathname.startsWith('/handbuch') },
     { path: '/glossar', label: 'Glossar', icon: 'book', active: location.pathname === '/glossar' },
+    { path: '/papierkorb', label: 'Papierkorb', icon: 'trash', active: location.pathname === '/papierkorb' },
   ] as const;
   const moreActive = moreItems.some((m) => m.active && m.path !== '/');
 
@@ -176,7 +162,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     return byTag.filter(
       (n) =>
         n.title.toLowerCase().includes(q) ||
-        plainText(n.content).toLowerCase().includes(q) ||
+        noteText(n).toLowerCase().includes(q) ||
         n.tags.some((id) => tagById.get(id)?.name.toLowerCase().includes(q)),
     );
   }, [notes, query, activeFilter, tagById]);
@@ -203,8 +189,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
   async function onDelete(n: Note) {
     const hasChildren = (children.get(n.id)?.length ?? 0) > 0;
-    const message = `„${n.title || 'Ohne Titel'}“ löschen?${hasChildren ? ' Die Unterseiten bleiben erhalten und rücken eine Ebene nach oben.' : ''}`;
-    if (!(await confirmDialog(message, { confirmLabel: 'Löschen', danger: true }))) return;
+    if (!(await confirmDialog(trashMessage(n.title, hasChildren), { confirmLabel: 'In den Papierkorb' }))) return;
     await deleteNote(n.id);
     if (location.pathname === `/n/${n.id}`) navigate('/');
   }
@@ -298,7 +283,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 </span>
               )}
               <span>{relativeDate(n.updatedAt)}</span>
-              <span className="side-note-preview">{plainText(n.content)}</span>
+              <span className="side-note-preview">{noteText(n).slice(0, 160)}</span>
             </span>
           </NavLink>
           <span className="side-note-actions">

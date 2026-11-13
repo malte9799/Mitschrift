@@ -6,7 +6,8 @@ import { NoteEditor } from '@/editor/NoteEditor';
 import { EditorSidebar } from '@/editor/EditorSidebar';
 import { useNote } from '@/hooks/useNote';
 import { Icon } from '@/ui/Icon';
-import { deleteNote } from './actions';
+import { deleteNote, trashMessage } from './actions';
+import { storage } from '@/storage';
 import { NoteTags } from './NoteTags';
 import { NoteBreadcrumbs, NoteRelations } from './NoteRelations';
 import type { LayoutContext } from './AppLayout';
@@ -118,7 +119,8 @@ function NoteScreen({ id }: { id: string }) {
   }
 
   async function onDelete() {
-    if (!(await confirmDialog('Diese Notiz wirklich löschen?', { confirmLabel: 'Löschen', danger: true }))) return;
+    const hasChildren = (await storage.listNotes()).some((n) => n.parentId === id);
+    if (!(await confirmDialog(trashMessage(note?.title ?? '', hasChildren), { confirmLabel: 'In den Papierkorb' }))) return;
     await deleteNote(id);
     navigate('/');
   }

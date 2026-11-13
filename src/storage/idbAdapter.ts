@@ -1,5 +1,5 @@
 import { openDB, type DBSchema } from 'idb';
-import type { CalendarEvent, Note, NotePatch, Snippet, StorageAdapter, StorageDump, StoredFile, Tag, Term } from './types';
+import type { CalendarEvent, Note, NotePatch, Snippet, StorageAdapter, StorageDump, StoredFile, Tag, Term, TrashedNote } from './types';
 
 interface MitschriftDB extends DBSchema {
   notes: { key: string; value: Note; indexes: { updatedAt: number } };
@@ -9,9 +9,10 @@ interface MitschriftDB extends DBSchema {
   tags: { key: string; value: Tag };
   terms: { key: string; value: Term };
   events: { key: string; value: CalendarEvent; indexes: { date: string } };
+  trash: { key: string; value: TrashedNote };
 }
 
-const dbPromise = openDB<MitschriftDB>('mitschrift', 4, {
+const dbPromise = openDB<MitschriftDB>('mitschrift', 5, {
   upgrade(db, oldVersion) {
     if (oldVersion < 1) {
       const notes = db.createObjectStore('notes', { keyPath: 'id' });
@@ -25,6 +26,7 @@ const dbPromise = openDB<MitschriftDB>('mitschrift', 4, {
       const events = db.createObjectStore('events', { keyPath: 'id' });
       events.createIndex('date', 'date');
     }
+    if (oldVersion < 5) db.createObjectStore('trash', { keyPath: 'id' });
   },
   // Ein anderer Tab hält noch diese (alte) Verbindung offen und würde damit das Upgrade dort
   // für immer blockieren – hier einfach schließen, der andere Tab lädt sich bei Bedarf neu.
@@ -86,14 +88,39 @@ export const idbAdapter: StorageAdapter = {
 
   async deleteNote(id) {
     const db = await dbPromise;
-    const tx = db.transaction('notes', 'readwrite');
-    const note = await tx.store.get(id);
-    await tx.store.delete(id);
+    const tx = db.transaction(['notes', 'trash'], 'readwrite');
+    const notes = tx.objectStore('notes');
+    const note = await notes.get(id);
+    if (note) await tx.objectStore('trash').put({ ...note, trashedAt: Date.now() });
+    await notes.delete(id);
     // Unterseiten nicht mitlöschen, sondern an die Eltern-Notiz hängen (ohne updatedAt zu ändern).
-    for (const child of await tx.store.getAll()) {
-      if (child.parentId === id) await tx.store.put({ ...child, parentId: note?.parentId ?? null });
+    for (const child of await notes.getAll()) {
+      if (child.parentId === id) await notes.put({ ...child, parentId: note?.parentId ?? null });
     }
     await tx.done;
+  },
+
+  async listTrash() {
+    const all = await (await dbPromise).getAll('trash');
+    return all.sort((a, b) => b.trashedAt - a.trashedAt);
+  },
+
+  async restoreNote(id) {
+    const db = await dbPromise;
+    const tx = db.transaction(['notes', 'trash'], 'readwrite');
+    const trashed = await tx.objectStore('trash').get(id);
+    if (!trashed) return undefined;
+    const { trashedAt: _, ...rest } = trashed;
+    const parentOk = rest.parentId ? !!(await tx.objectStore('notes').get(rest.parentId)) : true;
+    const note: Note = { ...rest, parentId: parentOk ? (rest.parentId ?? null) : null };
+    await tx.objectStore('notes').put(note);
+    await tx.objectStore('trash').delete(id);
+    await tx.done;
+    return note;
+  },
+
+  async purgeNote(id) {
+    await (await dbPromise).delete('trash', id);
   },
 
   async listTags() {

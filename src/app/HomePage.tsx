@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { noteText } from './noteText';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Icon, type IconName } from '@/ui/Icon';
@@ -62,26 +63,6 @@ const sizes: { value: Size; label: string }[] = [
 
 const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
 const title = (n: Note) => n.title.trim() || 'Ohne Titel';
-
-function plainText(content: string, max = 220): string {
-  if (!content) return '';
-  const out: string[] = [];
-  let len = 0;
-  const walk = (n: { text?: string; content?: unknown[] }) => {
-    if (len > max) return;
-    if (n.text) {
-      out.push(n.text);
-      len += n.text.length;
-    }
-    n.content?.forEach((c) => walk(c as typeof n));
-  };
-  try {
-    walk(JSON.parse(content));
-  } catch {
-    return '';
-  }
-  return out.join(' ').slice(0, max);
-}
 
 const DAY = 86_400_000;
 
@@ -174,7 +155,7 @@ export function HomePage() {
       list = list.filter(
         (n) =>
           n.title.toLowerCase().includes(q) ||
-          plainText(n.content, 4000).toLowerCase().includes(q) ||
+          noteText(n).toLowerCase().includes(q) ||
           n.tags.some((id) => tagById.get(id)?.name.toLowerCase().includes(q)),
       );
     }
@@ -292,7 +273,7 @@ export function HomePage() {
                 {title(n)}
                 {parent && <span className="lib-parent">in {title(parent)}</span>}
               </span>
-              <span className="lib-snippet">{plainText(n.content) || 'Noch kein Inhalt'}</span>
+              <span className="lib-snippet">{noteText(n).slice(0, 220) || 'Noch kein Inhalt'}</span>
               {noteTags.length > 0 && (
                 <span className="lib-row-tags">
                   {noteTags.map((t) => (
