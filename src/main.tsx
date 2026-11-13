@@ -11,6 +11,7 @@ import { HandbuchPage } from './app/HandbuchPage';
 import { GlossaryPage } from './app/GlossaryPage';
 import { CalendarPage } from './app/CalendarPage';
 import { requestPersistence } from './storage/persist';
+import { initPwaUpdates } from './app/pwaUpdate';
 import { initStorage } from './storage/vault';
 import { VaultGate } from './app/VaultGate';
 import { ErrorPage } from './app/ErrorPage';
@@ -33,6 +34,7 @@ import './styles/tools.css';
 import './styles/images.css';
 
 void requestPersistence();
+if (import.meta.env.PROD) initPwaUpdates();
 
 const router = createBrowserRouter(
   [

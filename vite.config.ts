@@ -89,6 +89,8 @@ export default defineConfig({
     // Installierbar + offline: Manifest und ein Service Worker, der die komplette App vorab cacht.
     VitePWA({
       registerType: 'autoUpdate',
+      // Registrierung selbst in src/app/pwaUpdate.ts: häufiger auf Updates prüfen und nicht mitten im Tippen neu laden.
+      injectRegister: false,
       includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         id: '/',
@@ -110,6 +112,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Neue Version sofort übernehmen (macht das Plugin bei injectRegister:false nicht selbst);
+        // neu geladen wird dann in src/app/pwaUpdate.ts, sobald niemand tippt.
+        skipWaiting: true,
+        clientsClaim: true,
         // woff2 reicht (alle PWA-fähigen Browser) – KaTeX liefert zusätzlich woff/ttf, die nie geladen würden.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // Große, selten gebrauchte Lazy-Chunks und die Excalidraw-Schriften nicht vorab cachen,
