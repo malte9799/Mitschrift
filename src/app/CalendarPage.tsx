@@ -9,6 +9,7 @@ import type { LayoutContext } from './AppLayout';
 import { useEvents, openEventDialog } from './eventStore';
 import { noteHref } from './noteLinks';
 import { INTEGRATIONS, isSourceVisible, toggleSource, useVisibleSources } from './integrations';
+import { plural } from '@/ui/plural';
 
 const SOURCE_LABEL: Record<string, string> = { untis: 'Untis', itslearning: 'itslearning' };
 
@@ -73,7 +74,7 @@ export function CalendarPage() {
             <Icon name="menu" />
           </button>
           <h1 className="graph-title">Kalender</h1>
-          {events && <span className="graph-stats">{events.filter((e) => visibleSources.has(e.source)).length} Termine</span>}
+          {events && <span className="graph-stats">{plural(events.filter((e) => visibleSources.has(e.source)).length, 'Termin', 'Termine')}</span>}
         </div>
       </header>
 

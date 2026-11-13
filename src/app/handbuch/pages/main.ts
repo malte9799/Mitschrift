@@ -21,7 +21,7 @@ const page: HandbuchPage = {
       p(t('Deine Notizen müssen nicht für sich allein stehen. Wie du sie verlinkst, in Unterseiten sortierst und im Graphen betrachtest, zeigt dir:')),
       ...pageLink('verknuepfen', 'Verknüpfen & Graph-Ansicht', t('Notizen verlinken, Unterseiten anlegen, alles im Graphen sehen.')),
 
-      tip(t('Dieses Handbuch wächst mit der Zeit – weitere Kapitel zu Kalender, Glossar und mehr kommen nach und nach dazu. Links in der Leiste führen dich direkt dorthin. Du findest das Handbuch jederzeit wieder über das Buch-Symbol in der Seitenleiste oder unter '), t('/handbuch', ['code']), t('.')),
+      tip(t('Dieses Handbuch wächst mit der Zeit – weitere Kapitel zu Kalender, Glossar und mehr kommen nach und nach dazu. Links in der Leiste führen dich direkt dorthin. Du findest das Handbuch jederzeit wieder in der Seitenleiste unter '), t('Mehr → Handbuch', ['bold']), t(' oder unter '), t('/handbuch', ['code']), t('.')),
     ],
   }),
 };

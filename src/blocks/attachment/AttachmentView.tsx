@@ -77,7 +77,7 @@ export function AttachmentView({ node, editor, updateAttributes, deleteNode }: N
           <Icon name="file" className="b-attach-ph-icon" />
           <div className="b-attach-ph-main">
             <button type="button" className="b-btn b-btn-primary" disabled={busy} onClick={pickFile}>
-              <Icon name="upload" /> {busy ? 'Wird hochgeladen …' : 'Datei wählen'}
+              <Icon name="upload" /> {busy ? 'Wird gespeichert …' : 'Datei wählen'}
             </button>
             <p className="b-attach-ph-hint">Oder eine Datei hierher ziehen.</p>
           </div>

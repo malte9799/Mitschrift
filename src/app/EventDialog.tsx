@@ -153,7 +153,7 @@ export function EventDialogHost() {
               </label>
             </div>
             <label className="gl-field">
-              <span>Notiz (optional)</span>
+              <span>Beschreibung (optional)</span>
               <textarea rows={3} value={draft.notes} placeholder="Details zum Termin …" readOnly={readOnly} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
             </label>
             {notes && notes.length > 0 && !readOnly && (
@@ -195,7 +195,7 @@ export function EventDialogHost() {
               </button>
               {!readOnly && (
                 <button type="submit" className="b-btn b-btn-primary" disabled={!draft.title.trim() || !draft.date}>
-                  {draft.id ? 'Sichern' : 'Anlegen'}
+                  {draft.id ? 'Speichern' : 'Anlegen'}
                 </button>
               )}
             </div>

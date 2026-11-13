@@ -13,6 +13,7 @@ import { noteHref } from './noteLinks';
 import { useViewed } from './recentViews';
 import { NotePreview } from './NotePreview';
 import type { LayoutContext } from './AppLayout';
+import { plural } from '@/ui/plural';
 
 type Layout = 'grid' | 'mosaic' | 'list';
 type Group = 'none' | 'tag' | 'date';
@@ -216,7 +217,7 @@ export function HomePage() {
             <Icon name="note" />
           </span>
           <h1>Leeres Blatt</h1>
-          <p>Leg deine erste Mitschrift an.</p>
+          <p>Leg deine erste Notiz an.</p>
           <button type="button" className="b-btn b-btn-primary" onClick={onCreate}>
             <Icon name="plus" /> Neue Notiz
           </button>
@@ -362,8 +363,8 @@ export function HomePage() {
           <div>
             <h1>Übersicht</h1>
             <p className="lib-sub">
-              {count === notes.length ? `${notes.length} Notizen` : `${count} von ${notes.length} Notizen`}
-              {tagList.length > 0 && ` · ${tagList.length} Tags`}
+              {count === notes.length ? plural(notes.length, 'Notiz', 'Notizen') : `${count} von ${plural(notes.length, 'Notiz', 'Notizen')}`}
+              {tagList.length > 0 && ` · ${plural(tagList.length, 'Tag', 'Tags')}`}
             </p>
           </div>
           <button type="button" className="b-btn b-btn-primary" onClick={onCreate}>

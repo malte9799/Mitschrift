@@ -10,7 +10,7 @@ import type { Note, NotePatch } from '@/storage';
 import { createNote, deleteNote, moveNote, trashMessage } from './actions';
 import { NOTE_DRAG_TYPE } from '@/editor/NoteLink';
 import { ancestorsOf, canMoveUnder, childrenMap, noteHref } from './noteLinks';
-import { useTheme } from './theme';
+import { themeMeta, useTheme } from './theme';
 import { FOCUS_SEARCH_EVENT } from './activeNote';
 import { confirmDialog } from '@/ui/Dialog';
 import { ownsKeys } from '@/ui/ownKeys';
@@ -111,6 +111,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   // Unberührte „Neue Notiz“-Entwürfe der letzten Sitzung wegräumen.
   useEffect(cleanupDrafts, []);
   const { theme, next } = useTheme();
+  const themeLabel = themeMeta.find((m) => m.value === theme)?.label ?? theme;
 
   const counts = useMemo(() => {
     const m = new Map<string, number>();
@@ -375,8 +376,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               type="button"
               className="icon-btn"
               onClick={next}
-              aria-label={`Farbschema: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
-              title={`Farbschema: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
+              aria-label={`Farbschema: ${themeLabel}`}
+              title={`Farbschema: ${themeLabel}`}
             >
               <span className={`theme-dot theme-${theme}`} />
             </button>

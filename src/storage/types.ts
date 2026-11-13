@@ -49,7 +49,7 @@ export interface Term {
   expansion: string;
   /** Längere Erklärung (optional). */
   definition: string;
-  /** Fächer (Tag-IDs). */
+  /** Tags (IDs). */
   tags: string[];
   createdAt: number;
   updatedAt: number;

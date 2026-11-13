@@ -6,6 +6,8 @@ import { blockTypes, type BlockCategory, type BlockTypeId } from '@/editor/block
 import { OPEN_LINK_EVENT } from '@/editor/Toolbar';
 import { exportFormats, exportNote, type ExportFormat } from '@/export';
 import { createNote } from './actions';
+import { noteHref } from './noteLinks';
+import { version as APP_VERSION } from '../../package.json';
 import { builtinTemplates, userTemplates } from './templates';
 import { FOCUS_SEARCH_EVENT, useActiveNote } from './activeNote';
 import { useTheme } from './theme';
@@ -21,6 +23,7 @@ import { chooseFolder, disconnectFolder, folderSupported, useVaultState } from '
 import { notifyNotesChanged, useNotes } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 import { reloadEvents } from './eventStore';
+import { plural } from '@/ui/plural';
 
 export type MenuEntry =
   | {
@@ -54,6 +57,13 @@ interface MenuBarProps {
 const SEP: MenuEntry = { type: 'separator' };
 const isItem = (e: MenuEntry | undefined): e is Item => !!e && e.type !== 'separator';
 const selectable = (e: MenuEntry | undefined) => isItem(e) && !e.disabled;
+
+/** Im Menü ausgeschrieben, wo die Kurzform (z. B. „H1“) für Leisten gedacht ist. */
+const menuLabels: Partial<Record<BlockTypeId, string>> = {
+  heading1: 'Überschrift 1',
+  heading2: 'Überschrift 2',
+  heading3: 'Überschrift 3',
+};
 
 /** Vom Editor selbst behandelte Kürzel, hier nur zur Anzeige. */
 const blockShortcuts: Partial<Record<BlockTypeId, string>> = {
@@ -131,7 +141,8 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   }, []);
 
   const note = active?.note ?? null;
-  const ownTemplates = userTemplates(useNotes() ?? []);
+  const allNotes = useNotes();
+  const ownTemplates = userTemplates(allNotes ?? []);
   // Editor-Befehle nur im Bearbeiten-Modus.
   const ed = active && !active.learning ? active.editor : null;
   const hasSelection = !!ed && !ed.state.selection.empty;
@@ -145,14 +156,22 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
     if (!active) return;
     exportNote(active.note, format, active.editor?.getJSON()).catch((err) => {
       console.error(err);
-      void alertDialog('Export fehlgeschlagen.');
+      void alertDialog(`Export fehlgeschlagen${err instanceof Error && err.message ? `: ${err.message}` : '.'} Versuch es noch einmal oder wähle ein anderes Format.`);
     });
+  }
+
+  /** Vorhandene Willkommens-Notiz öffnen, statt bei jedem Klick eine neue anzulegen. */
+  function openWelcome() {
+    const welcome = welcomeNote();
+    const existing = (allNotes ?? []).find((n) => n.title === welcome.title);
+    if (existing) navigate(noteHref(existing.id));
+    else void newNote(welcome);
   }
 
   function runBackup() {
     downloadBackup().catch((err) => {
       console.error(err);
-      void alertDialog('Backup fehlgeschlagen.');
+      void alertDialog(`Backup fehlgeschlagen${err instanceof Error && err.message ? `: ${err.message}` : '.'} Prüfe, ob genug Speicherplatz frei ist, und versuch es noch einmal.`);
     });
   }
 
@@ -166,7 +185,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
       try {
         const { dump, exportedAt } = await readBackup(file);
         const ok = await confirmDialog(
-          `Backup vom ${new Date(exportedAt).toLocaleString('de-DE')} mit ${dump.notes.length} Notizen einspielen? ` +
+          `Backup vom ${new Date(exportedAt).toLocaleString('de-DE')} mit ${plural(dump.notes.length, 'Notiz', 'Notizen')} einspielen? ` +
             'Vorhandene Notizen bleiben erhalten; bei gleichen Notizen gewinnt die neuere Fassung.',
           { confirmLabel: 'Einspielen' },
         );
@@ -225,7 +244,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
 
   const blockItem = (id: BlockTypeId, checked?: boolean): Item => {
     const def = blockTypes.find((b) => b.id === id)!;
-    return { label: def.label, shortcut: blockShortcuts[id], checked, disabled: !ed, action: () => ed && def.run(ed) };
+    return { label: menuLabels[id] ?? def.label, shortcut: blockShortcuts[id], checked, disabled: !ed, action: () => ed && def.run(ed) };
   };
   const byCategory = (cat: BlockCategory) => blockTypes.filter((b) => b.category === cat).map((b) => blockItem(b.id));
   const mark = (label: string, name: string, shortcut: string, run: (e: Editor) => void): Item => ({
@@ -389,8 +408,8 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
     {
       label: 'Darstellung',
       items: [
-        { label: 'Bearbeiten', shortcut: '⌃⌘E', bind: true, checked: !!active && !active.learning, disabled: !active, action: () => active?.setLearning(false) },
-        { label: 'Lernen', shortcut: '⌃⌘L', bind: true, checked: !!active?.learning, disabled: !active, action: () => active?.setLearning(true) },
+        { label: 'Bearbeitungsmodus', shortcut: '⌃⌘E', bind: true, checked: !!active && !active.learning, disabled: !active, action: () => active?.setLearning(false) },
+        { label: 'Lernmodus', shortcut: '⌃⌘L', bind: true, checked: !!active?.learning, disabled: !active, action: () => active?.setLearning(true) },
         SEP,
         { label: 'Übersicht', shortcut: '⌃⌘H', bind: true, checked: pathname === '/', action: () => navigate('/') },
         { label: 'Graph-Ansicht', shortcut: '⌃⌘G', bind: true, checked: pathname === '/graph', action: () => navigate('/graph') },
@@ -430,7 +449,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
     {
       label: 'Hilfe',
       items: [
-        { label: 'Willkommens-Notiz öffnen', action: () => void newNote(welcomeNote()) },
+        { label: 'Willkommens-Notiz öffnen', action: openWelcome },
         { label: 'Über Mitschrift', action: () => setAbout(true) },
       ],
     },
@@ -711,7 +730,7 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
           >
             <span className="mb-about-logo" aria-hidden="true" />
             <h2>Mitschrift</h2>
-            <p className="mb-about-version">Version 0.1.0</p>
+            <p className="mb-about-version">Version {APP_VERSION}</p>
             <p>Notizen mit Lern-Blöcken – Karteikarten, Quiz und Lückentext direkt im Text.</p>
             {status && (
               <p className="mb-about-storage">

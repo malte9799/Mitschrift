@@ -1,5 +1,6 @@
 import type { HandbuchPage } from '@/app/handbuch/registry';
 import { h1, h2, li, p, t, tip } from '@/app/handbuch/blocks';
+import { formatShortcut } from '@/ui/shortcut';
 
 const page: HandbuchPage = {
   key: 'bloecke-text',
@@ -27,7 +28,7 @@ const page: HandbuchPage = {
         t('Code', ['code']),
         t(', '),
         t('Taste', ['kbd']),
-        t(' (⌘⇧K), H'),
+        t(` (${formatShortcut('⌘⇧K')}), H`),
         t('2', ['subscript']),
         t('O tiefgestellt, x'),
         t('2', ['superscript']),

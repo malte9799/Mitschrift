@@ -114,7 +114,7 @@ export function TagPicker({ tags, selected, onToggle, onClose }: TagPickerProps)
                 aria-label={`${t.name} löschen`}
                 title="Tag löschen"
                 onClick={async () => {
-                  if (!(await confirmDialog(`Tag „${t.name}“ löschen? Es wird aus allen Notizen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
+                  if (!(await confirmDialog(`Tag „${t.name}“ löschen? Es wird aus allen Notizen, Begriffen und Terminen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
                   await deleteTag(t.id);
                 }}
               >
@@ -197,7 +197,7 @@ function TagEditor({ tag, tags, onDone }: { tag: Tag; tags: Tag[]; onDone: () =>
           type="button"
           className="tag-editor-delete"
           onClick={async () => {
-            if (!(await confirmDialog(`Tag „${tag.name}“ löschen? Es wird aus allen Notizen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
+            if (!(await confirmDialog(`Tag „${tag.name}“ löschen? Es wird aus allen Notizen, Begriffen und Terminen entfernt.`, { confirmLabel: 'Löschen', danger: true }))) return;
             await deleteTag(tag.id);
             onDone();
           }}

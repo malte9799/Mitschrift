@@ -12,7 +12,7 @@ export interface IntegrationMeta {
 }
 
 export const INTEGRATIONS: IntegrationMeta[] = [
-  { source: 'itslearning', label: 'itslearning', hint: 'Noch nicht angebunden – itslearning bietet keinen einfachen API-Zugang für Schüler-Konten.', comingSoon: true },
+  { source: 'itslearning', label: 'itslearning', hint: 'Folgt später.', comingSoon: true },
 ];
 
 const VISIBLE_KEY = 'mitschrift-calendar-sources';

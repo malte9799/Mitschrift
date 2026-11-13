@@ -44,7 +44,7 @@ const page: HandbuchPage = {
       note(t('Über „/“ → „Whiteboard“ einfügen – das Zeichenfenster öffnet sich direkt.')),
 
       h2('Abkürzungsverzeichnis'),
-      p(t('Listet automatisch alle Glossar-Begriffe auf, die in dieser Notiz vorkommen (oder wahlweise alle aus dem '), t('Glossar', ['bold']), t(' in der Seitenleiste) – ohne Handarbeit.')),
+      p(t('Listet automatisch alle Glossar-Begriffe auf, die in dieser Notiz vorkommen (oder wahlweise alle aus dem '), t('Glossar', ['bold']), t(' unter „Mehr“ in der Seitenleiste) – ohne Handarbeit.')),
       { type: 'glossaryList', attrs: { title: 'Abkürzungsverzeichnis', scope: 'note' } },
     ],
   }),

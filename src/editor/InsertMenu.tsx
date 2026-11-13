@@ -79,7 +79,7 @@ export function InsertMenu({ handle, snippets, onClose }: InsertMenuProps) {
   if (items.length === 0) {
     return (
       <div className="c-insert-menu">
-        <p className="c-insert-menu-empty">Keine Treffer für „{handle.query}"</p>
+        <p className="c-insert-menu-empty">Keine Treffer für „{handle.query}“</p>
       </div>
     );
   }

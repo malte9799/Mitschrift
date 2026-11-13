@@ -21,8 +21,8 @@ export function welcomeNote(): NotePatch {
         content: [p(t('Canberra – nicht Sydney. So funktioniert eine Aufklapp-Frage zum Selbst-Abfragen.'))],
       },
       h2('Alle Blöcke im Handbuch'),
-      p(t('Jeder Blocktyp – mit Erklärung und echtem Beispiel – steht im '), t('Handbuch', ['bold']), t(' (Buch-Symbol in der Seitenleiste, oder direkt unter '), t('/handbuch', ['code']), t(').')),
-      tip(t('Tags, Kalender und Glossar findest du ebenfalls in der Seitenleiste. Diese Notiz hier darfst du bedenkenlos verändern oder löschen – sie ist nur zum Ausprobieren da.')),
+      p(t('Jeder Blocktyp – mit Erklärung und echtem Beispiel – steht im '), t('Handbuch', ['bold']), t(' (in der Seitenleiste unter '), t('Mehr → Handbuch', ['bold']), t(', oder direkt unter '), t('/handbuch', ['code']), t(').')),
+      tip(t('Kalender und Graph-Ansicht findest du direkt in der Seitenleiste, Glossar und Papierkorb unter „Mehr“, Tags über „# Tags“ über der Notizliste. Diese Notiz hier darfst du bedenkenlos verändern oder löschen – sie ist nur zum Ausprobieren da.')),
     ],
   };
   return { title: 'Willkommen bei Mitschrift', content: JSON.stringify(doc) };

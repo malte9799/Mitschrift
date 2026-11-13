@@ -12,7 +12,7 @@ const page: HandbuchPage = {
         t('Das hier gilt für deine eigenen Notizen – dieses Handbuch selbst ist technisch keine Notiz und taucht deshalb nicht in deiner Notizliste, der Suche oder dem Graphen auf.'),
       ),
 
-      h1('Dokumente verlinken'),
+      h1('Notizen verlinken'),
       p(
         t('Tippe „'),
         t('[[', ['code']),
@@ -23,7 +23,7 @@ const page: HandbuchPage = {
       p(
         t('Ein Link erscheint zunächst als normaler Text-Link; ein Klick öffnet die Notiz. Über das Einfügen-Menü („'),
         t('/', ['code']),
-        t('“ → „Notiz verlinken“) fügst du sie stattdessen als eigenen Block ein – eine '),
+        t('“ → „Notiz als Zeile“ bzw. „Notiz als Karte“) fügst du sie stattdessen als eigenen Block ein – eine '),
         t('Zeile', ['bold']),
         t(' oder '),
         t('Karte', ['bold']),
@@ -35,7 +35,7 @@ const page: HandbuchPage = {
 
       h1('Unterseiten'),
       p(
-        t('Eine Notiz kann Unterseiten haben – sichtbar als Baum in der Seitenleiste, mit Pfad („Breadcrumbs“) oben in der Notiz. Neue Unterseite: Button in der Seitenleiste, „'),
+        t('Eine Notiz kann Unterseiten haben – sichtbar als Baum in der Seitenleiste, mit Pfad („Breadcrumbs“) oben in der Notiz. Neue Unterseite: das Plus neben der Notiz in der Seitenleiste, „'),
         t('Ablage → Neue Unterseite', ['bold']),
         t('“, oder beim Anlegen über „'),
         t('[[', ['code']),
@@ -44,7 +44,7 @@ const page: HandbuchPage = {
 
       h1('Graph-Ansicht'),
       p(
-        t('Das Buch-Symbol „Graph-Ansicht“ in der Seitenleiste zeigt alle deine Notizen als Punkte, verbunden durch ihre Links (durchgezogene Linie mit Pfeil) und Unterseiten-Beziehungen (gestrichelt). Zoomen, Verschieben und Anklicken funktionieren direkt im Graphen.'),
+        t('Die „Graph-Ansicht“ in der Seitenleiste zeigt alle deine Notizen als Punkte, verbunden durch ihre Links (durchgezogene Linie mit Pfeil) und Unterseiten-Beziehungen (gestrichelt). Zoomen, Verschieben und Anklicken funktionieren direkt im Graphen.'),
       ),
       p(t('Probier es an einer eigenen Notiz mit ein paar Unterseiten aus – so siehst du am schnellsten, wie sich Verlinkung und Hierarchie im Graphen zeigen.')),
 

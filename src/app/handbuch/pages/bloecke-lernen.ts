@@ -1,5 +1,6 @@
 import type { HandbuchPage } from '@/app/handbuch/registry';
 import { h1, h2, p, t } from '@/app/handbuch/blocks';
+import { formatShortcut } from '@/ui/shortcut';
 
 const page: HandbuchPage = {
   key: 'bloecke-lernen',
@@ -11,7 +12,7 @@ const page: HandbuchPage = {
       p(t('Diese Blöcke werden im '), t('Lernmodus', ['bold']), t(' (oben in der Kopfleiste) interaktiv – zum Selbst-Abfragen statt nur Lesen.')),
 
       h2('Lückentext'),
-      p(t('Text markieren und in der Formatleiste auf das Lücken-Symbol klicken (oder ⌘⇧L). Im Lernmodus wird die Lücke zum Eingabefeld.')),
+      p(t(`Text markieren und in der Formatleiste auf das Lücken-Symbol klicken (oder ${formatShortcut('⌘⇧L')}). Im Lernmodus wird die Lücke zum Eingabefeld.`)),
       p(t('Die Mitochondrien sind das '), t('Kraftwerk', ['cloze']), t(' der Zelle. Die Fotosynthese findet in den '), t('Chloroplasten', ['cloze']), t(' statt.')),
 
       h2('Karteikarten'),

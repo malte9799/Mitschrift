@@ -104,7 +104,7 @@ export function TermDialogHost() {
             </label>
             {tags && tags.length > 0 && (
               <div className="gl-field">
-                <span>Fächer</span>
+                <span>Tags</span>
                 <div className="gl-dialog-tags">
                   {tags.map((t) => (
                     <TagChip
@@ -127,7 +127,7 @@ export function TermDialogHost() {
                 Abbrechen
               </button>
               <button type="submit" className="b-btn b-btn-primary" disabled={!draft.term.trim() || clash}>
-                {draft.id ? 'Sichern' : 'Anlegen'}
+                {draft.id ? 'Speichern' : 'Anlegen'}
               </button>
             </div>
           </motion.form>
