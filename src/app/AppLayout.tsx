@@ -8,6 +8,7 @@ import { DialogHost, alertDialog } from '@/ui/Dialog';
 import { TermDialogHost } from '@/glossary/TermDialog';
 import { EventDialogHost } from './EventDialog';
 import { CommandPalette } from './CommandPalette';
+import { installWheelZoom } from './docZoom';
 import { NAVIGATE_EVENT } from './noteLinks';
 import { importLibraryFromHash } from '@/blocks/whiteboard/library';
 import { onExternalChange, onStorageError } from '@/storage/changes';
@@ -55,6 +56,9 @@ export function AppLayout() {
       }),
     [],
   );
+
+  // Strg/⌘ + Mausrad bzw. Pinch zoomt nur das Dokument, nicht die ganze Seite.
+  useEffect(installWheelZoom, []);
 
   // Schreiben in den Ordner fehlgeschlagen – einmal melden, nicht bei jedem Tastendruck.
   useEffect(() => {

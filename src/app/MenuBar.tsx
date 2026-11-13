@@ -24,6 +24,7 @@ import { notifyNotesChanged, useNotes } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 import { reloadEvents } from './eventStore';
 import { plural } from '@/ui/plural';
+import { resetZoom, useDocZoom, zoomIn, zoomOut } from './docZoom';
 import { registerCommandSource, togglePalette, type PaletteCommand } from './paletteStore';
 
 export type MenuEntry =
@@ -147,6 +148,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   const { theme, setTheme } = useTheme();
   const { theme: codeTheme, setCodeTheme } = useCodeTheme();
   const glossaryHighlight = useHighlight();
+  const docZoom = useDocZoom();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const now = useClock();
@@ -437,6 +439,11 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         { label: 'Bearbeitungsmodus', shortcut: '⌃⌘E', bind: true, checked: !!active && !active.learning, disabled: !active, action: () => active?.setLearning(false) },
         { label: 'Lernmodus', shortcut: '⌃⌘L', bind: true, checked: !!active?.learning, disabled: !active, action: () => active?.setLearning(true) },
         SEP,
+        // ⌘+/⌘−/⌘0 werden unten von Hand geprüft (Taste statt Code: „+“ liegt je nach Tastatur woanders).
+        { label: 'Dokument vergrößern', shortcut: '⌘+', action: zoomIn },
+        { label: 'Dokument verkleinern', shortcut: '⌘−', action: zoomOut },
+        { label: `Originalgröße${docZoom !== 1 ? ` (jetzt ${Math.round(docZoom * 100)} %)` : ''}`, shortcut: '⌘0', disabled: docZoom === 1, action: resetZoom },
+        SEP,
         { label: 'Übersicht', shortcut: '⌃⌘H', bind: true, checked: pathname === '/', action: () => navigate('/') },
         { label: 'Graph-Ansicht', shortcut: '⌃⌘G', bind: true, checked: pathname === '/graph', action: () => navigate('/graph') },
         { label: 'Glossar', shortcut: '⌃⌘B', bind: true, checked: pathname === '/glossar', action: () => navigate('/glossar') },
@@ -508,6 +515,16 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!(e.metaKey || e.ctrlKey)) return;
+      // Dokument-Zoom statt Browser-Zoom: nur der Inhalt wird größer, die Leisten bleiben.
+      if (!e.altKey) {
+        const zoomAction = e.key === '+' || e.key === '=' ? zoomIn : e.key === '-' || e.key === '_' ? zoomOut : e.code === 'Digit0' || e.key === '0' ? resetZoom : null;
+        if (zoomAction) {
+          e.preventDefault();
+          e.stopPropagation();
+          zoomAction();
+          return;
+        }
+      }
       // ⌘B / ⇧⌘B: Seitenleisten umschalten – aber nur, wenn weder Text noch Blöcke markiert sind.
       const left = matchesShortcut(e, '⌘B');
       const right = !left && matchesShortcut(e, '⇧⌘B');

@@ -16,6 +16,7 @@ import { leaveNote } from './draftNotes';
 import { markViewed } from './recentViews';
 import { confirmDialog } from '@/ui/Dialog';
 import { formatShortcut } from '@/ui/shortcut';
+import { resetZoom, useDocZoom } from './docZoom';
 import { onExternalChange } from '@/storage/changes';
 import type { PMNode } from '@/export/model';
 import { Presentation, buildSlides, slideAt } from './Presentation';
@@ -33,6 +34,7 @@ export function NotePage() {
 
 function NoteScreen({ id }: { id: string }) {
   const { note, loading, saved, failed, save } = useNote(id);
+  const docZoom = useDocZoom();
   // Ansage nur, wenn der Zustand eine Weile stabil ist – sonst plappert der Screenreader bei jedem Tastendruck.
   const [announce, setAnnounce] = useState('');
   useEffect(() => {
@@ -70,13 +72,26 @@ function NoteScreen({ id }: { id: string }) {
       return !o;
     });
 
-  // Titel-Textarea wächst mit dem Inhalt.
+  // Titel-Textarea wächst mit dem Inhalt – auch wenn er durch Zoom, Fensterbreite oder nachgeladene
+  // Schrift anders umbricht (sonst würde die zweite Zeile abgeschnitten).
   useLayoutEffect(() => {
     const el = titleRef.current;
     if (!el) return;
-    el.style.height = '0';
-    el.style.height = `${el.scrollHeight}px`;
-  }, [note?.title, loading]);
+    const fit = () => {
+      el.style.height = '0';
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+    let width = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fit();
+    });
+    ro.observe(el);
+    void document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  }, [note?.title, loading, docZoom]);
 
   // Neue, leere Notiz: Titel direkt fokussieren.
   useEffect(() => {
@@ -218,6 +233,11 @@ function NoteScreen({ id }: { id: string }) {
         </div>
 
         <div className="note-bar-right">
+          {docZoom !== 1 && (
+            <button type="button" className="zoom-badge" onClick={resetZoom} title={`Originalgröße (${formatShortcut('⌘0')})`} aria-label={`Zoom ${Math.round(docZoom * 100)} %, zurücksetzen`}>
+              {Math.round(docZoom * 100)} %
+            </button>
+          )}
           <button type="button" className="icon-btn" onClick={() => present()} aria-label="Präsentieren" title={`Präsentieren (${formatShortcut('⌥⌘P')})`}>
             <Icon name="present" />
           </button>
