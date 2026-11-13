@@ -33,6 +33,14 @@ export function NotePage() {
 
 function NoteScreen({ id }: { id: string }) {
   const { note, loading, saved, failed, save } = useNote(id);
+  // Ansage nur, wenn der Zustand eine Weile stabil ist – sonst plappert der Screenreader bei jedem Tastendruck.
+  const [announce, setAnnounce] = useState('');
+  useEffect(() => {
+    if (failed) return setAnnounce('Nicht gespeichert – wird erneut versucht');
+    if (!saved) return setAnnounce('');
+    const t = window.setTimeout(() => setAnnounce('Gespeichert'), 2000);
+    return () => window.clearTimeout(t);
+  }, [saved, failed]);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [learning, setLearning] = useState(false);
   const [presenting, setPresenting] = useState<{ doc: PMNode; start: number } | null>(null);
@@ -182,10 +190,13 @@ function NoteScreen({ id }: { id: string }) {
           </button>
           <span
             className={`save-dot${saved ? ' is-saved' : ''}${failed ? ' is-failed' : ''}`}
-            role="status"
-            aria-label={failed ? 'Nicht gespeichert – wird erneut versucht' : saved ? 'Gespeichert' : 'Speichert …'}
+            aria-hidden="true"
             title={failed ? 'Nicht gespeichert – wird erneut versucht' : saved ? 'Gespeichert' : 'Speichert …'}
           />
+          {/* Live-Region für Screenreader: meldet nur „Gespeichert“ (verzögert) und Fehler, nie das ständige „Speichert …“. */}
+          <span className="sr-only" role="status" aria-live="polite">
+            {announce}
+          </span>
         </div>
 
         <div className="mode-switch" role="tablist" aria-label="Modus">

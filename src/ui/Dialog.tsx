@@ -1,5 +1,6 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { isTopDialog, useFocusTrap } from './useFocusTrap';
 
 /** Ersatz für window.confirm/alert im App-Design (die nativen Dialoge folgen nicht dem Theme). */
 interface DialogRequest {
@@ -46,23 +47,24 @@ export function DialogHost() {
     () => current,
   );
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const textId = useId();
+
+  // Fokus-Falle; bei Löschen & Co. startet der Fokus auf „Abbrechen“, damit Enter nichts Zerstörerisches auslöst.
+  useFocusTrap(dialogRef, !!req, () => (req?.danger ? cancelRef.current : null) ?? confirmRef.current, req);
 
   useEffect(() => {
     if (!req) return;
-    const prev = document.activeElement as HTMLElement | null;
-    confirmRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && isTopDialog(dialogRef.current)) {
         e.preventDefault();
         e.stopPropagation();
         close(false);
       }
     }
     window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('keydown', onKey, true);
-      prev?.focus?.();
-    };
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [req]);
 
   return (
@@ -70,20 +72,22 @@ export function DialogHost() {
       {req && (
         <motion.div className="dialog-backdrop" onMouseDown={() => close(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.div
+            ref={dialogRef}
             className="dialog"
             role="alertdialog"
             aria-modal="true"
-            aria-label={req.message}
+            aria-label={req.cancelLabel ? 'Bestätigung' : 'Hinweis'}
+            aria-describedby={textId}
             onMouseDown={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ type: 'spring', bounce: 0.25, duration: 0.35 }}
           >
-            <p>{req.message}</p>
+            <p id={textId}>{req.message}</p>
             <div className="dialog-actions">
               {req.cancelLabel && (
-                <button type="button" className="b-btn" onClick={() => close(false)}>
+                <button ref={cancelRef} type="button" className="b-btn" onClick={() => close(false)}>
                   {req.cancelLabel}
                 </button>
               )}

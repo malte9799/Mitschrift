@@ -1,6 +1,6 @@
 /* Design-Tokens – einzige Quelle für Farben, Schrift, Maße. Basis: Schule/tokens.css. */
 :root{
-  --paper:#FAFAF9; --paper-2:#F3F3F1; --ink:#1C1C1E; --ink-soft:#6E6E73; --ink-faint:#A1A1A6;
+  --paper:#FAFAF9; --paper-2:#F3F3F1; --ink:#1C1C1E; --ink-soft:#5C5C61; --ink-faint:#6C6C71;
   --line:#E7E7E4; --card:#FFFFFF; --hover:#EFEFEC;
   --accent:#5B5BD6; --accent-bg:#EEEEFC; --accent-soft:#DCDCF9; --on-accent:#FFFFFF;
   --red:#D93A2B; --red-bg:#FDEEEC;
@@ -46,7 +46,7 @@
 }
 
 :root[data-theme="dark"]{
-  --paper:#121214; --paper-2:#18181B; --ink:#F2F2F3; --ink-soft:#A0A0A8; --ink-faint:#6B6B73;
+  --paper:#121214; --paper-2:#18181B; --ink:#F2F2F3; --ink-soft:#A0A0A8; --ink-faint:#85858C;
   --line:#2A2A2F; --card:#1C1C20; --hover:#26262B;
   --accent:#9B9BFF; --accent-bg:#23233F; --accent-soft:#30305A; --on-accent:#121214;
   --red:#FF7A6B; --red-bg:#35191A;
@@ -74,7 +74,7 @@
 }
 /* Sepia – warmes Papier-Theme, hell. */
 :root[data-theme="sepia"]{
-  --paper:#F6EFE1; --paper-2:#EFE4D0; --ink:#3A2E20; --ink-soft:#7A6A54; --ink-faint:#AE9C82;
+  --paper:#F6EFE1; --paper-2:#EFE4D0; --ink:#3A2E20; --ink-soft:#66573F; --ink-faint:#706150;
   --line:#E2D3B4; --card:#FBF6EA; --hover:#EBDFC4;
   --accent:#A8702C; --accent-bg:#F1E2C4; --accent-soft:#E6CE9C; --on-accent:#FFFFFF;
   --red:#B23A28; --red-bg:#F5E1D8;
@@ -103,7 +103,7 @@
 
 /* Slate – kühles, dunkles Blau-Theme. */
 :root[data-theme="slate"]{
-  --paper:#0E1520; --paper-2:#141E2C; --ink:#E4EBF5; --ink-soft:#8FA1B8; --ink-faint:#57687F;
+  --paper:#0E1520; --paper-2:#141E2C; --ink:#E4EBF5; --ink-soft:#8FA1B8; --ink-faint:#7A899D;
   --line:#223146; --card:#182333; --hover:#1D2B3D;
   --accent:#5FA8E0; --accent-bg:#16283C; --accent-soft:#20374F; --on-accent:#0E1520;
   --red:#F0796A; --red-bg:#331B1E;
@@ -132,7 +132,7 @@
 
 /* Mist – neutrales, kühles Grau-Hell ohne Farbstich. */
 :root[data-theme="mist"]{
-  --paper:#F4F5F6; --paper-2:#ECEDEF; --ink:#20232A; --ink-soft:#666C77; --ink-faint:#9BA1AB;
+  --paper:#F4F5F6; --paper-2:#ECEDEF; --ink:#20232A; --ink-soft:#585E69; --ink-faint:#646A73;
   --line:#DDE0E4; --card:#FFFFFF; --hover:#E7E9EC;
   --accent:#3E63DD; --accent-bg:#E7EBFC; --accent-soft:#D2DBF8; --on-accent:#FFFFFF;
   --red:#D93A2B; --red-bg:#FDEEEC;
@@ -161,7 +161,7 @@
 
 /* Linen – leicht warm getönte helle Variante, dezenter als Sepia. */
 :root[data-theme="linen"]{
-  --paper:#FAF7F2; --paper-2:#F2EDE3; --ink:#2A251E; --ink-soft:#756C5D; --ink-faint:#ACA391;
+  --paper:#FAF7F2; --paper-2:#F2EDE3; --ink:#2A251E; --ink-soft:#625A4C; --ink-faint:#6F685B;
   --line:#E7E0D2; --card:#FFFFFF; --hover:#F0EADA;
   --accent:#B9722F; --accent-bg:#F3E7D5; --accent-soft:#E9D3AE; --on-accent:#FFFFFF;
   --red:#C23B28; --red-bg:#F7E4DD;
@@ -190,7 +190,7 @@
 
 /* Graphite – neutrales, reines Dunkelgrau ohne Farbstich. */
 :root[data-theme="graphite"]{
-  --paper:#161616; --paper-2:#1D1D1D; --ink:#EDEDED; --ink-soft:#9B9B9B; --ink-faint:#666666;
+  --paper:#161616; --paper-2:#1D1D1D; --ink:#EDEDED; --ink-soft:#9B9B9B; --ink-faint:#878787;
   --line:#2C2C2C; --card:#1F1F1F; --hover:#282828;
   --accent:#8C8CF0; --accent-bg:#232336; --accent-soft:#2E2E48; --on-accent:#161616;
   --red:#FF8A7A; --red-bg:#331E1B;
@@ -219,7 +219,7 @@
 
 /* Midnight – leicht getönte dunkle Indigo/Navy-Variante. */
 :root[data-theme="midnight"]{
-  --paper:#12131F; --paper-2:#181A2A; --ink:#E7E8F5; --ink-soft:#9497B8; --ink-faint:#5C5F7D;
+  --paper:#12131F; --paper-2:#181A2A; --ink:#E7E8F5; --ink-soft:#9497B8; --ink-faint:#81849D;
   --line:#252740; --card:#1A1C2E; --hover:#20223A;
   --accent:#8A93F5; --accent-bg:#20223F; --accent-soft:#2C2F55; --on-accent:#12131F;
   --red:#F58A8A; --red-bg:#301E2A;
@@ -248,7 +248,7 @@
 
 @media (prefers-color-scheme:dark){
   :root:not([data-theme]){
-    --paper:#121214; --paper-2:#18181B; --ink:#F2F2F3; --ink-soft:#A0A0A8; --ink-faint:#6B6B73;
+    --paper:#121214; --paper-2:#18181B; --ink:#F2F2F3; --ink-soft:#A0A0A8; --ink-faint:#85858C;
     --line:#2A2A2F; --card:#1C1C20; --hover:#26262B;
     --accent:#9B9BFF; --accent-bg:#23233F; --accent-soft:#30305A; --on-accent:#121214;
     --red:#FF7A6B; --red-bg:#35191A;

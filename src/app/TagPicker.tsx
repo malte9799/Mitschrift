@@ -94,13 +94,13 @@ export function TagPicker({ tags, selected, onToggle, onClose }: TagPickerProps)
         }}
         onKeyDown={onKeyDown}
       />
-      <ul className="tag-picker-list" role="listbox" aria-label="Tags">
+      <ul className="tag-picker-list" aria-label="Tags">
         {filtered.map((t, i) =>
           editing === t.id ? (
             <TagEditor key={t.id} tag={t} tags={tags} onDone={() => setEditing(null)} />
           ) : (
             <li key={t.id} className={`tag-picker-row${i === cursor ? ' is-cursor' : ''}`} data-color={t.color}>
-              <button type="button" role="option" aria-selected={selected.includes(t.id)} className="tag-picker-option" onMouseDown={keepFocus} onClick={() => onToggle(t.id)} onMouseEnter={() => setCursor(i)}>
+              <button type="button" aria-pressed={selected.includes(t.id)} className="tag-picker-option" onMouseDown={keepFocus} onClick={() => onToggle(t.id)} onMouseEnter={() => setCursor(i)}>
                 <span className="tag-dot" aria-hidden="true" />
                 <span className="tag-picker-name">{t.name}</span>
                 {selected.includes(t.id) && <Icon name="check" className="tag-picker-check" />}

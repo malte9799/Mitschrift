@@ -4,6 +4,7 @@ import { TagChip } from '@/ui/TagChip';
 import { useTags } from '@/hooks/useTags';
 import { useNotes } from '@/hooks/useNotes';
 import { confirmDialog } from '@/ui/Dialog';
+import { isTopDialog, useFocusTrap } from '@/ui/useFocusTrap';
 import type { CalendarSource } from '@/storage';
 import { OPEN_EVENT_EVENT, createEvent, deleteEvent, getEvents, updateEvent, type OpenEventDetail } from './eventStore';
 
@@ -30,13 +31,18 @@ export function EventDialogHost() {
   const tags = useTags();
   const notes = useNotes();
   const titleRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  /** Stand beim Öffnen (JSON), um ungespeicherte Änderungen zu erkennen. */
+  const baseRef = useRef('');
+  const closingRef = useRef(false);
 
   useEffect(() => {
     const onOpen = (e: Event) => {
       const d = (e as CustomEvent<OpenEventDetail>).detail;
       const existing = d.id ? getEvents().find((ev) => ev.id === d.id) : undefined;
+      let next: Draft;
       if (existing)
-        setDraft({
+        next = {
           id: existing.id,
           title: existing.title,
           date: existing.date,
@@ -47,30 +53,43 @@ export function EventDialogHost() {
           tags: existing.tags,
           source: existing.source,
           completed: existing.completed,
-        });
-      else setDraft({ title: '', date: d.date ?? todayISO(), time: '', endTime: '', notes: '', noteId: null, tags: [], source: 'manual', completed: false });
+        };
+      else next = { title: '', date: d.date ?? todayISO(), time: '', endTime: '', notes: '', noteId: null, tags: [], source: 'manual', completed: false };
+      baseRef.current = JSON.stringify(next);
+      setDraft(next);
     };
     window.addEventListener(OPEN_EVENT_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_EVENT_EVENT, onOpen);
   }, []);
 
+  /** Schließen; bei ungespeicherten Änderungen erst nachfragen (Hintergrundklick, Escape, Abbrechen). */
+  async function requestClose() {
+    if (closingRef.current) return;
+    if (draft && JSON.stringify(draft) !== baseRef.current && !readOnly) {
+      closingRef.current = true;
+      const ok = await confirmDialog('Änderungen verwerfen?', { confirmLabel: 'Verwerfen', danger: true });
+      closingRef.current = false;
+      if (!ok) return;
+    }
+    setDraft(null);
+  }
+  const requestCloseRef = useRef(requestClose);
+  requestCloseRef.current = requestClose;
+
+  useFocusTrap(formRef, !!draft, () => titleRef.current);
+
   useEffect(() => {
     if (!draft) return;
-    const prev = document.activeElement as HTMLElement | null;
-    requestAnimationFrame(() => titleRef.current?.focus());
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Liegt eine Bestätigung über dem Dialog, gehört Escape ihr.
+      if (e.key === 'Escape' && isTopDialog(formRef.current)) {
         e.stopPropagation();
-        setDraft(null);
+        void requestCloseRef.current();
       }
     };
     window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('keydown', onKey, true);
-      prev?.focus?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Öffnen
-  }, [!!draft]);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [!!draft]); // eslint-disable-line react-hooks/exhaustive-deps -- nur beim Öffnen
 
   const readOnly = draft?.source && draft.source !== 'manual';
 
@@ -100,8 +119,9 @@ export function EventDialogHost() {
   return (
     <AnimatePresence>
       {draft && (
-        <motion.div className="dialog-backdrop" onMouseDown={() => setDraft(null)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div className="dialog-backdrop" onMouseDown={() => void requestClose()} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.form
+            ref={formRef}
             className="dialog gl-dialog"
             role="dialog"
             aria-modal="true"
@@ -190,7 +210,7 @@ export function EventDialogHost() {
                   Löschen
                 </button>
               )}
-              <button type="button" className="b-btn" onClick={() => setDraft(null)}>
+              <button type="button" className="b-btn" onClick={() => void requestClose()}>
                 {readOnly ? 'Schließen' : 'Abbrechen'}
               </button>
               {!readOnly && (

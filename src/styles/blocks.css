@@ -223,6 +223,7 @@ button.b-toggle-summary{cursor:pointer}
   background:none;border:0;padding:2px 0;font-size:17px;font-weight:600;margin-bottom:6px;box-shadow:none;
 }
 .b-block .b-diagram-title-input:focus{background:none;box-shadow:none;border-color:transparent}
+.b-block .b-diagram-title-input:focus-visible{box-shadow:0 2px 0 0 var(--accent)}
 .b-diagram-title{font-size:17px;font-weight:600;margin:0 0 8px}
 .b-diagram-editor{overflow:hidden}
 .b-diagram-items{display:flex;flex-direction:column;gap:6px;padding:4px 0 16px;border-bottom:1px solid var(--line);margin-bottom:16px}
@@ -410,6 +411,7 @@ button.b-toggle-summary{cursor:pointer}
   font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.3;color:var(--ink);resize:none;
 }
 .b-block .b-coll-title:focus{background:none;box-shadow:none;border-color:transparent}
+.b-block .b-coll-title:focus-visible{box-shadow:0 2px 0 0 var(--accent)}
 .b-coll-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 12px}
 .b-coll-tab{display:inline-flex;align-items:center;border-radius:var(--radius-xs);transition:background .15s}
 .b-coll-tab > button:first-child{
@@ -475,6 +477,7 @@ button.b-coll-head:hover,.b-coll-head.is-open{background:var(--hover)}
 .b-coll-cell:focus-within::after{box-shadow:inset 0 0 0 2px var(--accent)}
 /* Zellauswahl: Fläche über alle markierten Zellen, Rahmen nur an den Außenkanten des Rechtecks. */
 .b-coll-scroll:focus{outline:none}
+.b-coll-scroll:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
 .b-coll-cell{--sel-t:0px;--sel-r:0px;--sel-b:0px;--sel-l:0px}
 .b-coll-cell.sel-t{--sel-t:2px}.b-coll-cell.sel-r{--sel-r:2px}.b-coll-cell.sel-b{--sel-b:2px}.b-coll-cell.sel-l{--sel-l:2px}
 .b-coll-table td.is-sel{background:color-mix(in srgb,var(--accent) 9%,transparent)}
@@ -489,6 +492,8 @@ button.b-coll-head:hover,.b-coll-head.is-open{background:var(--hover)}
   font-size:14.5px;color:var(--ink);resize:none;
 }
 .b-block .b-cell-input:focus{background:none;box-shadow:none;border-color:transparent}
+/* Sichtbarer Fokus auch außerhalb der Tabellenzellen (z. B. Detailansicht); in Zellen deckt sich das mit dem Rahmen von .b-coll-cell. */
+.b-block .b-cell-input:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
 .b-block .b-cell-input.is-primary,.b-cell-text.is-primary{font-weight:550}
 .b-block .b-cell-input.is-number,.b-cell-text.is-number{text-align:right;font-variant-numeric:tabular-nums}
 .b-block .b-cell-date{font-family:var(--sans)}

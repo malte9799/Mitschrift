@@ -110,6 +110,20 @@ interface Section {
 }
 
 /** Startseite: alle Notizen als Raster, Mosaik oder Liste – mit echter Seitenvorschau. */
+
+/** Pfeiltasten in einer role="radiogroup": wählt den Nachbarn aus und setzt den Fokus (Roving-Tabindex). */
+function radioKeys<T>(values: T[], current: T, set: (v: T) => void) {
+  return (e: React.KeyboardEvent<HTMLElement>) => {
+    const dir = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+    if (!dir) return;
+    e.preventDefault();
+    const i = values.indexOf(current);
+    const next = (i + dir + values.length) % values.length;
+    set(values[next]);
+    e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+  };
+}
+
 export function HomePage() {
   const notes = useNotes();
   const tags = useTags();
@@ -375,7 +389,7 @@ export function HomePage() {
         <div className="lib-toolbar">
           <label className="lib-search">
             <Icon name="search" />
-            <input value={query} placeholder="Notizen durchsuchen" onChange={(e) => setQuery(e.target.value)} />
+            <input value={query} aria-label="Notizen durchsuchen" placeholder="Notizen durchsuchen" onChange={(e) => setQuery(e.target.value)} />
             {query && (
               <button type="button" aria-label="Suche leeren" onClick={() => setQuery('')}>
                 <Icon name="x" />
@@ -387,6 +401,8 @@ export function HomePage() {
             <button
               type="button"
               className={`lib-select${menu?.kind === 'group' ? ' is-open' : ''}`}
+              aria-haspopup="menu"
+              aria-expanded={menu?.kind === 'group'}
               onClick={(e) => setMenu(menu?.kind === 'group' ? null : { kind: 'group', anchor: e.currentTarget })}
             >
               <Icon name="group" />
@@ -396,6 +412,8 @@ export function HomePage() {
             <button
               type="button"
               className={`lib-select${menu?.kind === 'sort' ? ' is-open' : ''}`}
+              aria-haspopup="menu"
+              aria-expanded={menu?.kind === 'sort'}
               onClick={(e) => setMenu(menu?.kind === 'sort' ? null : { kind: 'sort', anchor: e.currentTarget })}
             >
               <Icon name={prefs.asc ? 'sortAsc' : 'sortDesc'} />
@@ -404,21 +422,22 @@ export function HomePage() {
             </button>
 
             {prefs.layout !== 'list' && (
-              <div className="lib-seg lib-size" role="radiogroup" aria-label="Kachelgröße">
+              <div className="lib-seg lib-size" role="radiogroup" aria-label="Kachelgröße" onKeyDown={radioKeys(sizes.map((s) => s.value), prefs.size, (size) => update({ size }))}>
                 {sizes.map((s) => (
-                  <button key={s.value} type="button" role="radio" aria-checked={prefs.size === s.value} className={prefs.size === s.value ? 'is-on' : ''} onClick={() => update({ size: s.value })}>
+                  <button key={s.value} type="button" role="radio" aria-checked={prefs.size === s.value} tabIndex={prefs.size === s.value ? 0 : -1} className={prefs.size === s.value ? 'is-on' : ''} onClick={() => update({ size: s.value })}>
                     {s.label}
                   </button>
                 ))}
               </div>
             )}
-            <div className="lib-seg" role="radiogroup" aria-label="Darstellung">
+            <div className="lib-seg" role="radiogroup" aria-label="Darstellung" onKeyDown={radioKeys(layouts.map((l) => l.value), prefs.layout, (layout) => update({ layout }))}>
               {layouts.map((l) => (
                 <button
                   key={l.value}
                   type="button"
                   role="radio"
                   aria-checked={prefs.layout === l.value}
+                  tabIndex={prefs.layout === l.value ? 0 : -1}
                   aria-label={l.label}
                   title={l.label}
                   className={prefs.layout === l.value ? 'is-on' : ''}

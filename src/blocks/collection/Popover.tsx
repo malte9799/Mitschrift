@@ -9,6 +9,16 @@ interface PopoverProps {
   align?: 'start' | 'end';
   /** Mindestens so breit wie der Anker (Auswahlfelder). */
   matchWidth?: boolean;
+  /** Rolle des Inhalts: Standard „dialog“ (gemischter Inhalt), „menu“ nur wenn es reine Menüeinträge sind. */
+  role?: 'dialog' | 'menu';
+  /** Zugänglicher Name; Standard: aria-label des Ankers. */
+  label?: string;
+}
+
+/** Fokussierbare Elemente im Popover selbst (nicht in darin geöffneten Popovern). */
+const FOCUSABLE = 'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])';
+function ownFocusables(pop: HTMLElement, selector = FOCUSABLE) {
+  return Array.from(pop.querySelectorAll<HTMLElement>(selector)).filter((el) => el.closest('.b-pop') === pop);
 }
 
 /**
@@ -18,7 +28,7 @@ interface PopoverProps {
  * Scrollen in einem später geöffneten (inneren) Popover schließen das äußere nicht,
  * Escape schließt nur das oberste.
  */
-export function Popover({ anchor, onClose, children, className = '', align = 'start', matchWidth = false }: PopoverProps) {
+export function Popover({ anchor, onClose, children, className = '', align = 'start', matchWidth = false, role = 'dialog', label }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -75,8 +85,50 @@ export function Popover({ anchor, onClose, children, className = '', align = 'st
     };
   }, [anchor]);
 
+  // Fokus: beim Öffnen ins Popover (sobald es sichtbar ist), beim Schließen zurück an den Anker.
+  const placed = pos !== null;
+  useEffect(() => {
+    const me = ref.current;
+    if (!placed || !me) return;
+    if (!me.contains(document.activeElement)) ownFocusables(me)[0]?.focus({ preventScroll: true });
+  }, [placed]);
+  const anchorRef = useRef(anchor);
+  anchorRef.current = anchor;
+  useEffect(() => {
+    const me = ref.current;
+    return () => {
+      const a = document.activeElement;
+      const target = anchorRef.current;
+      // Nur zurückgeben, wenn der Fokus sonst verloren ginge – nicht, wenn der Nutzer schon woanders hin geklickt hat.
+      if ((!a || a === document.body || me?.contains(a)) && document.contains(target)) target.focus({ preventScroll: true });
+    };
+  }, []);
+
+  /** Pfeiltasten zwischen den Einträgen (.b-pop-item), Home/Ende springen an die Ränder. */
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const me = ref.current;
+    const t = e.target as HTMLElement;
+    // React-Events laufen durch Portale nach oben: nur Tasten aus diesem Popover selbst behandeln.
+    if (!me || t.closest('.b-pop') !== me || !t.classList.contains('b-pop-item')) return;
+    const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+    const items = ownFocusables(me, '.b-pop-item:not([disabled])');
+    const i = items.indexOf(t);
+    if (i < 0) return;
+    e.preventDefault();
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : (i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items[next].focus();
+  }
+
   return createPortal(
-    <div ref={ref} className={`b-pop ${className}`} style={pos ? pos : { visibility: 'hidden', top: 0, left: 0 }}>
+    <div
+      ref={ref}
+      className={`b-pop ${className}`}
+      role={role}
+      aria-label={label ?? anchor.getAttribute('aria-label') ?? undefined}
+      onKeyDown={onKeyDown}
+      style={pos ? pos : { visibility: 'hidden', top: 0, left: 0 }}
+    >
       {children}
     </div>,
     document.body,

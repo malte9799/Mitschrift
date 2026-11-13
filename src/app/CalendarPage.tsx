@@ -145,6 +145,9 @@ export function CalendarPage() {
                     type="button"
                     key={iso}
                     className={`cal-day${inMonth ? '' : ' is-outside'}${iso === todayISO ? ' is-today' : ''}${iso === selected ? ' is-selected' : ''}`}
+                    aria-label={`${d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${dayEvents.length === 0 ? 'keine Termine' : plural(dayEvents.length, 'Termin', 'Termine')}`}
+                    aria-pressed={iso === selected}
+                    aria-current={iso === todayISO ? 'date' : undefined}
                     onClick={() => setSelected(iso)}
                     onDoubleClick={() => openEventDialog({ date: iso })}
                   >
@@ -185,7 +188,10 @@ export function CalendarPage() {
                           {e.endTime && `–${e.endTime}`}
                         </span>
                       )}
-                      <span className="cal-event-title">{e.title}</span>
+                      {/* Der Titel ist der Tastatur-Einstieg; Mausklicks auf die ganze Karte öffnen weiterhin über das <li>. */}
+                      <button type="button" className="cal-event-title cal-event-open">
+                        {e.title}
+                      </button>
                       {e.source !== 'manual' && <span className="cal-event-source">{SOURCE_LABEL[e.source]}</span>}
                     </div>
                     {e.notes && <p className="cal-event-notes">{e.notes}</p>}
