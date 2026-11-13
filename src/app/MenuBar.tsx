@@ -12,13 +12,14 @@ import { useTheme } from './theme';
 import { codeThemeMeta, useCodeTheme } from './codeTheme';
 import { welcomeNote } from './welcome';
 import { alertDialog, confirmDialog } from '@/ui/Dialog';
-import { setHighlight, useHighlight } from '@/glossary/store';
+import { reloadTerms, setHighlight, useHighlight } from '@/glossary/store';
 import { termFromSelection } from '@/editor/Toolbar';
 import { downloadBackup, lastBackupAt, readBackup, restoreBackup } from '@/storage/backup';
 import { storageStatus, type StorageStatus } from '@/storage/persist';
 import { chooseFolder, disconnectFolder, folderSupported, useVaultState } from '@/storage/vault';
 import { notifyNotesChanged, useNotes } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
+import { reloadEvents } from './eventStore';
 
 export type MenuEntry =
   | {
@@ -188,6 +189,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         const r = await restoreBackup(dump);
         notifyNotesChanged();
         notifyTagsChanged();
+        await Promise.all([reloadTerms(), reloadEvents()]);
         await alertDialog(`Backup eingespielt: ${r.added} neu, ${r.updated} aktualisiert, ${r.skipped} unverändert.`);
       } catch (err) {
         console.error(err);

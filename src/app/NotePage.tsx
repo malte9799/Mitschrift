@@ -30,7 +30,7 @@ export function NotePage() {
 }
 
 function NoteScreen({ id }: { id: string }) {
-  const { note, loading, saved, save } = useNote(id);
+  const { note, loading, saved, failed, save } = useNote(id);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [learning, setLearning] = useState(false);
   const [presenting, setPresenting] = useState<{ doc: PMNode; start: number } | null>(null);
@@ -172,7 +172,12 @@ function NoteScreen({ id }: { id: string }) {
           >
             <Icon name="menu" />
           </button>
-          <span className={`save-dot${saved ? ' is-saved' : ''}`} title={saved ? 'Gespeichert' : 'Speichert …'} />
+          <span
+            className={`save-dot${saved ? ' is-saved' : ''}${failed ? ' is-failed' : ''}`}
+            role="status"
+            aria-label={failed ? 'Nicht gespeichert – wird erneut versucht' : saved ? 'Gespeichert' : 'Speichert …'}
+            title={failed ? 'Nicht gespeichert – wird erneut versucht' : saved ? 'Gespeichert' : 'Speichert …'}
+          />
         </div>
 
         <div className="mode-switch" role="tablist" aria-label="Modus">

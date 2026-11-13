@@ -14,6 +14,7 @@ import { notifyNotesChanged } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 import { reloadTerms } from '@/glossary/store';
 import { reloadEvents } from './eventStore';
+import { getVaultState } from '@/storage/vault';
 
 const COLLAPSED_KEY = 'mitschrift-sidebar-collapsed';
 
@@ -59,10 +60,13 @@ export function AppLayout() {
     return onStorageError(() => {
       if (shown) return;
       shown = true;
-      void alertDialog(
-        'Mitschrift konnte nicht in den Notiz-Ordner schreiben. Vielleicht wurde er verschoben oder der Zugriff entzogen. ' +
-          'Lade die Seite neu, um den Zugriff wieder zu erlauben – bis dahin werden Änderungen nicht gespeichert.',
-      ).then(() => {
+      const message =
+        getVaultState().kind === 'folder'
+          ? 'Mitschrift konnte nicht in den Notiz-Ordner schreiben. Vielleicht wurde er verschoben oder der Zugriff entzogen. ' +
+            'Deine letzten Änderungen sind noch nicht gesichert. Lade die Seite neu, um den Zugriff wieder zu erlauben.'
+          : 'Mitschrift konnte deine letzten Änderungen nicht im Browser speichern – vielleicht ist der Speicher voll. ' +
+            'Es wird automatisch erneut versucht. Schließe das Fenster nicht, solange der Punkt neben dem Titel rot ist.';
+      void alertDialog(message).then(() => {
         shown = false;
       });
     });

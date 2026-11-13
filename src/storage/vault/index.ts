@@ -28,6 +28,11 @@ function setState(next: VaultState) {
   for (const l of listeners) l();
 }
 
+/** Aktueller Speicherort, außerhalb von React. */
+export function getVaultState(): VaultState {
+  return state;
+}
+
 export function useVaultState() {
   return useSyncExternalStore(
     (l) => {

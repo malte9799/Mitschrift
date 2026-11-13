@@ -147,6 +147,7 @@ svg{flex:none}
 .note-bar-right{display:flex;justify-content:flex-end}
 .save-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);transition:background .3s}
 .save-dot.is-saved{background:var(--green);opacity:.55}
+.save-dot.is-failed{background:var(--red);opacity:1}
 
 .mode-switch{
   display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--paper-2);border:1px solid var(--line);

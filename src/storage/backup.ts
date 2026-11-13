@@ -1,16 +1,24 @@
 import { storage } from '.';
-import type { MergeResult, StorageDump } from './types';
+import type { MergeResult, Note, StorageDump } from './types';
 
-/** Voll-Backup als eine JSON-Datei; Dateien (Bilder usw.) stecken als Data-URL darin. */
+/**
+ * Voll-Backup als eine JSON-Datei; Dateien (Bilder usw.) stecken als Data-URL darin.
+ * Version 2 enthält zusätzlich Glossar, Termine und Datei-Metadaten (Name, Typ, Größe);
+ * Version-1-Backups lassen sich weiter einspielen.
+ */
 interface BackupFile {
   app: 'mitschrift';
-  version: 1;
+  version: 1 | 2;
   exportedAt: number;
   notes: StorageDump['notes'];
   tags: StorageDump['tags'];
   snippets: StorageDump['snippets'];
-  files: { id: string; dataUrl: string }[];
+  terms?: StorageDump['terms'];
+  events?: StorageDump['events'];
+  files: { id: string; dataUrl: string; name?: string; mimeType?: string; size?: number }[];
 }
+
+const BACKUP_VERSION = 2;
 
 const LAST_BACKUP_KEY = 'mitschrift:lastBackup';
 
@@ -27,17 +35,21 @@ async function dataUrlToBlob(dataUrl: string) {
   return (await fetch(dataUrl)).blob();
 }
 
-/** Lädt alle Notizen, Tags, Snippets und Dateien als `.json` herunter. */
+/** Lädt alle Notizen, Tags, Snippets, Glossar, Termine und Dateien als `.json` herunter. */
 export async function downloadBackup() {
   const dump = await storage.dumpAll();
   const backup: BackupFile = {
     app: 'mitschrift',
-    version: 1,
+    version: BACKUP_VERSION,
     exportedAt: Date.now(),
     notes: dump.notes,
     tags: dump.tags,
     snippets: dump.snippets,
-    files: await Promise.all(dump.files.map(async (f) => ({ id: f.id, dataUrl: await blobToDataUrl(f.blob) }))),
+    terms: dump.terms ?? [],
+    events: dump.events ?? [],
+    files: await Promise.all(
+      dump.files.map(async (f) => ({ id: f.id, dataUrl: await blobToDataUrl(f.blob), name: f.name, mimeType: f.mimeType, size: f.size })),
+    ),
   };
   const url = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: 'application/json' }));
   const a = document.createElement('a');
@@ -53,6 +65,30 @@ export async function downloadBackup() {
     // Nur Komfort-Anzeige – ohne localStorage geht es auch.
   }
   return { notes: dump.notes.length, files: dump.files.length };
+}
+
+/**
+ * Notiz aus einem Backup prüfen und fehlende Felder auffüllen – eine von Hand bearbeitete
+ * oder kaputte Datei soll nicht später die Seitenleiste zum Absturz bringen. `null` = unbrauchbar.
+ */
+function sanitizeNote(raw: unknown): Note | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const n = raw as Partial<Note>;
+  if (typeof n.id !== 'string' || !n.id) return null;
+  const now = Date.now();
+  const createdAt = typeof n.createdAt === 'number' ? n.createdAt : now;
+  return {
+    ...n,
+    id: n.id,
+    title: typeof n.title === 'string' ? n.title : '',
+    content: typeof n.content === 'string' ? n.content : '',
+    folder: typeof n.folder === 'string' ? n.folder : null,
+    parentId: typeof n.parentId === 'string' ? n.parentId : null,
+    tags: Array.isArray(n.tags) ? n.tags.filter((t): t is string => typeof t === 'string') : [],
+    starred: n.starred === true,
+    createdAt,
+    updatedAt: typeof n.updatedAt === 'number' ? n.updatedAt : createdAt,
+  };
 }
 
 /** Zeitpunkt des letzten Backups aus diesem Browser, falls bekannt. */
@@ -74,14 +110,22 @@ export async function readBackup(file: File): Promise<{ dump: StorageDump; expor
     throw new Error('Die Datei ist kein gültiges JSON.');
   }
   if (data?.app !== 'mitschrift' || !Array.isArray(data.notes)) throw new Error('Die Datei ist kein Mitschrift-Backup.');
-  if (data.version > 1) throw new Error('Das Backup stammt aus einer neueren Version von Mitschrift.');
+  if (typeof data.version !== 'number' || data.version > BACKUP_VERSION) throw new Error('Das Backup stammt aus einer neueren Version von Mitschrift.');
+  const notes = data.notes.map(sanitizeNote).filter((n): n is Note => n !== null);
+  const list = <T>(v: T[] | undefined) => (Array.isArray(v) ? v : []);
   return {
-    exportedAt: data.exportedAt,
+    exportedAt: typeof data.exportedAt === 'number' ? data.exportedAt : Date.now(),
     dump: {
-      notes: data.notes,
-      tags: data.tags ?? [],
-      snippets: data.snippets ?? [],
-      files: await Promise.all((data.files ?? []).map(async (f) => ({ id: f.id, blob: await dataUrlToBlob(f.dataUrl) }))),
+      notes,
+      tags: list(data.tags),
+      snippets: list(data.snippets),
+      terms: list(data.terms),
+      events: list(data.events),
+      files: await Promise.all(
+        list(data.files)
+          .filter((f) => typeof f?.id === 'string' && typeof f.dataUrl === 'string')
+          .map(async (f) => ({ id: f.id, blob: await dataUrlToBlob(f.dataUrl), name: f.name, mimeType: f.mimeType, size: f.size })),
+      ),
     },
   };
 }

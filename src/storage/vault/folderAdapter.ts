@@ -153,17 +153,26 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
   let pendingWrites = 0;
   /** Schreibvorgänge pro Pfad nacheinander – zwei `createWritable` auf dieselbe Datei vertragen sich nicht. */
   const queues = new Map<string, Promise<void>>();
+  /**
+   * Fehler werden gemeldet *und* an den Aufrufer weitergegeben – sonst hielte er einen
+   * gescheiterten Schreibvorgang für gelungen (z. B. alte Datei nach dem Umbenennen löschen).
+   * Die Warteschlange selbst läuft nach einem Fehler weiter.
+   */
   function enqueue(path: string, job: () => Promise<void>): Promise<void> {
     pendingWrites++;
-    const run = (queues.get(path) ?? Promise.resolve()).then(job).catch((err) => {
-      console.error(`Mitschrift: ${path} konnte nicht geschrieben werden`, err);
-      emitStorageError(err);
-    });
-    const done = run.finally(() => {
-      pendingWrites--;
-      if (queues.get(path) === done) queues.delete(path);
-    });
-    queues.set(path, done);
+    const done = (queues.get(path) ?? Promise.resolve())
+      .then(job)
+      .catch((err: unknown) => {
+        console.error(`Mitschrift: ${path} konnte nicht geschrieben werden`, err);
+        emitStorageError(err);
+        throw err;
+      })
+      .finally(() => {
+        pendingWrites--;
+        if (queues.get(path) === settled) queues.delete(path);
+      });
+    const settled = done.catch(() => undefined);
+    queues.set(path, settled);
     return done;
   }
 
@@ -210,6 +219,9 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
     for (let i = 2; ; i++) if (free(`${base} ${i}`)) return `${base} ${i}`;
   }
 
+  /** Frühere Dateinamen umbenannter Notizen, die erst nach erfolgreichem Schreiben weg dürfen. */
+  const staleStems = new Map<string, Set<string>>();
+
   /** Passt der bisherige Dateiname noch zum Titel („Titel“ oder „Titel 3“)? */
   const stemMatches = (stem: string, title: string) => new RegExp(`^${escapeRegExp(stemFor(title))}( \\d+)?$`, 'i').test(stem);
 
@@ -223,21 +235,37 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
       rootNames.add((stem + NOTE_EXT).toLowerCase());
       rootNames.add((stem + MIRROR_EXT).toLowerCase());
     }
-    const done = write(stem + NOTE_EXT, json(toNoteFile(note)));
     if (prev && prev !== stem) {
-      // Umbenannt: alte Dateien erst entfernen, wenn die neue sicher liegt.
-      void done.then(() => Promise.all([remove(prev + NOTE_EXT), remove(prev + MIRROR_EXT)]));
+      // Umbenannt: alte Dateien merken und erst entfernen, wenn die neue sicher liegt.
+      const old = staleStems.get(note.id) ?? new Set<string>();
+      old.add(prev);
+      old.delete(stem);
+      staleStems.set(note.id, old);
     }
+    const target = stem;
+    const done = write(stem + NOTE_EXT, json(toNoteFile(note)));
+    void done
+      .then(() => {
+        const old = staleStems.get(note.id);
+        if (!old?.size || stems.get(note.id) !== target) return;
+        staleStems.delete(note.id);
+        return Promise.all([...old].flatMap((s) => [remove(s + NOTE_EXT), remove(s + MIRROR_EXT)]));
+      })
+      // Schreiben fehlgeschlagen: alte Datei bleibt liegen – der nächste erfolgreiche Durchlauf räumt auf.
+      .catch(() => undefined);
     scheduleMirror(note.id);
     return done;
   }
 
   function dropNote(id: string) {
     const stem = stems.get(id);
+    const old = [...(staleStems.get(id) ?? [])];
     notes.delete(id);
     stems.delete(id);
+    staleStems.delete(id);
     mirrorTimers.delete(id);
-    if (stem) return Promise.all([remove(stem + NOTE_EXT), remove(stem + MIRROR_EXT)]).then(() => undefined);
+    const all = stem ? [stem, ...old] : old;
+    if (all.length) return Promise.all(all.flatMap((s) => [remove(s + NOTE_EXT), remove(s + MIRROR_EXT)])).then(() => undefined);
   }
 
   // ---------- Markdown-Spiegel ----------
@@ -358,7 +386,7 @@ export async function openFolderAdapter(dir: FileSystemDirectoryHandle): Promise
       notes.delete(id);
       stems.delete(id);
       change.notes.push(id);
-      if (stem && names.has((stem + MIRROR_EXT).toLowerCase())) void remove(stem + MIRROR_EXT);
+      if (stem && names.has((stem + MIRROR_EXT).toLowerCase())) void remove(stem + MIRROR_EXT).catch(() => undefined);
     }
 
     scannedNames = names;
