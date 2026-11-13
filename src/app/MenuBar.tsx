@@ -24,6 +24,7 @@ import { notifyNotesChanged, useNotes } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
 import { reloadEvents } from './eventStore';
 import { plural } from '@/ui/plural';
+import { registerCommandSource, togglePalette, type PaletteCommand } from './paletteStore';
 
 export type MenuEntry =
   | {
@@ -76,6 +77,30 @@ const blockShortcuts: Partial<Record<BlockTypeId, string>> = {
   numberedList: '⇧⌘7',
   taskList: '⇧⌘9',
 };
+
+/** Ist gerade Text (Editor, Eingabefeld, Seite) oder ein ganzer Block markiert? */
+function nothingSelected(editor: Editor | null): boolean {
+  if (document.querySelector('.is-block-selected')) return false;
+  if (editor?.view.hasFocus() && !editor.state.selection.empty) return false;
+  const el = document.activeElement;
+  if ((el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && el.selectionStart !== el.selectionEnd) return false;
+  const sel = window.getSelection();
+  return !sel || sel.isCollapsed;
+}
+
+/** Menüeinträge flach mit Pfad – für die Suchpalette. Deaktivierte und reine Untermenüs fallen weg. */
+function paletteCommands(menus: MenuDef[]): PaletteCommand[] {
+  const out: PaletteCommand[] = [];
+  const walk = (entries: MenuEntry[], path: string[]) => {
+    for (const e of entries) {
+      if (!isItem(e) || e.disabled) continue;
+      if (e.submenu) walk(e.submenu, [...path, e.label]);
+      else if (e.action && e.label !== 'Suchen & Befehle …') out.push({ label: e.label, path, shortcut: e.shortcut, checked: e.checked, action: e.action });
+    }
+  };
+  for (const m of menus) walk(m.items, [m.label]);
+  return out;
+}
 
 function allItems(entries: MenuEntry[]): Item[] {
   return entries.flatMap((e) => (isItem(e) ? [e, ...(e.submenu ? allItems(e.submenu) : [])] : []));
@@ -311,7 +336,8 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
             ...(ownTemplates.length ? [SEP, ...ownTemplates.map((t) => ({ label: t.name, action: () => void newNote(t.init()) }))] : []),
           ],
         },
-        { label: 'Notizen durchsuchen …', shortcut: '⌘K', action: focusSearch },
+        { label: 'Suchen & Befehle …', shortcut: '⌘K', bind: true, action: togglePalette },
+        { label: 'Seitenleiste durchsuchen …', shortcut: '⌘F', bind: true, action: focusSearch },
         SEP,
         {
           label: 'Exportieren',
@@ -420,11 +446,11 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         { label: 'Präsentieren', shortcut: '⌥⌘P', bind: true, disabled: !active, action: () => active?.present() },
         { label: 'Ab aktueller Stelle präsentieren', shortcut: '⇧⌥⌘P', bind: true, disabled: !active, action: () => active?.present(true) },
         SEP,
-        { label: sidebarOpen ? 'Seitenleiste ausblenden' : 'Seitenleiste einblenden', shortcut: '⌃⌘S', bind: true, action: toggleSidebar },
+        // ⌘B/⇧⌘B werden unten von Hand geprüft: nur, wenn nichts markiert ist (sonst Fett/Zitat im Editor).
+        { label: sidebarOpen ? 'Seitenleiste ausblenden' : 'Seitenleiste einblenden', shortcut: '⌘B', action: toggleSidebar },
         {
           label: active?.panelOpen ? 'Block-Leiste ausblenden' : 'Block-Leiste einblenden',
-          shortcut: '⌃⌘I',
-          bind: true,
+          shortcut: '⇧⌘B',
           disabled: !active || active.learning,
           action: () => active?.togglePanel(),
         },
@@ -457,6 +483,15 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
 
   const menusRef = useRef(menus);
   menusRef.current = menus;
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const toggleSidebarRef = useRef(toggleSidebar);
+  toggleSidebarRef.current = toggleSidebar;
+
+  // Die Suchpalette (⌘K) bekommt alle ausführbaren Menüeinträge mit ihrem Pfad.
+  useEffect(() => {
+    registerCommandSource(() => paletteCommands(menusRef.current));
+  }, []);
 
   function close() {
     setOpen(null);
@@ -473,6 +508,19 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!(e.metaKey || e.ctrlKey)) return;
+      // ⌘B / ⇧⌘B: Seitenleisten umschalten – aber nur, wenn weder Text noch Blöcke markiert sind.
+      const left = matchesShortcut(e, '⌘B');
+      const right = !left && matchesShortcut(e, '⇧⌘B');
+      if ((left || right) && nothingSelected(activeRef.current?.editor ?? null)) {
+        const note = activeRef.current;
+        if (left || (note && !note.learning)) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (left) toggleSidebarRef.current();
+          else note?.togglePanel();
+          return;
+        }
+      }
       const hit = menusRef.current.flatMap((m) => allItems(m.items)).find((i) => i.bind && i.shortcut && !i.disabled && matchesShortcut(e, i.shortcut));
       if (!hit) return;
       e.preventDefault();

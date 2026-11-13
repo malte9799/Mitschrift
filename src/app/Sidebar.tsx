@@ -13,7 +13,6 @@ import { ancestorsOf, canMoveUnder, childrenMap, noteHref } from './noteLinks';
 import { themeMeta, useTheme } from './theme';
 import { FOCUS_SEARCH_EVENT } from './activeNote';
 import { confirmDialog } from '@/ui/Dialog';
-import { ownsKeys } from '@/ui/ownKeys';
 import { formatShortcut } from '@/ui/shortcut';
 import { cleanupDrafts } from './draftNotes';
 import { noteText } from './noteText';
@@ -42,7 +41,7 @@ function relativeDate(ts: number): string {
   return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
 }
 
-/** Linke Leiste: Suche (⌘K), neue Notiz, Favoriten und alle Notizen. */
+/** Linke Leiste: Suche (⌘F), neue Notiz, Favoriten und alle Notizen. */
 export function Sidebar({ open, onClose }: SidebarProps) {
   const notes = useNotes();
   const tags = useTags();
@@ -133,24 +132,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const moreActive = moreItems.some((m) => m.active && m.path !== '/');
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !ownsKeys(e.target)) {
-        e.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
-      }
-    }
-    // Aus der Menüleiste: Leiste ist dann schon offen, nach dem Einblenden fokussieren.
+    // ⌘F bzw. Menü „Seitenleiste durchsuchen“: Leiste ist dann schon offen, nach dem Einblenden fokussieren.
     function onFocusSearch() {
       requestAnimationFrame(() => {
         searchRef.current?.focus();
         searchRef.current?.select();
       });
     }
-    window.addEventListener('keydown', onKey);
     window.addEventListener(FOCUS_SEARCH_EVENT, onFocusSearch);
     return () => {
-      window.removeEventListener('keydown', onKey);
       window.removeEventListener(FOCUS_SEARCH_EVENT, onFocusSearch);
     };
   }, []);
@@ -386,7 +376,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <label className="side-search">
             <Icon name="search" />
             <input ref={searchRef} value={query} placeholder="Suchen" onChange={(e) => setQuery(e.target.value)} />
-            <kbd>{formatShortcut('⌘K')}</kbd>
+            <kbd>{formatShortcut('⌘F')}</kbd>
           </label>
 
           <div className="side-icons-wrap" aria-hidden={!compact}>

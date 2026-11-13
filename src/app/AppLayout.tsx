@@ -7,6 +7,7 @@ import { seedDebugDocs } from '@/debug/debugDocs';
 import { DialogHost, alertDialog } from '@/ui/Dialog';
 import { TermDialogHost } from '@/glossary/TermDialog';
 import { EventDialogHost } from './EventDialog';
+import { CommandPalette } from './CommandPalette';
 import { NAVIGATE_EVENT } from './noteLinks';
 import { importLibraryFromHash } from '@/blocks/whiteboard/library';
 import { onExternalChange, onStorageError } from '@/storage/changes';
@@ -108,6 +109,7 @@ export function AppLayout() {
       </div>
       <TermDialogHost />
       <EventDialogHost />
+      <CommandPalette />
       <DialogHost />
     </div>
   );
