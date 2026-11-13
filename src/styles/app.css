@@ -612,6 +612,20 @@ button.tag-main{cursor:pointer}
 .handbuch-page{max-width:var(--page-w);margin:0 auto;padding:16px 24px 30vh}
 @media (max-width:640px){.handbuch-page{padding:16px 16px 30vh}}
 .handbuch-title{margin-bottom:24px}
+.handbuch-nav .handbuch-nav-section{
+  margin:14px 0 2px;padding:0 10px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint);
+}
+.handbuch-nav > ul{padding-left:0}
+.handbuch-pager{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:56px;padding-top:24px;border-top:1px solid var(--line)}
+.handbuch-pager-link{
+  display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:var(--radius-sm,10px);
+  border:1px solid var(--line);background:var(--card);color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;
+  transition:border-color .15s,background .15s;
+}
+.handbuch-pager-link:hover{background:var(--hover)}
+.handbuch-pager-link small{font-weight:400;font-size:12.5px;color:var(--ink-faint)}
+.handbuch-pager-link.is-next{text-align:right;grid-column:2}
+@media (max-width:640px){.handbuch-pager{grid-template-columns:1fr}.handbuch-pager-link.is-next{grid-column:1}}
 
 /* Navigation: oben mit Text untereinander (.side-nav), beim Scrollen als Icon-Zeile im Kopf (.side-icons). */
 .side-nav{display:flex;flex-direction:column;gap:1px;flex:none}
