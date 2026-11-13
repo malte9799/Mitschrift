@@ -13,6 +13,7 @@ import { Lightbox } from './Lightbox';
 import { imageFiles, pickImage, pickImageWithName, storeImage, storeImageFile } from './files';
 import { canvasToBlob, loadPixels, renderEdited } from './pixels';
 import { frameLabels, isRemote, layoutLabels, outputSize, type ImageAlign, type ImageEdit, type ImageFrame, type ImageLayout } from './model';
+import { formatShortcut } from '@/ui/shortcut';
 
 const layoutIcons: Record<ImageLayout, IconName> = { inline: 'wrapInline', left: 'wrapLeft', right: 'wrapRight', front: 'wrapFront', behind: 'wrapBehind' };
 const sizes = [25, 33, 50, 66, 75, 100];
@@ -346,7 +347,7 @@ export function ImageView({ node, editor, updateAttributes, getPos, deleteNode }
             </button>
           )}
           <hr className="b-pop-sep" />
-          <p className="b-pop-empty">Oder an den Ecken ziehen · ⇧ ohne Einrasten</p>
+          <p className="b-pop-empty">{formatShortcut('Oder an den Ecken ziehen · ⇧ ohne Einrasten')}</p>
         </div>,
       )}
       {frameMenu.submenu(
@@ -551,7 +552,7 @@ function ImagePlaceholder({
           </button>
         </form>
       </div>
-      <p className="c-img-ph-hint">Bilder kannst du auch hierher ziehen oder mit ⌘V einfügen.</p>
+      <p className="c-img-ph-hint">Bilder kannst du auch hierher ziehen oder mit {formatShortcut('⌘V')} einfügen.</p>
       <button type="button" className="c-img-ph-close" title="Entfernen" onClick={onDelete}>
         <Icon name="x" />
       </button>

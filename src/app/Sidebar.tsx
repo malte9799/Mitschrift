@@ -14,6 +14,7 @@ import { useTheme } from './theme';
 import { FOCUS_SEARCH_EVENT } from './activeNote';
 import { confirmDialog } from '@/ui/Dialog';
 import { ownsKeys } from '@/ui/ownKeys';
+import { formatShortcut } from '@/ui/shortcut';
 import { cleanupDrafts } from './draftNotes';
 import { InstallButton } from './InstallButton';
 
@@ -399,7 +400,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <label className="side-search">
             <Icon name="search" />
             <input ref={searchRef} value={query} placeholder="Suchen" onChange={(e) => setQuery(e.target.value)} />
-            <kbd>⌘K</kbd>
+            <kbd>{formatShortcut('⌘K')}</kbd>
           </label>
 
           <div className="side-icons-wrap" aria-hidden={!compact}>

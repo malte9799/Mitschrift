@@ -6,6 +6,7 @@ import { useEditable } from '@/editor/useEditable';
 import { BarButton, BarSep, useBlockBar } from '@/editor/BlockBar';
 import { PALETTE_SIZE } from '../plot/geometry';
 import { dateRange, parseDate, parseEntries, tickLabel, yearStep, type ParsedEntry, type TimelineEntry, type TimelineLayout } from './model';
+import { formatShortcut } from '@/ui/shortcut';
 
 const layoutLabels: Record<TimelineLayout, string> = { axis: 'Achse', list: 'Liste' };
 
@@ -315,7 +316,7 @@ function AxisTimeline({ items, current, onSelect, dateOf, hidden }: ViewProps) {
         </motion.div>
       </div>
       <div className="tl-zoom">
-        <button type="button" aria-label="Hineinzoomen" title="Hineinzoomen (⌘ + Scrollen)" onClick={() => changeZoom(zoom * 1.6)}>
+        <button type="button" aria-label="Hineinzoomen" title={formatShortcut('Hineinzoomen (⌘ + Scrollen)')} onClick={() => changeZoom(zoom * 1.6)}>
           <Icon name="plus" />
         </button>
         <button type="button" aria-label="Herauszoomen" title="Herauszoomen" disabled={zoom <= 1} onClick={() => changeZoom(zoom / 1.6)}>

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from '@/ui/Icon';
 import { cleanSvg, paletteOfElement, recolorElement, serialize, toHex } from './model';
+import { formatShortcut } from '@/ui/shortcut';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -566,10 +567,10 @@ export default function SvgEditor({ initial, onSave, onClose }: Props) {
           </div>
         )}
         <div className="b-svge-group">
-          <button type="button" title="Rückgängig (⌘Z)" aria-label="Rückgängig" disabled={h.index === 0} onClick={() => jump(-1)}>
+          <button type="button" title={`Rückgängig (${formatShortcut('⌘Z')})`} aria-label="Rückgängig" disabled={h.index === 0} onClick={() => jump(-1)}>
             <Icon name="undo" />
           </button>
-          <button type="button" title="Wiederholen (⌘⇧Z)" aria-label="Wiederholen" disabled={h.index >= h.stack.length - 1} onClick={() => jump(1)}>
+          <button type="button" title={`Wiederholen (${formatShortcut('⌘⇧Z')})`} aria-label="Wiederholen" disabled={h.index >= h.stack.length - 1} onClick={() => jump(1)}>
             <Icon name="redo" />
           </button>
         </div>
@@ -831,15 +832,15 @@ function Inspector({ el, focusText, onTextFocused, onLive, onCommit, actions }: 
           <Icon name="arrowUp" />⁺
         </button>
         <span />
-        <button type="button" title="Gruppieren (⌘G)" onClick={actions.group}>
+        <button type="button" title={`Gruppieren (${formatShortcut('⌘G')})`} onClick={actions.group}>
           <Icon name="group" />
         </button>
         {isGroup && (
-          <button type="button" title="Gruppe auflösen (⌘⇧G)" onClick={actions.ungroup}>
+          <button type="button" title={`Gruppe auflösen (${formatShortcut('⌘⇧G')})`} onClick={actions.ungroup}>
             <Icon name="ungroup" />
           </button>
         )}
-        <button type="button" title="Duplizieren (⌘D)" onClick={actions.duplicate}>
+        <button type="button" title={`Duplizieren (${formatShortcut('⌘D')})`} onClick={actions.duplicate}>
           <Icon name="copy" />
         </button>
         <button type="button" className="is-danger" title="Löschen (Entf)" onClick={actions.remove}>
@@ -923,7 +924,7 @@ function DocumentPanel({ svg, version, draw, setDraw, drawing, onLive, onCommit,
         </>
       )}
       <p className="b-svge-hint">
-        Klicken wählt aus, Ziehen verschiebt (⇧ gerade). ⌥-Klick wählt die ganze Gruppe. Doppelklick auf Text bearbeitet ihn. ⌘/Strg + Mausrad zoomt.
+        {formatShortcut('Klicken wählt aus, Ziehen verschiebt (⇧ gerade). ⌥-Klick wählt die ganze Gruppe. Doppelklick auf Text bearbeitet ihn. ⌘ + Mausrad zoomt.')}
       </p>
     </section>
   );
@@ -996,7 +997,7 @@ function CodePane({ source, onApply }: { source: string; onApply: (src: string) 
         }}
       />
       <div className="b-svge-code-bar">
-        {error ? <span className="b-svg-error">{error}</span> : <span className="b-svge-hint">⌘↵ übernimmt den Code. Skripte und externe Verweise werden entfernt.</span>}
+        {error ? <span className="b-svg-error">{error}</span> : <span className="b-svge-hint">{formatShortcut('⌘↵')} übernimmt den Code. Skripte und externe Verweise werden entfernt.</span>}
         <button type="button" className="b-chip-btn" disabled={!dirty} onClick={apply}>
           <Icon name="check" /> Übernehmen
         </button>

@@ -12,6 +12,7 @@ import { useTheme } from './theme';
 import { codeThemeMeta, useCodeTheme } from './codeTheme';
 import { welcomeNote } from './welcome';
 import { alertDialog, confirmDialog } from '@/ui/Dialog';
+import { formatShortcut, matchesShortcut } from '@/ui/shortcut';
 import { reloadTerms, setHighlight, useHighlight } from '@/glossary/store';
 import { termFromSelection } from '@/editor/Toolbar';
 import { downloadBackup, lastBackupAt, readBackup, restoreBackup } from '@/storage/backup';
@@ -66,22 +67,6 @@ const blockShortcuts: Partial<Record<BlockTypeId, string>> = {
   taskList: '⇧⌘9',
 };
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
-
-/** Prüft ein Kürzel wie „⌃⌘S“ gegen ein Tastatur-Event (per `code`, da ⌥ die Taste verändert). */
-function matches(e: KeyboardEvent, shortcut: string): boolean {
-  const key = shortcut.replace(/[⌃⌥⇧⌘]/g, '');
-  const want = {
-    ctrl: shortcut.includes('⌃') || (!isMac && shortcut.includes('⌘')),
-    alt: shortcut.includes('⌥'),
-    shift: shortcut.includes('⇧'),
-    meta: isMac && shortcut.includes('⌘'),
-  };
-  if (e.ctrlKey !== want.ctrl || e.altKey !== want.alt || e.shiftKey !== want.shift || e.metaKey !== want.meta) return false;
-  const code = /^\d$/.test(key) ? `Digit${key}` : /^[A-Z]$/.test(key) ? `Key${key}` : '';
-  return code ? e.code === code : e.key === key;
-}
-
 function allItems(entries: MenuEntry[]): Item[] {
   return entries.flatMap((e) => (isItem(e) ? [e, ...(e.submenu ? allItems(e.submenu) : [])] : []));
 }
@@ -117,7 +102,7 @@ async function pasteInto(editor: Editor | null) {
       document.execCommand('insertText', false, await navigator.clipboard.readText());
     }
   } catch {
-    void alertDialog('Der Browser erlaubt das Einsetzen über das Menü nicht. Bitte ⌘V verwenden.');
+    void alertDialog(`Der Browser erlaubt das Einsetzen über das Menü nicht. Bitte ${formatShortcut('⌘V')} verwenden.`);
   }
 }
 
@@ -469,7 +454,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!(e.metaKey || e.ctrlKey)) return;
-      const hit = menusRef.current.flatMap((m) => allItems(m.items)).find((i) => i.bind && i.shortcut && !i.disabled && matches(e, i.shortcut));
+      const hit = menusRef.current.flatMap((m) => allItems(m.items)).find((i) => i.bind && i.shortcut && !i.disabled && matchesShortcut(e, i.shortcut));
       if (!hit) return;
       e.preventDefault();
       e.stopPropagation();
@@ -682,7 +667,7 @@ function MenuList({ items, depth, path, setPath, onRun, anchor, label }: MenuLis
               {item.checked ? '✓' : ''}
             </span>
             <span className="mb-label">{item.label}</span>
-            {item.shortcut && <span className="mb-shortcut">{item.shortcut}</span>}
+            {item.shortcut && <span className="mb-shortcut">{formatShortcut(item.shortcut)}</span>}
             {item.submenu && <span className="mb-arrow" aria-hidden="true" />}
             {item.submenu && isOn && !item.disabled && (
               <MenuList items={item.submenu} depth={depth + 1} path={path} setPath={setPath} onRun={onRun} label={item.label} />

@@ -14,6 +14,7 @@ import { setActiveNote } from './activeNote';
 import { leaveNote } from './draftNotes';
 import { markViewed } from './recentViews';
 import { confirmDialog } from '@/ui/Dialog';
+import { formatShortcut } from '@/ui/shortcut';
 import { onExternalChange } from '@/storage/changes';
 import type { PMNode } from '@/export/model';
 import { Presentation, buildSlides, slideAt } from './Presentation';
@@ -106,7 +107,12 @@ function NoteScreen({ id }: { id: string }) {
 
   function present(fromCursor = false) {
     if (!note) return;
-    const doc: PMNode = editor ? (editor.getJSON() as PMNode) : note.content ? JSON.parse(note.content) : { type: 'doc', content: [] };
+    let doc: PMNode = { type: 'doc', content: [] };
+    try {
+      doc = editor ? (editor.getJSON() as PMNode) : note.content ? JSON.parse(note.content) : doc;
+    } catch {
+      /* kaputter Inhalt: leere Präsentation statt Absturz */
+    }
     const start = fromCursor && editor ? slideAt(buildSlides(doc), editor.state.selection.$from.index(0)) : 0;
     setPresenting({ doc, start });
   }
@@ -199,7 +205,7 @@ function NoteScreen({ id }: { id: string }) {
         </div>
 
         <div className="note-bar-right">
-          <button type="button" className="icon-btn" onClick={() => present()} aria-label="Präsentieren" title="Präsentieren (⌥⌘P)">
+          <button type="button" className="icon-btn" onClick={() => present()} aria-label="Präsentieren" title={`Präsentieren (${formatShortcut('⌥⌘P')})`}>
             <Icon name="present" />
           </button>
           {!learning && (

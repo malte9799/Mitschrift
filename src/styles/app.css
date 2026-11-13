@@ -673,4 +673,9 @@ button.tag-main{cursor:pointer}
 .vault-gate-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch;max-width:280px;margin:0 auto 18px}
 .vault-gate-actions .b-btn{justify-content:center}
 .vault-gate-plain{background:transparent;border-color:transparent}
+.app-main .vault-gate{min-height:calc(100vh - var(--menubar-h));background:none}
+.c-editor-locked{margin:0 0 16px;padding:10px 14px;border-radius:var(--radius-xs);background:var(--amber-bg);color:var(--amber);font-size:13.5px;line-height:1.5}
+.error-detail{margin-top:4px;text-align:left;font-size:12.5px;color:var(--ink-faint)}
+.error-detail summary{cursor:pointer;text-align:center}
+.error-detail code{display:block;margin-top:8px;padding:8px 10px;border-radius:var(--radius-xs);background:var(--paper-2);color:var(--ink-soft);white-space:pre-wrap;word-break:break-word}
 .vault-gate-card .vault-gate-hint{font-size:12.5px;color:var(--ink-faint)}

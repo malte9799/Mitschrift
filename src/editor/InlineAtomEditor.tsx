@@ -6,6 +6,7 @@ import { Popover } from '@/blocks/collection/Popover';
 import { EDIT_INLINE_EVENT, openInlineEditor, type EditInlineDetail } from './inlineEdit';
 import { listFootnotes } from './Footnote';
 import { LazyMathEditor } from './math/lazyMathEditor';
+import { formatShortcut } from '@/ui/shortcut';
 
 /** Welches Attribut der Popover bearbeitet. */
 const FIELD: Record<string, 'latex' | 'text'> = { mathInline: 'latex', footnote: 'text' };
@@ -97,7 +98,7 @@ export function InlineAtomEditor({ editor }: { editor: Editor }) {
           onKeyDown={onKeyDown}
         />
       )}
-      {!isMath && <p className="c-inline-edit-hint">↵ Fertig · ⇧↵ neue Zeile</p>}
+      {!isMath && <p className="c-inline-edit-hint">{formatShortcut('↵ Fertig · ⇧↵ neue Zeile')}</p>}
     </Popover>
   );
 }

@@ -1,3 +1,4 @@
+import { formatShortcut } from '@/ui/shortcut';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -385,7 +386,7 @@ function PlotStage({ fns, compiled, values, view, setView, commitView, showPoint
       )}
 
       <div className="p-zoom">
-        <button type="button" aria-label="Vergrößern" title="Vergrößern (⌘ + Scrollen)" onClick={() => zoom(0.7)}>
+        <button type="button" aria-label="Vergrößern" title={formatShortcut('Vergrößern (⌘ + Scrollen)')} onClick={() => zoom(0.7)}>
           <Icon name="plus" />
         </button>
         <button type="button" aria-label="Verkleinern" title="Verkleinern" onClick={() => zoom(1 / 0.7)}>
