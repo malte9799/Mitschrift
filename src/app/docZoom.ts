@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 /**
  * Zoom nur für den Dokumentinhalt (Notizen, Handbuch) – Menü- und Seitenleisten bleiben gleich groß.
  * Ersetzt den Browser-Zoom (⌘+/⌘−/⌘0, Strg/⌘ + Mausrad bzw. Trackpad-Pinch), der die ganze Seite skaliert.
+ * Gezoomt wird immer in festen Stufen ({@link ZOOM_STEPS}).
  */
 const KEY = 'mitschrift-doc-zoom';
 export const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5];
@@ -14,7 +15,8 @@ const clamp = (z: number) => Math.min(MAX, Math.max(MIN, Math.round(z * 100) / 1
 function load(): number {
   try {
     const v = Number(localStorage.getItem(KEY));
-    return v ? clamp(v) : 1;
+    // Ältere, stufenlos gespeicherte Werte auf die nächste Stufe runden.
+    return v ? ZOOM_STEPS.reduce((best, st) => (Math.abs(st - v) < Math.abs(best - v) ? st : best), 1) : 1;
   } catch {
     return 1;
   }
@@ -67,18 +69,28 @@ export function useDocZoom() {
   );
 }
 
+/** So viel Scroll-Weg (px) braucht es für eine Zoomstufe – ein Mausrad-Raster sind ~100, Pinch liefert kleine Werte. */
+const WHEEL_STEP = 60;
+
 /**
- * Strg/⌘ + Mausrad und Trackpad-Pinch (kommt im Browser als Wheel mit ctrlKey) zoomen das Dokument
- * stufenlos statt die ganze Seite. Blöcke mit eigenem Zoom (Plot, Zeitstrahl, SVG-Editor, Graph)
- * rufen preventDefault() und haben damit Vorrang.
+ * Strg/⌘ + Mausrad und Trackpad-Pinch (kommt im Browser als Wheel mit ctrlKey) schalten das Dokument
+ * in den festen Stufen von {@link ZOOM_STEPS} weiter statt die ganze Seite zu zoomen. Blöcke mit
+ * eigenem Zoom (Plot, Zeitstrahl, SVG-Editor, Graph) rufen preventDefault() und haben damit Vorrang.
  */
 export function installWheelZoom() {
+  let acc = 0;
+  let idle = 0;
   const onWheel = (e: WheelEvent) => {
     if (!(e.ctrlKey || e.metaKey) || e.defaultPrevented) return;
     e.preventDefault();
-    // Pinch liefert kleine, Mausräder große Schritte – exponentiell, damit beides angenehm skaliert.
-    const delta = Math.max(-50, Math.min(50, e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY));
-    setZoom(zoom * Math.exp(-delta * 0.005));
+    acc += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+    // Nach einer Pause von vorn zählen, damit eine neue Geste nicht vom Rest der letzten abhängt.
+    window.clearTimeout(idle);
+    idle = window.setTimeout(() => (acc = 0), 300);
+    if (Math.abs(acc) < WHEEL_STEP) return;
+    if (acc < 0) zoomIn();
+    else zoomOut();
+    acc = 0;
   };
   window.addEventListener('wheel', onWheel, { passive: false });
   return () => window.removeEventListener('wheel', onWheel);
