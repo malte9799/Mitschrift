@@ -25,7 +25,7 @@ function formatGroup(glyphs: string, key: string) {
 /** Kürzel bzw. Text mit Kürzeln für die Anzeige: auf dem Mac unverändert, sonst „Strg+Alt+E“. */
 export function formatShortcut(text: string): string {
   if (isMac) return text;
-  return text.replace(/([⌃⌥⇧⌘]+)([A-Z0-9↵+−])?/g, (_, glyphs: string, key = '') => formatGroup(glyphs, key));
+  return text.replace(/([⌃⌥⇧⌘]+)([A-Z0-9↵+−,])?/g, (_, glyphs: string, key = '') => formatGroup(glyphs, key));
 }
 
 /** Prüft ein Kürzel wie „⌃⌘S“ gegen ein Tastatur-Event (per `code`, da ⌥ die Taste verändert). */
