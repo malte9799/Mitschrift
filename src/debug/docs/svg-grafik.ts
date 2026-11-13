@@ -54,7 +54,7 @@ const doc: DebugDoc = {
             t('Stil', ['bold']),
             t(' öffnet Farben/Linien/Hintergrund, '),
             t('Doppelklick', ['bold']),
-            t(' öffnet den Vollbild-Editor. Griffe links/rechts ändern die Breite.'),
+            t(' wandelt den Block in ein Whiteboard um (SVG als Bild in Excalidraw). Griffe links/rechts ändern die Breite.'),
           ),
         ],
       },

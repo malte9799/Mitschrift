@@ -30,7 +30,7 @@ const page: HandbuchPage = {
       },
 
       h2('SVG-Grafik'),
-      p(t('SVG-Code einfügen (Tastatur oder Ziehen einer .svg-Datei) – mit eigenem Editor für Farben, Linienstärke, Hintergrund, Drehung und Ausrichtung.')),
+      p(t('SVG-Code einfügen (Tastatur oder Ziehen einer .svg-Datei). Über „Stil“ änderst du Farben, Linienstärke, Hintergrund, Drehung und Ausrichtung. „Bearbeiten“ (oder Doppelklick) macht daraus ein Whiteboard: Das SVG liegt dann als Bild auf der Zeichenfläche, und du zeichnest in Excalidraw darüber oder daneben.')),
       {
         type: 'svg',
         attrs: {

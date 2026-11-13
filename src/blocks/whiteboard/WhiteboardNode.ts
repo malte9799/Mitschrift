@@ -24,6 +24,10 @@ declare module '@tiptap/core' {
 
 /** Ein frisch eingefügtes Whiteboard öffnet sofort den Zeichen-Editor. */
 let openNextOnMount = false;
+/** Das nächste erzeugte Whiteboard (z. B. aus einem SVG umgewandelt) öffnet direkt den Editor. */
+export function openNextWhiteboard() {
+  openNextOnMount = true;
+}
 export function takeOpenOnMount(): boolean {
   const open = openNextOnMount;
   openNextOnMount = false;

@@ -75,7 +75,7 @@ const WHEEL_STEP = 60;
 /**
  * Strg/⌘ + Mausrad und Trackpad-Pinch (kommt im Browser als Wheel mit ctrlKey) schalten das Dokument
  * in den festen Stufen von {@link ZOOM_STEPS} weiter statt die ganze Seite zu zoomen. Blöcke mit
- * eigenem Zoom (Plot, Zeitstrahl, SVG-Editor, Graph) rufen preventDefault() und haben damit Vorrang.
+ * eigenem Zoom (Plot, Zeitstrahl, Graph) rufen preventDefault() und haben damit Vorrang.
  */
 export function installWheelZoom() {
   let acc = 0;

@@ -18,8 +18,6 @@ export interface SvgContentStyle {
   flipV: boolean;
 }
 
-export const plainStyle: SvgContentStyle = { colors: {}, strokeScale: 1, rotate: 0, flipH: false, flipV: false };
-
 /** Inhalts-Stil aus den Attributen des SVG-Blocks. */
 export const contentStyleOf = (a: Record<string, unknown>): SvgContentStyle => ({
   colors: (a.colors as Record<string, string>) ?? {},
@@ -28,8 +26,6 @@ export const contentStyleOf = (a: Record<string, unknown>): SvgContentStyle => (
   flipH: !!a.flipH,
   flipV: !!a.flipV,
 });
-
-export const blankSvg = `<svg xmlns="${SVG_NS}" width="480" height="320" viewBox="0 0 480 320"></svg>`;
 
 // ---------- Erkennen & Bereinigen ----------
 
