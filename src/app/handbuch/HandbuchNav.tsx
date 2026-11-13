@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { NavLink } from 'react-router-dom';
 import { childPagesOf, handbuchPages, type HandbuchPage } from './registry';
 import { handbuchHref } from './blocks';
@@ -31,8 +32,11 @@ export function HandbuchNav() {
       </NavLink>
       {topLevel.length > 0 && (
         <ul>
-          {topLevel.map((page) => (
-            <NavNode key={page.key} page={page} />
+          {topLevel.map((page, i) => (
+            <Fragment key={page.key}>
+              {page.section && page.section !== topLevel[i - 1]?.section && <li className="handbuch-nav-section">{page.section}</li>}
+              <NavNode page={page} />
+            </Fragment>
           ))}
         </ul>
       )}
