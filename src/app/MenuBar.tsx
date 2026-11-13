@@ -22,6 +22,7 @@ import { storageStatus, type StorageStatus } from '@/storage/persist';
 import { chooseFolder, disconnectFolder, folderSupported, useVaultState } from '@/storage/vault';
 import { notifyNotesChanged, useNotes } from '@/hooks/useNotes';
 import { notifyTagsChanged } from '@/hooks/useTags';
+import { SettingsDialog } from './SettingsDialog';
 import { reloadEvents } from './eventStore';
 import { plural } from '@/ui/plural';
 import { resetZoom, useDocZoom, zoomIn, zoomOut } from './docZoom';
@@ -156,6 +157,7 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
   /** Hervorgehobener Eintrag je Ebene: [Index im Menü, Index im Untermenü …]. */
   const [path, setPath] = useState<number[]>([]);
   const [about, setAbout] = useState(false);
+  const [settings, setSettings] = useState(false);
   const vault = useVaultState();
   const [fullscreen, setFullscreen] = useState(() => !!document.fullscreenElement);
   const barRef = useRef<HTMLElement>(null);
@@ -295,6 +297,8 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
       app: true,
       items: [
         { label: 'Über Mitschrift', action: () => setAbout(true) },
+        SEP,
+        { label: 'Einstellungen …', shortcut: '⌘,', bind: true, action: () => setSettings((v) => !v) },
         SEP,
         {
           label: 'Speicherort',
@@ -686,6 +690,11 @@ export function MenuBar({ sidebarOpen, toggleSidebar }: MenuBarProps) {
         </time>
       </nav>
       <AboutDialog open={about} onClose={() => setAbout(false)} />
+      <SettingsDialog
+        open={settings}
+        onClose={() => setSettings(false)}
+        actions={{ pickFolder: () => void pickFolder(), unlinkFolder: () => void unlinkFolder(), backup: runBackup, restore: runRestore, openWelcome }}
+      />
     </>
   );
 }
