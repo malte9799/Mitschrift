@@ -6,6 +6,9 @@ import { getHighlight, getMatcher, subscribeTerms } from './store';
 
 const key = new PluginKey<DecorationSet>('glossary');
 
+/** Ruhezeit nach der letzten Tastatureingabe, bevor das ganze Dokument neu nach Begriffen durchsucht wird. */
+const RESCAN_DELAY = 250;
+
 /** In Code und Links keine Begriffe markieren. */
 const SKIP_MARKS = new Set(['code', 'link', 'cloze']);
 
@@ -54,7 +57,23 @@ export const GlossaryHighlight = Extension.create({
         key,
         state: {
           init: (_, state) => decorate(state.doc),
-          apply: (tr, old, _prev, state) => (tr.docChanged || tr.getMeta(key) ? decorate(state.doc) : old),
+          // Meta = Neuberechnung (Begriffe geändert oder Ruhe nach dem Tippen). Bei Dokumentänderungen
+          // bleiben die alten Markierungen einstweilen stehen (mit verschobenen Positionen), der teure Scan folgt gebündelt.
+          apply: (tr, old, _prev, state) => (tr.getMeta(key) ? decorate(state.doc) : tr.docChanged ? old.map(tr.mapping, tr.doc) : old),
+        },
+        view: () => {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          return {
+            update: (v, prev) => {
+              if (v.state.doc.eq(prev.doc)) return;
+              clearTimeout(timer);
+              timer = setTimeout(() => {
+                if (v.isDestroyed) return;
+                v.dispatch(v.state.tr.setMeta(key, true).setMeta('addToHistory', false));
+              }, RESCAN_DELAY);
+            },
+            destroy: () => clearTimeout(timer),
+          };
         },
         props: {
           decorations: (state) => key.getState(state),

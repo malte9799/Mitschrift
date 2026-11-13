@@ -41,6 +41,9 @@ function printHtml(html: string, title: string) {
   const frame = document.createElement('iframe');
   frame.setAttribute('aria-hidden', 'true');
   frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:800px;height:1000px;border:0';
+  // Ohne allow-scripts: Skripte im Dokument laufen nie. allow-same-origin, damit der Parent print() aufrufen
+  // und Bilder/Fonts abwarten kann; allow-modals, damit der Druckdialog erscheinen darf.
+  frame.setAttribute('sandbox', 'allow-modals allow-same-origin');
   frame.srcdoc = html;
   document.body.append(frame);
 

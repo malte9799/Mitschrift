@@ -6,6 +6,7 @@ import { Icon, type IconName } from '@/ui/Icon';
 import { openTermDialog } from '@/glossary/store';
 import { guessTerm } from '@/glossary/match';
 import { commentSelection } from './sideNotes/CommentMark';
+import { normalizeHrefInput } from '@/lib/url';
 import { formatShortcut } from '@/ui/shortcut';
 
 interface ToolbarProps {
@@ -22,7 +23,8 @@ export function applyLink(editor: Editor, url: string) {
     editor.chain().focus().extendMarkRange('link').unsetLink().run();
     return;
   }
-  const safe = /^[a-z]+:|^\/|^#/i.test(href) ? href : `https://${href}`;
+  const safe = normalizeHrefInput(href);
+  if (!safe) return; // z. B. javascript: – wird nicht gesetzt
   editor.chain().focus().extendMarkRange('link').setLink({ href: safe }).run();
 }
 

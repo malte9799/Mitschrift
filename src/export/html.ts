@@ -1,3 +1,4 @@
+import { sanitizeHref } from '@/lib/url';
 import { lowlight } from '@/blocks/code/CodeBlock';
 import { kindLabels, type DiagramItem, type DiagramKind } from '@/blocks/diagram/DiagramNode';
 import type { Flashcard } from '@/blocks/flashcard/FlashcardsNode';
@@ -12,7 +13,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 /** Nur einfache Farbwerte durchlassen – kein CSS aus der Notiz ins Dokument schmuggeln. */
 const safeColor = (c: unknown) => (typeof c === 'string' && /^(#[0-9a-f]{3,8}|[a-z]+|rgba?\([\d\s.,%]+\)|var\(--[\w-]+\))$/i.test(c) ? c : null);
-const safeHref = (h: unknown) => (typeof h === 'string' && !/^\s*javascript:/i.test(h) ? h : '#');
+const safeHref = (h: unknown) => sanitizeHref(h) ?? '#';
 
 function wrapMark(m: PMMark, inner: string): string {
   switch (m.type) {
@@ -480,9 +481,6 @@ export function toHtml({ title, tags, doc, assets }: ExportDoc): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="Mitschrift">
 <title>${esc(name)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>${css}</style>
 </head>
 <body>

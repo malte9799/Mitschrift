@@ -1,6 +1,6 @@
 /*
  * Codeblock-Themes – unabhängig vom App-Theme wählbar (Menüleiste › Format › Code-Theme).
- * „Automatisch“ (kein data-code-theme) folgt weiterhin dem App-Theme via --code-*/--hl-*
+ * „Automatisch“ (kein data-code-theme) folgt weiterhin dem App-Theme via --code-… und --hl-…
  * aus tokens.css. Jedes benannte Theme überschreibt diese Variablen nur innerhalb .b-code.
  */
 

@@ -5,7 +5,8 @@ import { Icon } from '@/ui/Icon';
 import { noteIdFromHref } from '@/app/noteLinks';
 import { useEditable } from '../useEditable';
 import { externalLinkToBlock } from './SmartLinkNode';
-import { analyzeUrl, faviconUrl } from './urlPatterns';
+import { analyzeUrl } from './urlPatterns';
+import { Favicon } from './Favicon';
 
 const OPEN_DELAY = 380;
 const CLOSE_DELAY = 220;
@@ -87,7 +88,7 @@ export function SmartLinkHover({ editor }: { editor: Editor }) {
     <div ref={cardRef} className="sl-hover" style={pos ?? { visibility: 'hidden', top: 0, left: 0 }} onMouseEnter={keepOpen} onMouseLeave={scheduleClose}>
       <a href={target.href} target="_blank" rel="noreferrer noopener" className="sl-hover-main">
         <span className="sl-hover-icon">
-          <img src={faviconUrl(info.domain)} alt="" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
+          <Favicon domain={info.domain} />
         </span>
         <span className="sl-hover-text">
           <span className="sl-hover-domain">{info.domain}</span>

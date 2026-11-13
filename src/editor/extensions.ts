@@ -1,3 +1,4 @@
+import { sanitizeHref } from '@/lib/url';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
@@ -25,7 +26,11 @@ import { Column, Columns } from './columns/Columns';
 export const noteExtensions = [
   StarterKit.configure({
     heading: { levels: [1, 2, 3] },
-    link: { openOnClick: false },
+    link: {
+      openOnClick: false,
+      // Zusätzlich zur Tiptap-Prüfung: nur Links, die sanitizeHref erlaubt (auch beim Einfügen/Laden).
+      isAllowedUri: (url, { defaultValidate }) => sanitizeHref(url) !== null && defaultValidate(url),
+    },
     // Ersetzt durch den Codeblock mit Highlighting, Zeilennummern und Kopier-Knopf.
     codeBlock: false,
     // Ersetzt durch die Trennlinie mit Stilen.

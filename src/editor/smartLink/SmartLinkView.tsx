@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
+import { sanitizeHref } from '@/lib/url';
 import { Icon } from '@/ui/Icon';
 import { BarButton, BarSep, useBarSubmenu, useBlockBar } from '../BlockBar';
 import { smartBlockToLink, type SmartLinkView_ } from './SmartLinkNode';
 import { SmartLinkOptions } from './SmartLinkOptions';
-import { analyzeUrl, faviconUrl } from './urlPatterns';
+import { analyzeUrl } from './urlPatterns';
+import { Favicon } from './Favicon';
 
 /** Externer Link als Block: Zeile mit Favicon/Domain, eingebettetes Bild, Video oder Audio. */
 export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeViewProps) {
   const bar = useBlockBar(editor, getPos);
   const viewMenu = useBarSubmenu(editor, { icon: 'noteRow', label: 'Darstellung', text: 'Darstellung', popoverClassName: 'nv-pop', popoverAlign: 'end' });
   const [broken, setBroken] = useState(false);
-  const { href, view, title } = node.attrs as { href: string; view: 'row' | 'image' | 'video' | 'audio'; title: string };
+  const { href: rawHref, view, title } = node.attrs as { href: string; view: 'row' | 'image' | 'video' | 'audio'; title: string };
 
+  const href = sanitizeHref(rawHref) ?? '';
   const info = useMemo(() => analyzeUrl(href), [href]);
   const embedView = info.kind === 'generic' ? null : info.kind;
   const label = title || href;
@@ -22,7 +25,7 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
   function open(e: React.MouseEvent) {
     if (e.button !== 0) return;
     e.preventDefault();
-    window.open(href, '_blank', 'noopener,noreferrer');
+    if (href) window.open(href, '_blank', 'noopener,noreferrer');
   }
 
   function setView(v: SmartLinkView_) {
@@ -41,7 +44,7 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
         <>
           {viewMenu.button}
           <BarSep />
-          <BarButton icon="external" label="Link öffnen" text="Öffnen" onClick={() => window.open(href, '_blank', 'noopener,noreferrer')} />
+          <BarButton icon="external" label="Link öffnen" text="Öffnen" onClick={() => href && window.open(href, '_blank', 'noopener,noreferrer')} />
         </>,
       )}
       {viewMenu.submenu(
@@ -64,7 +67,7 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
     return (
       <NodeViewWrapper className={`sl sl--image${bar.active ? ' is-selected' : ''}`} contentEditable={false}>
         {menu}
-        <a href={href} className="sl-image" onClick={open} draggable={false}>
+        <a href={href || undefined} className="sl-image" onClick={open} draggable={false}>
           {broken ? (
             <div className="sl-image-broken">
               <Icon name="image" />
@@ -97,9 +100,9 @@ export function SmartLinkView({ node, editor, getPos, updateAttributes }: NodeVi
   return (
     <NodeViewWrapper className={`sl sl--row${bar.active ? ' is-selected' : ''}`} contentEditable={false}>
       {menu}
-      <a href={href} className="sl-row" onClick={open} draggable={false}>
+      <a href={href || undefined} className="sl-row" onClick={open} draggable={false}>
         <span className="sl-icon" aria-hidden="true">
-          <img src={faviconUrl(info.domain)} alt="" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
+          <Favicon domain={info.domain} />
         </span>
         <span className="sl-text">
           <span className="sl-title">{label}</span>

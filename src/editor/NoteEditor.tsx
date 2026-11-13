@@ -1,6 +1,6 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import type { Schema } from '@tiptap/pm/model';
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { Editor } from '@tiptap/react';
 import { noteExtensions } from './extensions';
 import { SlashCommand } from './SlashCommand';
@@ -66,6 +66,9 @@ function unknownTypes(doc: JsonNode | null, schema: Schema): string[] {
   return [...found];
 }
 
+/** Ruhezeit nach der letzten Änderung, bevor das Dokument serialisiert und gemeldet wird. */
+const SERIALIZE_DELAY = 300;
+
 /** Blockbasierter Rich-Text-Editor: Tiptap-Kern + Slash-Menü, Bubble-Toolbar, Drag-Handle. */
 export function NoteEditor({ noteId, content, onChange, learning, onEditorReady }: NoteEditorProps) {
   const { snippets } = useSnippets();
@@ -81,6 +84,27 @@ export function NoteEditor({ noteId, content, onChange, learning, onEditorReady 
    */
   const contentError = useRef(false);
   const [locked, setLocked] = useState(false);
+  // Serialisierung (getJSON + stringify über das ganze Dokument) ist teuer: pro Transaktion nur „dirty“ merken,
+  // erst nach kurzer Ruhe, beim Verlassen oder wenn der Tab verborgen wird tatsächlich bauen.
+  const dirty = useRef(false);
+  const serializeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const editorRef = useRef<Editor | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  /** Gibt eine ausstehende Änderung sofort per `onChange` ab. Gesperrte Notizen speichern nie. */
+  const flushChange = useRef(() => {
+    clearTimeout(serializeTimer.current);
+    if (!dirty.current) return;
+    dirty.current = false;
+    const ed = editorRef.current;
+    if (!ed || ed.isDestroyed || contentError.current) return;
+    const sideNotes = getSideNotes(ed.state);
+    const json = JSON.stringify(sideNotes.length ? { ...ed.getJSON(), sideNotes } : ed.getJSON());
+    if (json === lastJson.current) return;
+    lastJson.current = json;
+    onChangeRef.current(json);
+  }).current;
 
   const editor = useEditor({
     immediatelyRender: true,
@@ -102,6 +126,7 @@ export function NoteEditor({ noteId, content, onChange, learning, onEditorReady 
     // Über create/destroy melden statt per Effect: StrictMode erzeugt die Instanz
     // doppelt, ein Effect konnte sonst die bereits zerstörte Instanz nach oben geben.
     onCreate: ({ editor }) => {
+      editorRef.current = editor;
       onEditorReady?.(editor);
       editor.on('destroy', () => onEditorReady?.((cur) => (cur === editor ? null : cur)));
     },
@@ -109,13 +134,25 @@ export function NoteEditor({ noteId, content, onChange, learning, onEditorReady 
     onTransaction: ({ editor, transaction }) => {
       if (contentError.current) return;
       if ((!transaction.docChanged && !transaction.getMeta(sideNotesKey)) || transaction.getMeta('preventUpdate')) return;
-      const sideNotes = getSideNotes(editor.state);
-      const json = JSON.stringify(sideNotes.length ? { ...editor.getJSON(), sideNotes } : editor.getJSON());
-      if (json === lastJson.current) return;
-      lastJson.current = json;
-      onChange(json);
+      editorRef.current = editor;
+      dirty.current = true;
+      clearTimeout(serializeTimer.current);
+      serializeTimer.current = setTimeout(flushChange, SERIALIZE_DELAY);
     },
   });
+
+  // Nichts verlieren: Beim Unmount (Layout-Cleanup läuft vor dem Flush von useNote) sowie bei verborgenem Tab
+  // oder Schließen die ausstehende Änderung sofort abgeben. Capture, damit wir vor den Listenern von useNote dran sind.
+  useLayoutEffect(() => {
+    const onVisibility = () => document.visibilityState === 'hidden' && flushChange();
+    document.addEventListener('visibilitychange', onVisibility, true);
+    window.addEventListener('pagehide', flushChange, true);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility, true);
+      window.removeEventListener('pagehide', flushChange, true);
+      flushChange();
+    };
+  }, [flushChange]);
 
   useEffect(() => {
     if (!editor) return;

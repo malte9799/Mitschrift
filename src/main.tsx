@@ -15,6 +15,13 @@ import { initStorage } from './storage/vault';
 import { VaultGate } from './app/VaultGate';
 import { ErrorPage } from './app/ErrorPage';
 import { TrashPage } from './app/TrashPage';
+// Schriften selbst ausliefern (keine Anfragen an Google) – nur die genutzten Gewichte, nur lateinische Zeichen.
+import '@fontsource/instrument-sans/latin-400.css';
+import '@fontsource/instrument-sans/latin-500.css';
+import '@fontsource/instrument-sans/latin-600.css';
+import '@fontsource/instrument-sans/latin-700.css';
+import '@fontsource/jetbrains-mono/latin-400.css';
+import '@fontsource/jetbrains-mono/latin-500.css';
 import './styles/tokens.css';
 import './styles/app.css';
 import './styles/editor.css';

@@ -23,10 +23,14 @@ export interface DebugDoc {
 export const DEBUG_TAG = 'debug';
 const STATE_KEY = 'mitschrift-debug-docs';
 
-const modules = import.meta.glob<{ default: DebugDoc }>('./docs/*.ts', { eager: true });
-export const debugDocs: DebugDoc[] = Object.values(modules)
-  .map((m) => m.default)
-  .sort((a, b) => a.title.localeCompare(b.title, 'de'));
+// Nur im Dev-Server einsammeln: Im Produktions-Build ist der Zweig tot und die Dokumente landen in keinem Chunk.
+const loaders = import.meta.env.DEV ? import.meta.glob<{ default: DebugDoc }>('./docs/*.ts') : {};
+
+/** Lädt alle Debug-Dokumente (nur Dev), nach Titel sortiert. */
+export async function loadDebugDocs(): Promise<DebugDoc[]> {
+  const modules = await Promise.all(Object.values(loaders).map((load) => load()));
+  return modules.map((m) => m.default).sort((a, b) => a.title.localeCompare(b.title, 'de'));
+}
 
 type State = Record<string, { id: string; version: number }>;
 
@@ -45,7 +49,7 @@ export function seedDebugDocs(): Promise<void> {
   if (!import.meta.env.DEV) return Promise.resolve();
   pending ??= (async () => {
     const state = readState();
-    const todo = debugDocs.filter((d) => state[d.key]?.version !== (d.version ?? 1));
+    const todo = (await loadDebugDocs()).filter((d) => state[d.key]?.version !== (d.version ?? 1));
     if (!todo.length) return;
 
     let tag = (await storage.listTags()).find((t) => t.name === DEBUG_TAG);

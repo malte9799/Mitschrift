@@ -103,7 +103,10 @@ export function availableSmartViews(href: string): SmartLinkKind[] {
   return info.kind === 'generic' ? [] : [info.kind];
 }
 
-/** Öffentlicher Favicon-Dienst – kein eigener Server nötig, funktioniert ohne CORS-Probleme als `<img>`. */
+/**
+ * Favicon direkt von der Seite selbst (`/favicon.ico`) – kein Drittanbieter-Dienst, der erfährt,
+ * welche Seiten verlinkt werden. Schlägt das Laden fehl, zeigt die Ansicht ein lokales Globus-Icon.
+ */
 export function faviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`;
+  return `https://${domain}/favicon.ico`;
 }

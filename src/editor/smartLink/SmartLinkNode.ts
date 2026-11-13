@@ -1,5 +1,6 @@
 import { Node, getMarkRange, mergeAttributes, type Editor } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
+import { sanitizeHref } from '@/lib/url';
 import { SmartLinkView } from './SmartLinkView';
 import { analyzeUrl, type SmartLinkKind } from './urlPatterns';
 
@@ -29,6 +30,13 @@ declare module '@tiptap/core' {
   }
 }
 
+/** href nur mit erlaubtem Schema – sonst leer (beim Einfügen/Parsen und Rendern). */
+const hrefAttr = {
+  default: '',
+  parseHTML: (el: HTMLElement) => sanitizeHref(el.getAttribute('data-href')) ?? '',
+  renderHTML: (a: Record<string, unknown>) => ({ 'data-href': sanitizeHref(a.href) ?? '' }),
+};
+
 const str = (name: string, fallback: string | null) => ({
   default: fallback,
   parseHTML: (el: HTMLElement) => el.getAttribute(`data-${name}`) ?? fallback,
@@ -45,7 +53,7 @@ export const SmartLinkNode = Node.create({
 
   addAttributes() {
     return {
-      href: str('href', ''),
+      href: hrefAttr,
       view: str('view', 'row'),
       title: str('title', ''),
     };
@@ -57,7 +65,7 @@ export const SmartLinkNode = Node.create({
 
   // Außerhalb von Mitschrift (Zwischenablage, andere Apps) bleibt es ein normaler Link.
   renderHTML({ node, HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 'data-smart-link': '' }), ['a', { href: node.attrs.href }, node.attrs.title || node.attrs.href]];
+    return ['div', mergeAttributes(HTMLAttributes, { 'data-smart-link': '' }), ['a', { href: sanitizeHref(node.attrs.href) ?? '#' }, node.attrs.title || node.attrs.href]];
   },
 
   addNodeView() {

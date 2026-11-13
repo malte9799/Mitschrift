@@ -8,13 +8,10 @@
     <meta name="description" content="Notizen mit Lern-Blöcken – Karteikarten, Quiz und Lückentext direkt im Text." />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
     <script>
+      // Excalidraw-Schriften aus dem eigenen Ordner statt von esm.sh (siehe excalidrawFonts() in vite.config.ts).
+      // Muss vor allen Modulen gesetzt sein: Excalidraw berechnet die Adressen schon beim Laden.
+      window.EXCALIDRAW_ASSET_PATH = '%BASE_URL%excalidraw-assets/';
       try {
         const t = localStorage.getItem('mitschrift-theme');
         if (t) document.documentElement.dataset.theme = t;
